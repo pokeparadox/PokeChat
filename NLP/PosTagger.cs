@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using PokeChat.Data.Entities;
 
 namespace PokeChat.NLP;
@@ -39,14 +36,10 @@ public static class PosTagger
                 "verb" => PosTag.Verb,
                 "adjective" => PosTag.Adjective,
                 "noun" => PosTag.Noun,
-                "stop_word" => PosTag.Unknown,
                 _ => PosTag.Unknown
             };
 
-            if (!_wordTagMap.ContainsKey(entry.Word))
-            {
-                _wordTagMap[entry.Word] = tag;
-            }
+            _wordTagMap.TryAdd(entry.Word, tag);
         }
     }
 

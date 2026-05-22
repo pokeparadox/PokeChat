@@ -1,21 +1,11 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using Facet.Extensions;
 using PokeChat.Data;
 using PokeChat.Data.Entities;
 
 namespace PokeChat.Knowledge;
 
-public class KnowledgeStore
+public class KnowledgeStore(PokeChatDbContext context)
 {
-    private readonly PokeChatDbContext _context;
-
-    public KnowledgeStore(PokeChatDbContext context)
-    {
-        _context = context;
-    }
-
     public void StoreFact(Fact fact)
     {
         var entity = new FactEntity
@@ -28,13 +18,13 @@ public class KnowledgeStore
             CreatedAt = fact.CreatedAt
         };
 
-        _context.Facts.Add(entity);
-        _context.SaveChanges();
+        context.Facts.Add(entity);
+        context.SaveChanges();
     }
 
     public List<Fact> GetFactsBySubject(string subject)
     {
-        return _context.Facts
+        return context.Facts
             .Where(f => f.Subject == subject)
             .SelectFacet<Fact>()
             .ToList();
@@ -42,7 +32,7 @@ public class KnowledgeStore
 
     public List<Fact> GetFactsByUser(int userId)
     {
-        return _context.Facts
+        return context.Facts
             .Where(f => f.UserId == userId)
             .SelectFacet<Fact>()
             .ToList();
@@ -50,7 +40,7 @@ public class KnowledgeStore
 
     public Fact? GetFact(string subject, string verb, string obj)
     {
-        var entity = _context.Facts
+        var entity = context.Facts
             .SelectFacet<Fact>()
             .FirstOrDefault(f => f.Subject == subject && f.Verb == verb && f.Object == obj);
 
@@ -59,18 +49,18 @@ public class KnowledgeStore
 
     public List<Fact> GetAllFacts()
     {
-        return _context.Facts
+        return context.Facts
             .SelectFacet<Fact>()
             .ToList();
     }
 
     public int? GetOrCreateUser(string name)
     {
-        var existingUser = _context.Users.FirstOrDefault(u => u.Name == name);
+        var existingUser = context.Users.FirstOrDefault(u => u.Name == name);
         if (existingUser != null)
         {
             existingUser.LastSeen = DateTime.UtcNow.ToString("o");
-            _context.SaveChanges();
+            context.SaveChanges();
             return existingUser.Id;
         }
 
@@ -81,8 +71,8 @@ public class KnowledgeStore
             LastSeen = DateTime.UtcNow.ToString("o")
         };
 
-        _context.Users.Add(newUser);
-        _context.SaveChanges();
+        context.Users.Add(newUser);
+        context.SaveChanges();
         return newUser.Id;
     }
 
@@ -96,13 +86,13 @@ public class KnowledgeStore
             Timestamp = DateTime.UtcNow.ToString("o")
         };
 
-        _context.Conversations.Add(conversation);
-        _context.SaveChanges();
+        context.Conversations.Add(conversation);
+        context.SaveChanges();
     }
 
     public List<Greeting> GetGreetings()
     {
-        return _context.Greetings.ToList();
+        return context.Greetings.ToList();
     }
 
     public void AddGreeting(string text, bool isSystem = false)
@@ -114,18 +104,18 @@ public class KnowledgeStore
             CreatedAt = DateTime.UtcNow.ToString("o")
         };
 
-        _context.Greetings.Add(greeting);
-        _context.SaveChanges();
+        context.Greetings.Add(greeting);
+        context.SaveChanges();
     }
 
     public List<GreetingWord> GetGreetingWords()
     {
-        return _context.GreetingWords.ToList();
+        return context.GreetingWords.ToList();
     }
 
     public bool IsGreetingWord(string word)
     {
-        return _context.GreetingWords.Any(gw => gw.Word == word.ToLowerInvariant());
+        return context.GreetingWords.Any(gw => gw.Word == word.ToLowerInvariant());
     }
 
     public void AddGreetingWord(string word, int? learnedFromUserId = null)
@@ -137,20 +127,20 @@ public class KnowledgeStore
             CreatedAt = DateTime.UtcNow.ToString("o")
         };
 
-        _context.GreetingWords.Add(greetingWord);
-        _context.SaveChanges();
+        context.GreetingWords.Add(greetingWord);
+        context.SaveChanges();
     }
 
     public List<ResponseRule> GetResponseRules()
     {
-        return _context.ResponseRules
+        return context.ResponseRules
             .Where(r => r.IsActive)
             .ToList();
     }
 
     public List<string> GetResponsesForRule(int ruleId)
     {
-        return _context.ResponseRuleResponses
+        return context.ResponseRuleResponses
             .Where(r => r.RuleId == ruleId)
             .Select(r => r.ResponseText)
             .ToList();
@@ -158,16 +148,16 @@ public class KnowledgeStore
 
     public List<PosDictionaryEntry> GetPosDictionary()
     {
-        return _context.PosDictionary.ToList();
+        return context.PosDictionary.ToList();
     }
 
     public List<NamePattern> GetNamePatterns()
     {
-        return _context.NamePatterns.ToList();
+        return context.NamePatterns.ToList();
     }
 
     public List<BotCommand> GetBotCommands()
     {
-        return _context.BotCommands.ToList();
+        return context.BotCommands.ToList();
     }
 }

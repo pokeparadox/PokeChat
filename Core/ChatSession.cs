@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using PokeChat.Core;
 using PokeChat.Data;
 using PokeChat.Knowledge;
 using PokeChat.NLP;
@@ -16,9 +13,9 @@ public class ChatSession
     private readonly ContextTracker _context;
     private int? _currentUserId;
     private string _currentUserName = string.Empty;
-    private List<string> _namePatterns = new();
-    private HashSet<string> _botCommands = new(StringComparer.OrdinalIgnoreCase);
-    private HashSet<string> _greetingWords = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<string> _namePatterns;
+    private readonly HashSet<string> _botCommands;
+    private readonly HashSet<string> _greetingWords;
 
     public ChatSession()
     {
@@ -115,7 +112,7 @@ public class ChatSession
         foreach (var triple in triples)
         {
             var resolvedSubject = ResolveSubject(triple.Subject);
-            var resolvedObject = ResolveObject(triple.Object_);
+            var resolvedObject = ResolveObject(triple.Object);
 
             var predicateType = ClassifyPredicate(resolvedSubject, triple.Verb, resolvedObject);
 

@@ -1,26 +1,16 @@
-using System;
-using System.Collections.Generic;
 using PokeChat.Knowledge;
 using PokeChat.NLP;
 
 namespace PokeChat.Responses;
 
-public class ResponseEngine
+public class ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker context)
 {
-    private readonly KnowledgeStore _knowledgeStore;
-    private readonly ContextTracker _context;
-    private readonly Random _random;
-
-    public ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker context)
-    {
-        _knowledgeStore = knowledgeStore;
-        _context = context;
-        _random = new Random();
-    }
+    private readonly ContextTracker _context = context;
+    private readonly Random _random = new();
 
     public string GenerateResponse(string input, int? userId)
     {
-        var rule = ResponseRules.MatchRule(input, _knowledgeStore);
+        var rule = ResponseRules.MatchRule(input, knowledgeStore);
 
         if (rule != null && rule.Responses.Count > 0)
         {
@@ -33,14 +23,14 @@ public class ResponseEngine
 
         foreach (var triple in triples)
         {
-            var existingFact = _knowledgeStore.GetFact(triple.Subject, triple.Verb, triple.Object_);
+            var existingFact = knowledgeStore.GetFact(triple.Subject, triple.Verb, triple.Object);
             if (existingFact != null)
             {
-                return $"I already know that {triple.Subject} {triple.Verb} {triple.Object_}. Did you know something new about it?";
+                return $"I already know that {triple.Subject} {triple.Verb} {triple.Object}. Did you know something new about it?";
             }
         }
 
-        var facts = userId.HasValue ? _knowledgeStore.GetFactsByUser(userId.Value) : new List<Fact>();
+        var facts = userId.HasValue ? knowledgeStore.GetFactsByUser(userId.Value) : new List<Fact>();
         if (facts.Count > 0 && _random.Next(3) == 0)
         {
             var randomFact = facts[_random.Next(facts.Count)];

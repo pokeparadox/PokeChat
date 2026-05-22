@@ -1,12 +1,9 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
 using Microsoft.EntityFrameworkCore;
 using PokeChat.Data.Entities;
 
 namespace PokeChat.Data;
 
-public class PokeChatDbContext : DbContext
+public sealed class PokeChatDbContext : DbContext
 {
     private readonly string _dbPath;
 

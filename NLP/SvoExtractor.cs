@@ -1,11 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using PokeChat.NLP;
-
 namespace PokeChat.NLP;
 
-public record SvoTriple(string Subject, string Verb, string Object_);
+public record SvoTriple(string Subject, string Verb, string @Object);
 
 public static class SvoExtractor
 {

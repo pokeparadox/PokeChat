@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace PokeChat.Knowledge;
 
 public class ContextTracker
