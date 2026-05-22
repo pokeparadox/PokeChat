@@ -55,3 +55,12 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+/graphify-out
+/bin
+/obj
+pokechat.db
+
+# MemPalace per-project files (issue #185)
+mempalace.yaml
+entities.json
