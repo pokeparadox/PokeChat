@@ -30,6 +30,26 @@ public class ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker contex
             }
         }
 
+        if (!string.IsNullOrEmpty(_context.LastSubject))
+        {
+            var subject = _context.LastSubject;
+            var contextFollowUps = new List<string>
+            {
+                $"Tell me more about {subject}.",
+                $"What else do you know about {subject}?",
+                $"You mentioned {subject}. What's on your mind?"
+            };
+
+            if (!string.IsNullOrEmpty(_context.LastObject))
+            {
+                var obj = _context.LastObject;
+                contextFollowUps.Add($"You said {subject} is related to {obj}. Anything else?");
+                contextFollowUps.Add($"Earlier you mentioned {subject} and {obj}. Go on!");
+            }
+
+            return contextFollowUps[_random.Next(contextFollowUps.Count)];
+        }
+
         var facts = userId.HasValue ? knowledgeStore.GetFactsByUser(userId.Value) : new List<Fact>();
         if (facts.Count > 0 && _random.Next(3) == 0)
         {

@@ -58,6 +58,7 @@ public class ChatSession
             }
 
             var response = ProcessInput(input);
+            _context.SetContext("last_response", response);
             Console.WriteLine($"PokeChat: {response}");
         }
     }
@@ -146,6 +147,9 @@ public class ChatSession
         {
             "i" or "me" or "my" or "myself" => _currentUserName,
             "we" or "us" or "our" => _currentUserName,
+            "he" or "him" or "his" => _context.ResolvePronoun(lower),
+            "she" or "her" => _context.ResolvePronoun(lower),
+            "they" or "them" or "their" => _context.ResolvePronoun(lower),
             _ => subject
         };
     }
@@ -155,7 +159,7 @@ public class ChatSession
         var lower = obj.ToLowerInvariant();
         return lower switch
         {
-            "it" or "this" or "that" => _context.ResolvePronoun(lower),
+            "it" or "this" or "that" or "him" or "her" or "them" => _context.ResolvePronoun(lower),
             _ => obj
         };
     }
@@ -210,6 +214,7 @@ public class ChatSession
         _currentUserName = char.ToUpper(name[0]) + name.Substring(1).ToLowerInvariant();
         _currentUserId = _knowledgeStore.GetOrCreateUser(_currentUserName);
 
+        _context.Clear();
         _context.SetContext("user_name", _currentUserName);
 
         var greetings = new List<string>

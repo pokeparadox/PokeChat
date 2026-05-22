@@ -1,110 +1,51 @@
-# PokeChat — Implementation Plan
+# Context Tracking Integration Plan
 
-## Overview
-A terminal-based chat application in C# (.NET 10) with SQLite and a custom NLP parser. No LLMs. All conversational data (greetings, response rules, POS dictionary) is stored in SQLite — the bot learns and grows its vocabulary over time.
+## Current Gaps
 
-## Architecture
-
-```
-PokeChat/
-├── PokeChat.csproj
-├── Program.cs               # Entry point, creates ChatSession
-├── Core/
-│   ├── ChatSession.cs       # Main loop: greet → parse → respond → store
-│   └── GreetingPool.cs      # Loads greetings from DB
-├── NLP/
-│   ├── Tokenizer.cs         # Whitespace + punctuation tokenization
-│   ├── PosTagger.cs         # DB-loaded dictionary + heuristics
-│   ├── SvoExtractor.cs      # Subject-Verb-Object triple extraction
-│   └── SentenceSplitter.cs  # Multi-sentence splitting
-├── Knowledge/
-│   ├── KnowledgeStore.cs    # Repository layer over DbContext
-│   ├── Fact.cs              # Entity model
-│   └── ContextTracker.cs    # Conversation context, pronoun resolution
-├── Responses/
-│   ├── ResponseEngine.cs    # Rule-based response generation
-│   └── ResponseRules.cs     # Loads rules from DB, matches patterns
-└── Data/
-    ├── PokeChatDbContext.cs # EF Core DbContext
-    ├── DbSeeder.cs          # Seeds initial data on first run
-    └── Schema.sql           # DB schema (source of truth)
-```
-
-## SQLite Schema
-
-### Core tables
-- `users` — id, name, first_seen, last_seen
-- `facts` — id, user_id (nullable), subject, verb, object, predicate_type, created_at
-- `conversations` — id, user_id, user_input, bot_response, timestamp
-
-### Data-driven tables (learnable)
-- `greetings` — id, text, is_system, created_at
-- `greeting_words` — id, word (unique), learned_from_user_id (nullable), created_at
-- `response_rules` — id, pattern (regex), input_type, is_active, created_at
-- `response_rule_responses` — id, rule_id (FK→response_rules), response_text
-- `pos_dictionary` — id, word, word_type, created_at
-  - word_type: pronoun, determiner, preposition, conjunction, verb, adjective, noun, stop_word
-- `name_patterns` — id, pattern, created_at (e.g. "my name is", "i am", "call me")
-- `bot_commands` — id, command, created_at (e.g. quit, exit, bye)
-
-**Location:** `pokechat.db` (project root)
-
-## EF Core — Database-First
-
-- **Schema.sql** is the source of truth
-- **EF Core Power Tools** reverse-engineers entities + DbContext from the database
-- Entities: `User`, `Fact`, `Conversation`, `Greeting`, `GreetingWord`, `ResponseRule`, `ResponseRuleResponse`, `PosDictionary`, `NamePattern`, `BotCommand`
-- `PokeChatDbContext` configured with SQLite provider
-- `DbSeeder` populates initial data if tables are empty (migrates from hardcoded → data-driven)
-
-## NLP Pipeline (from scratch)
-1. **Tokenizer** — whitespace + punctuation separation
-2. **POS Tagger** — DB-loaded dictionary (pos_dictionary table) + heuristics (capitalized = proper noun, -ing = verb, etc.)
-3. **SVO Extractor** — finds verbs, walks left for subject, right for object
-4. **Sentence Splitter** — splits on `.`, `!`, `?`
-
-## Knowledge Extraction
-- "my name is Alice" → (user, is_named, Alice)
-- "I like pizza" → (user, likes, pizza)
-- "the sky is blue" → (sky, is, blue) [general knowledge]
-- "my dog is named Rex" → (user, has_pet_named, Rex)
-
-## Response Engine
-- Loads rules from DB (response_rules + response_rule_responses)
-- Detects statement / question / greeting via regex pattern matching
-- Check known facts → generate follow-ups
-- Acknowledge new facts
-- Reference past knowledge with context tracking
-
-## Greeting Learning
-When user responds to name prompt with a greeting word not in DB, it gets auto-added:
-- "Hi, my name is Alice" → detects "hi" → adds to `greeting_words` if new
-- Extracts name using `name_patterns` table
-
-## Main Flow
-1. Random greeting from DB → ask name
-2. Identify/create user in DB
-3. Loop: read input → split → parse → extract → store → respond
-4. Track context for pronoun resolution
-5. Learn new greeting words, store new facts
-
-## Dependencies
-- .NET 10
-- Microsoft.EntityFrameworkCore.Sqlite (NuGet)
-- Microsoft.EntityFrameworkCore.Design (NuGet, tooling)
+| Gap | File | Detail |
+|---|---|---|
+| 1 | Core/ChatSession.ResolveSubject | 3rd-person pronouns ("he/him/his", "she/her", "they/them/their") pass through raw — never resolved to the tracked last subject |
+| 2 | Core/ChatSession.ResolveObject | Only handles "it/this/that"; "him/her/them" in object position are ignored (ContextTracker.ResolvePronoun already handles them) |
+| 3 | Responses/ResponseEngine.GenerateResponse | `_context` is stored but never read — `LastSubject`/`LastObject` from the just-processed sentence are available but unused |
+| 4 | Core/ChatSession.Start | Bot's own response isn't stored in context, so future turns can't reference what was just said |
+| 5 | Core/ChatSession | Context is never cleared; accumulates across the entire session |
 
 ## Steps
-1. Replace `Microsoft.Data.Sqlite` with EF Core packages
-2. Update `Schema.sql` with new data-driven tables
-3. Create DB from schema, reverse-engineer with EF Core Power Tools
-4. Create `PokeChatDbContext` and entity classes
-5. Create `DbSeeder` with all current hardcoded data
-6. Rewrite `KnowledgeStore` as repository layer over DbContext
-7. Rewrite `GreetingPool` to load from DB
-8. Rewrite `ResponseRules` to load from DB
-9. Rewrite `PosTagger` to load dictionary from DB
-10. Update `ChatSession` — greeting learning, DB-loaded patterns/commands
-11. Update `ResponseEngine` to use DB-loaded rules
-12. Replace `DbConnection` with DbContext initialization
-13. Delete existing `pokechat.db`, rebuild and seed
-14. Test end-to-end
+
+### Step 1 — Complete subject pronoun resolution (`Core/ChatSession.ResolveSubject`)
+Add third-person routing so "he likes pizza" → resolves "he" to the last known subject:
+```
+"i/me/my/myself"  → userName           (existing)
+"we/us/our"       → userName           (existing)
+"he/him/his"      → _context.ResolvePronoun("he")
+"she/her"         → _context.ResolvePronoun("she")
+"they/them/their" → _context.ResolvePronoun("they")
+else              → raw subject        (existing)
+```
+
+### Step 2 — Complete object pronoun resolution (`Core/ChatSession.ResolveObject`)
+Extend dispatch so all pronoun types reach `_context.ResolvePronoun`:
+```
+Current:  "it/this/that" → ResolvePronoun, else → raw
+Proposed: delegate ALL known pronoun tokens to ResolvePronoun:
+          "it/this/that/him/her/them"
+```
+
+### Step 3 — Use context in `ResponseEngine.GenerateResponse`
+Add a new response tier between "existing fact check" and "random user facts" that references `_context.LastSubject` / `_context.LastObject`:
+```
+1. pattern rule match            (existing)
+2. existing fact check           (existing)
+3. context-aware follow-up       ★ NEW — reference LastSubject/LastObject
+4. random user fact follow-up    (existing)
+5. default fallback              (existing)
+```
+
+### Step 4 — Store bot response in context (`Core/ChatSession.Start`)
+After `response = ProcessInput(input)`, add:
+```csharp
+_context.SetContext("last_response", response);
+```
+
+### Step 5 — Add `_context.Clear()` on session boundaries
+Call `_context.Clear()` in `HandleNameInput` before setting new user context (now that user is known, prior context is stale).
