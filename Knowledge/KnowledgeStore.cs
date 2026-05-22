@@ -24,7 +24,7 @@ public class KnowledgeStore
             Verb = fact.Verb,
             Object = fact.Object,
             PredicateType = fact.PredicateType,
-            CreatedAt = fact.CreatedAt.ToString("o")
+            CreatedAt = fact.CreatedAt
         };
 
         _context.Facts.Add(entity);
@@ -179,7 +179,7 @@ public class KnowledgeStore
             Verb = entity.Verb,
             Object = entity.Object,
             PredicateType = entity.PredicateType,
-            CreatedAt = DateTime.Parse(entity.CreatedAt)
+            CreatedAt = entity.CreatedAt
         };
     }
 }

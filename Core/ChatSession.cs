@@ -126,7 +126,7 @@ public class ChatSession
                 Verb = triple.Verb,
                 Object = resolvedObject,
                 PredicateType = predicateType,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow.ToString("O")
             };
 
             var existingFact = _knowledgeStore.GetFact(resolvedSubject, triple.Verb, resolvedObject);
