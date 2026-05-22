@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Facet.Extensions;
 using PokeChat.Data;
 using PokeChat.Data.Entities;
 
@@ -35,7 +36,7 @@ public class KnowledgeStore
     {
         return _context.Facts
             .Where(f => f.Subject == subject)
-            .Select(f => MapToFact(f))
+            .SelectFacet<Fact>()
             .ToList();
     }
 
@@ -43,22 +44,23 @@ public class KnowledgeStore
     {
         return _context.Facts
             .Where(f => f.UserId == userId)
-            .Select(f => MapToFact(f))
+            .SelectFacet<Fact>()
             .ToList();
     }
 
     public Fact? GetFact(string subject, string verb, string obj)
     {
         var entity = _context.Facts
+            .SelectFacet<Fact>()
             .FirstOrDefault(f => f.Subject == subject && f.Verb == verb && f.Object == obj);
 
-        return entity == null ? null : MapToFact(entity);
+        return entity;
     }
 
     public List<Fact> GetAllFacts()
     {
         return _context.Facts
-            .Select(f => MapToFact(f))
+            .SelectFacet<Fact>()
             .ToList();
     }
 
@@ -167,19 +169,5 @@ public class KnowledgeStore
     public List<BotCommand> GetBotCommands()
     {
         return _context.BotCommands.ToList();
-    }
-
-    private static Fact MapToFact(FactEntity entity)
-    {
-        return new Fact
-        {
-            Id = entity.Id,
-            UserId = entity.UserId,
-            Subject = entity.Subject,
-            Verb = entity.Verb,
-            Object = entity.Object,
-            PredicateType = entity.PredicateType,
-            CreatedAt = entity.CreatedAt
-        };
     }
 }
