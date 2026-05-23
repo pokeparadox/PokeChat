@@ -14,6 +14,7 @@ public static class DbSeeder
         SeedPosDictionary(context, now);
         SeedNamePatterns(context, now);
         SeedBotCommands(context, now);
+        SeedMisspellings(context, now);
 
         context.SaveChanges();
     }
@@ -1061,6 +1062,110 @@ public static class DbSeeder
         context.BotCommands.AddRange(commands.Select(c => new BotCommand
         {
             Command = c,
+            CreatedAt = now
+        }));
+    }
+
+    private static void SeedMisspellings(PokeChatDbContext context, string now)
+    {
+        if (context.Misspellings.Any()) return;
+
+        var misspellings = new (string Misspelling, string Correction)[]
+        {
+            ("teh", "the"),
+            ("recieve", "receive"),
+            ("beleive", "believe"),
+            ("wierd", "weird"),
+            ("adress", "address"),
+            ("calender", "calendar"),
+            ("definately", "definitely"),
+            ("occured", "occurred"),
+            ("seperate", "separate"),
+            ("tommorow", "tomorrow"),
+            ("alot", "a lot"),
+            ("untill", "until"),
+            ("wich", "which"),
+            ("acomodate", "accommodate"),
+            ("acheive", "achieve"),
+            ("apparant", "apparent"),
+            ("begining", "beginning"),
+            ("carreer", "career"),
+            ("catagory", "category"),
+            ("commitee", "committee"),
+            ("concensus", "consensus"),
+            ("dael", "deal"),
+            ("decaffinated", "decaffeinated"),
+            ("embarass", "embarrass"),
+            ("enviroment", "environment"),
+            ("excercise", "exercise"),
+            ("famoust", "famous"),
+            ("foward", "forward"),
+            ("freind", "friend"),
+            ("goverment", "government"),
+            ("guage", "gauge"),
+            ("harrass", "harass"),
+            ("independant", "independent"),
+            ("jewelery", "jewelry"),
+            ("judgement", "judgment"),
+            ("knowlege", "knowledge"),
+            ("liason", "liaison"),
+            ("libary", "library"),
+            ("lisence", "license"),
+            ("maintainance", "maintenance"),
+            ("millenium", "millennium"),
+            ("mispell", "misspell"),
+            ("neccessary", "necessary"),
+            ("ninty", "ninety"),
+            ("nucleur", "nuclear"),
+            ("occassion", "occasion"),
+            ("oppurtunity", "opportunity"),
+            ("paralel", "parallel"),
+            ("particurly", "particularly"),
+            ("perminent", "permanent"),
+            ("persistant", "persistent"),
+            ("personel", "personnel"),
+            ("posession", "possession"),
+            ("prefered", "preferred"),
+            ("priveledge", "privilege"),
+            ("probly", "probably"),
+            ("proffessor", "professor"),
+            ("pronounciation", "pronunciation"),
+            ("publicaly", "publicly"),
+            ("reccomend", "recommend"),
+            ("refered", "referred"),
+            ("relevent", "relevant"),
+            ("religous", "religious"),
+            ("rember", "remember"),
+            ("remeber", "remember"),
+            ("resistence", "resistance"),
+            ("restaraunt", "restaurant"),
+            ("sargent", "sergeant"),
+            ("scedule", "schedule"),
+            ("seige", "siege"),
+            ("similer", "similar"),
+            ("sincerly", "sincerely"),
+            ("speach", "speech"),
+            ("sucess", "success"),
+            ("surprize", "surprise"),
+            ("truely", "truly"),
+            ("twelth", "twelfth"),
+            ("tyw", "typo"),
+            ("unfortunatly", "unfortunately"),
+            ("usally", "usually"),
+            ("vacume", "vacuum"),
+            ("vell", "well"),
+            ("visious", "vicious"),
+            ("welcom", "welcome"),
+            ("wensday", "wednesday"),
+            ("writen", "written"),
+            ("writting", "writing"),
+            ("yatch", "yacht"),
+        };
+
+        context.Misspellings.AddRange(misspellings.Select(m => new Misspelling
+        {
+            WrongWord = m.Misspelling,
+            Correction = m.Correction,
             CreatedAt = now
         }));
     }

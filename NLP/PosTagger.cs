@@ -20,6 +20,10 @@ public enum PosTag
 public static class PosTagger
 {
     private static Dictionary<string, PosTag>? _wordTagMap;
+    public static void Reset()
+    {
+        _wordTagMap = null;
+    }
 
     public static void Initialize(IEnumerable<PosDictionaryEntry> entries)
     {

@@ -5,12 +5,16 @@ namespace PokeChat.Data;
 
 public sealed class PokeChatDbContext : DbContext
 {
-    private readonly string _dbPath;
+    private readonly string? _dbPath;
 
     public PokeChatDbContext(string? dbPath = null)
     {
         _dbPath = dbPath ?? ResolveDbPath();
         Database.EnsureCreated();
+    }
+
+    public PokeChatDbContext(DbContextOptions<PokeChatDbContext> options) : base(options)
+    {
     }
 
     private static string ResolveDbPath()
@@ -41,10 +45,14 @@ public sealed class PokeChatDbContext : DbContext
     public DbSet<PosDictionaryEntry> PosDictionary => Set<PosDictionaryEntry>();
     public DbSet<NamePattern> NamePatterns => Set<NamePattern>();
     public DbSet<BotCommand> BotCommands => Set<BotCommand>();
+    public DbSet<Misspelling> Misspellings => Set<Misspelling>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        optionsBuilder.UseSqlite($"Data Source={_dbPath}");
+        if (!optionsBuilder.IsConfigured)
+        {
+            optionsBuilder.UseSqlite($"Data Source={_dbPath}");
+        }
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -143,6 +151,15 @@ public sealed class PokeChatDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.Command).IsUnique();
             entity.Property(e => e.Command).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+        });
+
+        modelBuilder.Entity<Misspelling>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.WrongWord).IsUnique();
+            entity.Property(e => e.WrongWord).IsRequired();
+            entity.Property(e => e.Correction).IsRequired();
             entity.Property(e => e.CreatedAt).IsRequired();
         });
     }

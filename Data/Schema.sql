@@ -68,6 +68,13 @@ CREATE TABLE IF NOT EXISTS name_patterns (
     created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS misspellings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    misspelling TEXT NOT NULL UNIQUE,
+    correction TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS bot_commands (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     command TEXT NOT NULL UNIQUE,

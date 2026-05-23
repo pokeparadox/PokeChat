@@ -160,4 +160,49 @@ public class KnowledgeStore(PokeChatDbContext context)
     {
         return context.BotCommands.ToList();
     }
+
+    public Dictionary<string, string> GetMisspellings()
+    {
+        return context.Misspellings
+            .ToDictionary(m => m.WrongWord, m => m.Correction, StringComparer.OrdinalIgnoreCase);
+    }
+
+    public void AddMisspelling(string misspelling, string correction)
+    {
+        var entry = new Misspelling
+        {
+            WrongWord = misspelling.ToLowerInvariant(),
+            Correction = correction.ToLowerInvariant(),
+            CreatedAt = DateTime.UtcNow.ToString("o")
+        };
+
+        context.Misspellings.Add(entry);
+        context.SaveChanges();
+    }
+
+    public string? GetCorrection(string misspelling)
+    {
+        return context.Misspellings
+            .Where(m => m.WrongWord == misspelling.ToLowerInvariant())
+            .Select(m => m.Correction)
+            .FirstOrDefault();
+    }
+
+    public bool IsWordKnown(string word)
+    {
+        return context.PosDictionary.Any(p => p.Word == word.ToLowerInvariant());
+    }
+
+    public void AddLearnedWord(string word)
+    {
+        var entry = new PosDictionaryEntry
+        {
+            Word = word.ToLowerInvariant(),
+            WordType = "unknown",
+            CreatedAt = DateTime.UtcNow.ToString("o")
+        };
+
+        context.PosDictionary.Add(entry);
+        context.SaveChanges();
+    }
 }

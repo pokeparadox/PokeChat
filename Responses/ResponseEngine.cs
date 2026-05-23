@@ -3,13 +3,42 @@ using PokeChat.NLP;
 
 namespace PokeChat.Responses;
 
-public class ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker context)
+public class ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker context, SpellChecker spellChecker)
 {
-    private readonly ContextTracker _context = context;
     private readonly Random _random = new();
 
     public string GenerateResponse(string input, int? userId)
     {
+        var unknownWordsRaw = context.GetContext("unknown_words");
+        if (!string.IsNullOrEmpty(unknownWordsRaw))
+        {
+            var unknownWords = unknownWordsRaw
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Distinct()
+                .ToList();
+
+            context.SetContext("unknown_words", null);
+
+            if (unknownWords.Count > 0)
+            {
+                var word = unknownWords[0];
+                if (spellChecker.HasSuggestions(word))
+                {
+                    var suggestions = spellChecker.SuggestCorrections(word);
+                    var suggestion = suggestions[0];
+                    context.SetContext("pending_clarification_word", word);
+                    context.SetContext("pending_clarification_suggestion", suggestion);
+                    return $"Did you mean '{suggestion}' instead of '{word}'?";
+                }
+                else
+                {
+                    context.SetContext("pending_clarification_word", word);
+                    context.SetContext("pending_clarification_suggestion", null);
+                    return $"I don't know the word '{word}'. What does it mean?";
+                }
+            }
+        }
+
         var rule = ResponseRules.MatchRule(input, knowledgeStore);
 
         if (rule != null && rule.Responses.Count > 0)
@@ -18,8 +47,9 @@ public class ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker contex
         }
 
         var tokens = Tokenizer.Tokenize(input);
-        var tags = PosTagger.Tag(tokens);
-        var triples = SvoExtractor.Extract(tokens, tags);
+        var correctedTokens = spellChecker.AutoCorrect(tokens);
+        var tags = PosTagger.Tag(correctedTokens);
+        var triples = SvoExtractor.Extract(correctedTokens, tags);
 
         foreach (var triple in triples)
         {
@@ -30,9 +60,9 @@ public class ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker contex
             }
         }
 
-        if (!string.IsNullOrEmpty(_context.LastSubject))
+        if (!string.IsNullOrEmpty(context.LastSubject))
         {
-            var subject = _context.LastSubject;
+            var subject = context.LastSubject;
             var contextFollowUps = new List<string>
             {
                 $"Tell me more about {subject}.",
@@ -40,9 +70,9 @@ public class ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker contex
                 $"You mentioned {subject}. What's on your mind?"
             };
 
-            if (!string.IsNullOrEmpty(_context.LastObject))
+            if (!string.IsNullOrEmpty(context.LastObject))
             {
-                var obj = _context.LastObject;
+                var obj = context.LastObject;
                 contextFollowUps.Add($"You said {subject} is related to {obj}. Anything else?");
                 contextFollowUps.Add($"Earlier you mentioned {subject} and {obj}. Go on!");
             }

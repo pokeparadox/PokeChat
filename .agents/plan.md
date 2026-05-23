@@ -1,51 +1,66 @@
-# Context Tracking Integration Plan
+# Spell-Checking Feature Plan
 
-## Current Gaps
+## Overview
+Add spell-checking to PokeChat: a `misspellings` DB table maps common typos → corrections, auto-corrects silently, and interactively learns new words from the user.
 
-| Gap | File | Detail |
-|---|---|---|
-| 1 | Core/ChatSession.ResolveSubject | 3rd-person pronouns ("he/him/his", "she/her", "they/them/their") pass through raw — never resolved to the tracked last subject |
-| 2 | Core/ChatSession.ResolveObject | Only handles "it/this/that"; "him/her/them" in object position are ignored (ContextTracker.ResolvePronoun already handles them) |
-| 3 | Responses/ResponseEngine.GenerateResponse | `_context` is stored but never read — `LastSubject`/`LastObject` from the just-processed sentence are available but unused |
-| 4 | Core/ChatSession.Start | Bot's own response isn't stored in context, so future turns can't reference what was just said |
-| 5 | Core/ChatSession | Context is never cleared; accumulates across the entire session |
+---
 
 ## Steps
 
-### Step 1 — Complete subject pronoun resolution (`Core/ChatSession.ResolveSubject`)
-Add third-person routing so "he likes pizza" → resolves "he" to the last known subject:
-```
-"i/me/my/myself"  → userName           (existing)
-"we/us/our"       → userName           (existing)
-"he/him/his"      → _context.ResolvePronoun("he")
-"she/her"         → _context.ResolvePronoun("she")
-"they/them/their" → _context.ResolvePronoun("they")
-else              → raw subject        (existing)
-```
+### Step 1 — New Entity: `Misspelling`
+`Data/Entities/Misspelling.cs`
+- `Id` (int, PK)
+- `Misspelling` (string, required, unique) — the wrong spelling
+- `Correction` (string, required) — the correct word
+- `CreatedAt` (string, required)
 
-### Step 2 — Complete object pronoun resolution (`Core/ChatSession.ResolveObject`)
-Extend dispatch so all pronoun types reach `_context.ResolvePronoun`:
-```
-Current:  "it/this/that" → ResolvePronoun, else → raw
-Proposed: delegate ALL known pronoun tokens to ResolvePronoun:
-          "it/this/that/him/her/them"
-```
+### Step 2 — DbContext changes (`Data/PokeChatDbContext.cs`)
+- Add `DbSet<Misspelling> Misspellings`
+- Fluent API: unique index on `Misspelling`, required fields, same pattern as `GreetingWord`
 
-### Step 3 — Use context in `ResponseEngine.GenerateResponse`
-Add a new response tier between "existing fact check" and "random user facts" that references `_context.LastSubject` / `_context.LastObject`:
-```
-1. pattern rule match            (existing)
-2. existing fact check           (existing)
-3. context-aware follow-up       ★ NEW — reference LastSubject/LastObject
-4. random user fact follow-up    (existing)
-5. default fallback              (existing)
-```
+### Step 3 — Schema.sql
+Add `CREATE TABLE IF NOT EXISTS misspellings (...)`
 
-### Step 4 — Store bot response in context (`Core/ChatSession.Start`)
-After `response = ProcessInput(input)`, add:
-```csharp
-_context.SetContext("last_response", response);
-```
+### Step 4 — KnowledgeStore methods (`Knowledge/KnowledgeStore.cs`)
+- `GetMisspellings()` → `List<Misspelling>`
+- `AddMisspelling(string misspelling, string correction)`
+- `GetCorrection(string misspelling)` → `string?`
+- `IsWordKnown(string word)` — checks existence in `pos_dictionary` table
+- `AddLearnedWord(string word)` — adds to `pos_dictionary` with `word_type = "unknown"`
 
-### Step 5 — Add `_context.Clear()` on session boundaries
-Call `_context.Clear()` in `HandleNameInput` before setting new user context (now that user is known, prior context is stale).
+### Step 5 — New class: `NLP/SpellChecker.cs`
+- `Initialize(HashSet<string> dictionary, Dictionary<string, string> misspellings)` — load from KnowledgeStore
+- `AutoCorrect(List<string> tokens)` → silently applies known misspellings, returns corrected tokens
+- `GetUnknownWords(List<string> tokens)` → returns tokens not in dictionary
+- `SuggestCorrections(string word, int maxDistance = 2)` → Levenshtein distance against dictionary, returns ranked matches
+- `HasSuggestions(string word)` → bool
+
+### Step 6 — ChatSession changes (`Core/ChatSession.cs`)
+- Add `SpellChecker _spellChecker` field
+- Initialize in constructor (POS dictionary + misspellings from KnowledgeStore)
+- `ProcessSentence()`: run `_spellChecker.AutoCorrect(tokens)` before `PosTagger.Tag()`
+- Track unknown words per input in context
+- Cross-turn interactive learning:
+  - If `pending_clarification` is set in context, handle as clarification response:
+    - User affirms a suggestion → `AddMisspelling()` + `AddLearnedWord()`
+    - User explains unknown word → extract correction, add both to DB
+  - Otherwise, run normal sentence processing
+
+### Step 7 — ResponseEngine changes (`Responses/ResponseEngine.cs`)
+- Accept `SpellChecker` and `ContextTracker` for unknown word awareness
+- If unknown words exist and no higher-priority rule matched:
+  - Suggestions available → "Did you mean 'X' instead of 'Y'?"
+  - No suggestions → "I don't know the word 'Y'. What does it mean?"
+- Store `pending_clarification` in ContextTracker when asking
+
+### Step 8 — DbSeeder seed data (`Data/DbSeeder.cs`)
+Seed common misspellings:
+- `teh` → `the`, `recieve` → `receive`, `beleive` → `believe`, `wierd` → `weird`
+- `adress` → `address`, `calender` → `calendar`, `definately` → `definitely`
+- `occured` → `occurred`, `seperate` → `separate`, `tommorow` → `tomorrow`
+- `alot` → `a lot`, `untill` → `until`, `wich` → `which`
+
+### Step 9 — Verify
+```bash
+dotnet build
+```

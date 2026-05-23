@@ -10,6 +10,7 @@ public class ChatSession
     private readonly PokeChatDbContext _dbContext;
     private readonly KnowledgeStore _knowledgeStore;
     private readonly ResponseEngine _responseEngine;
+    private readonly SpellChecker _spellChecker;
     private readonly ContextTracker _context;
     private int? _currentUserId;
     private string _currentUserName = string.Empty;
@@ -24,14 +25,39 @@ public class ChatSession
 
         _knowledgeStore = new KnowledgeStore(_dbContext);
         _context = new ContextTracker();
-        _responseEngine = new ResponseEngine(_knowledgeStore, _context);
+        _spellChecker = new SpellChecker();
+        _responseEngine = new ResponseEngine(_knowledgeStore, _context, _spellChecker);
 
         var posEntries = _knowledgeStore.GetPosDictionary();
         PosTagger.Initialize(posEntries);
 
+        var spellDict = new HashSet<string>(posEntries.Select(e => e.Word), StringComparer.OrdinalIgnoreCase);
+        var misspellings = _knowledgeStore.GetMisspellings();
+        _spellChecker.Initialize(spellDict, misspellings);
+
         _namePatterns = _knowledgeStore.GetNamePatterns().Select(p => p.Pattern.ToLowerInvariant()).ToList();
-        _botCommands = new HashSet<string>(_knowledgeStore.GetBotCommands().Select(c => c.Command.ToLowerInvariant()), StringComparer.OrdinalIgnoreCase);
-        _greetingWords = new HashSet<string>(_knowledgeStore.GetGreetingWords().Select(gw => gw.Word.ToLowerInvariant()), StringComparer.OrdinalIgnoreCase);
+        _botCommands = _knowledgeStore.GetBotCommands().Select(c => c.Command.ToLowerInvariant()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        _greetingWords = _knowledgeStore.GetGreetingWords().Select(gw => gw.Word.ToLowerInvariant()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
+
+    internal ChatSession(
+        PokeChatDbContext dbContext,
+        KnowledgeStore knowledgeStore,
+        ResponseEngine responseEngine,
+        SpellChecker spellChecker,
+        ContextTracker context,
+        List<string> namePatterns,
+        HashSet<string> botCommands,
+        HashSet<string> greetingWords)
+    {
+        _dbContext = dbContext;
+        _knowledgeStore = knowledgeStore;
+        _responseEngine = responseEngine;
+        _spellChecker = spellChecker;
+        _context = context;
+        _namePatterns = namePatterns;
+        _botCommands = botCommands;
+        _greetingWords = greetingWords;
     }
 
     public void Start()
@@ -63,12 +89,20 @@ public class ChatSession
         }
     }
 
-    private string ProcessInput(string input)
+    internal string ProcessInput(string input)
     {
         if (_currentUserId == null)
         {
             return HandleNameInput(input);
         }
+
+        var pendingWord = _context.GetContext("pending_clarification_word");
+        if (pendingWord != null)
+        {
+            return HandleClarification(input, pendingWord);
+        }
+
+        _context.SetContext("unknown_words", null);
 
         LearnGreetingWords(input);
 
@@ -82,7 +116,7 @@ public class ChatSession
         return _responseEngine.GenerateResponse(input, _currentUserId);
     }
 
-    private void LearnGreetingWords(string input)
+    internal void LearnGreetingWords(string input)
     {
         var tokens = Tokenizer.Tokenize(input);
         if (tokens.Count > 0)
@@ -104,11 +138,22 @@ public class ChatSession
         }
     }
 
-    private void ProcessSentence(string sentence)
+    internal void ProcessSentence(string sentence)
     {
         var tokens = Tokenizer.Tokenize(sentence);
-        var tags = PosTagger.Tag(tokens);
-        var triples = SvoExtractor.Extract(tokens, tags);
+        var correctedTokens = _spellChecker.AutoCorrect(tokens);
+
+        var unknownWords = _spellChecker.GetUnknownWords(correctedTokens);
+        if (unknownWords.Count > 0)
+        {
+            var existing = _context.GetContext("unknown_words") ?? "";
+            var existingWords = existing.Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+            foreach (var uw in unknownWords) existingWords.Add(uw);
+            _context.SetContext("unknown_words", string.Join(",", existingWords));
+        }
+
+        var tags = PosTagger.Tag(correctedTokens);
+        var triples = SvoExtractor.Extract(correctedTokens, tags);
 
         foreach (var triple in triples)
         {
@@ -140,7 +185,7 @@ public class ChatSession
         _knowledgeStore.StoreConversation(_currentUserId!.Value, sentence, string.Empty);
     }
 
-    private string ResolveSubject(string subject)
+    internal string ResolveSubject(string subject)
     {
         var lower = subject.ToLowerInvariant();
         return lower switch
@@ -154,7 +199,7 @@ public class ChatSession
         };
     }
 
-    private string ResolveObject(string obj)
+    internal string ResolveObject(string obj)
     {
         var lower = obj.ToLowerInvariant();
         return lower switch
@@ -164,7 +209,7 @@ public class ChatSession
         };
     }
 
-    private string ClassifyPredicate(string subject, string verb, string obj)
+    internal string ClassifyPredicate(string subject, string verb, string obj)
     {
         var lowerVerb = verb.ToLowerInvariant();
         var lowerSubject = subject.ToLowerInvariant();
@@ -201,7 +246,48 @@ public class ChatSession
         return "general";
     }
 
-    private string HandleNameInput(string input)
+    internal string HandleClarification(string input, string pendingWord)
+    {
+        var pendingSuggestion = _context.GetContext("pending_clarification_suggestion");
+        _context.SetContext("pending_clarification_word", null);
+        _context.SetContext("pending_clarification_suggestion", null);
+
+        var lower = input.ToLowerInvariant().Trim();
+
+        if (!string.IsNullOrEmpty(pendingSuggestion))
+        {
+            var affirmations = new HashSet<string>
+            {
+                "yes", "yep", "yeah", "yup", "sure", "correct", "right",
+                "that's right", "that is right", "yes please", "ok", "okay"
+            };
+
+            if (affirmations.Contains(lower) ||
+                lower.StartsWith("yes") ||
+                lower.StartsWith("yeah") ||
+                lower.StartsWith("yep") ||
+                lower.StartsWith("yup"))
+            {
+                _knowledgeStore.AddMisspelling(pendingWord, pendingSuggestion);
+                _spellChecker.AddToDictionary(pendingSuggestion);
+                return $"Got it! I'll remember that '{pendingWord}' should be '{pendingSuggestion}'.";
+            }
+            else
+            {
+                _knowledgeStore.AddLearnedWord(pendingWord);
+                _spellChecker.AddToDictionary(pendingWord);
+                return $"Okay, I've learned the word '{pendingWord}'.";
+            }
+        }
+        else
+        {
+            _knowledgeStore.AddLearnedWord(pendingWord);
+            _spellChecker.AddToDictionary(pendingWord);
+            return $"Thanks! I've learned the word '{pendingWord}'.";
+        }
+    }
+
+    internal string HandleNameInput(string input)
     {
         var tokens = Tokenizer.Tokenize(input);
         var name = ExtractName(input, tokens);
@@ -229,7 +315,7 @@ public class ChatSession
         return greetings[random.Next(greetings.Count)];
     }
 
-    private string ExtractName(string input, List<string> tokens)
+    internal string ExtractName(string input, List<string> tokens)
     {
         var lowerInput = input.ToLowerInvariant();
 
@@ -255,13 +341,13 @@ public class ChatSession
         return string.Empty;
     }
 
-    private bool IsStopWord(string word)
+    internal bool IsStopWord(string word)
     {
         var stopWords = new HashSet<string> { "a", "an", "the", "is", "am", "are", "was", "were", "be", "been", "being" };
         return stopWords.Contains(word.ToLowerInvariant());
     }
 
-    private bool ShouldExit(string input)
+    internal bool ShouldExit(string input)
     {
         var lower = input.ToLowerInvariant().Trim();
         return _botCommands.Contains(lower);

@@ -2,16 +2,19 @@ namespace PokeChat.Knowledge;
 
 public class ContextTracker
 {
-    private readonly Dictionary<string, string> _context = new();
+    private readonly Dictionary<string, string?> _context = new();
     private string? _lastSubject;
     private string? _lastObject;
 
     public string? LastSubject => _lastSubject;
     public string? LastObject => _lastObject;
 
-    public void SetContext(string key, string value)
+    public void SetContext(string key, string? value)
     {
-        _context[key] = value;
+        if (value == null)
+            _context.Remove(key);
+        else
+            _context[key] = value;
     }
 
     public string? GetContext(string key)
