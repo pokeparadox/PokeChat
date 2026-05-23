@@ -1,5 +1,7 @@
+using System.Text.RegularExpressions;
 using PokeChat.Core;
 using PokeChat.Knowledge;
+using PokeChat.Maths;
 using PokeChat.NLP;
 
 namespace PokeChat.Responses;
@@ -10,18 +12,20 @@ public class ResponseEngine
     private readonly ContextTracker _context;
     private readonly SpellChecker _spellChecker;
     private readonly IPosTagger _posTagger;
-    private readonly ITokenizer _tokenizer;
+    private readonly ITokeniser _tokeniser;
     private readonly ISvoExtractor _svoExtractor;
+    private readonly IMathEngine _mathEngine;
     private readonly Dictionary<string, List<string>> _botResponses;
 
-    public ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker context, SpellChecker spellChecker, IPosTagger posTagger, ITokenizer tokenizer, ISvoExtractor svoExtractor)
+    public ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker context, SpellChecker spellChecker, IPosTagger posTagger, ITokeniser tokeniser, ISvoExtractor svoExtractor, IMathEngine? mathEngine = null)
     {
         _knowledgeStore = knowledgeStore;
         _context = context;
         _spellChecker = spellChecker;
         _posTagger = posTagger;
-        _tokenizer = tokenizer;
+        _tokeniser = tokeniser;
         _svoExtractor = svoExtractor;
+        _mathEngine = mathEngine ?? new SimpleMath();
         _botResponses = knowledgeStore.GetBotResponses();
     }
 
@@ -68,6 +72,27 @@ public class ResponseEngine
             }
         }
 
+        var mathResult = _mathEngine.Evaluate(input);
+        if (mathResult != null)
+        {
+            if (mathResult.StatedResult.HasValue)
+            {
+                if (Math.Abs(mathResult.Value - mathResult.StatedResult.Value) > 0.0001)
+                    return GetRandomResponse("math_correction", mathResult.Expression, mathResult.Value, mathResult.StatedResult);
+                return GetRandomResponse("math_confirmation", mathResult.Expression, mathResult.Value);
+            }
+            return GetRandomResponse("math_result", mathResult.Expression, mathResult.Value);
+        }
+
+        var dictResult = HandleDictionaryQuery(input);
+        if (dictResult != null) return dictResult;
+
+        var thesaurusResult = HandleThesaurusQuery(input);
+        if (thesaurusResult != null) return thesaurusResult;
+
+        var linkResult = HandleLinkCreation(input);
+        if (linkResult != null) return linkResult;
+
         var rule = ResponseRules.MatchRule(input, _knowledgeStore);
 
         if (rule != null && rule.Responses.Count > 0)
@@ -75,7 +100,7 @@ public class ResponseEngine
             return rule.Responses[Random.Shared.Next(rule.Responses.Count)];
         }
 
-        var tokens = _tokenizer.Tokenize(input);
+        var tokens = _tokeniser.Tokenise(input);
         var correctedTokens = _spellChecker.AutoCorrect(tokens);
         var tags = _posTagger.Tag(correctedTokens);
         var triples = _svoExtractor.Extract(correctedTokens, tags);
@@ -110,5 +135,106 @@ public class ResponseEngine
         }
 
         return GetRandomResponse("default_response");
+    }
+
+    private string? HandleDictionaryQuery(string input)
+    {
+        var lower = input.ToLowerInvariant().Trim();
+
+        var patterns = new (Regex Regex, int WordGroup)[]
+        {
+            (new Regex(@"^what (?:is|are|was|were) (?:a|an|the\s+)?(\w+)"), 1),
+            (new Regex(@"^what does (\w+) mean"), 1),
+            (new Regex(@"^what do (\w+) mean"), 1),
+            (new Regex(@"^define (\w+)"), 1),
+            (new Regex(@"^what is the (?:definition|meaning) of (?:a|an|the\s+)?(\w+)"), 1),
+            (new Regex(@"^tell me about (\w+)"), 1),
+        };
+
+        foreach (var (regex, group) in patterns)
+        {
+            var match = regex.Match(lower);
+            if (match.Success)
+            {
+                var word = match.Groups[group].Value.ToLowerInvariant();
+
+                var definitions = _knowledgeStore.GetDefinitions(word);
+                if (definitions.Count > 0)
+                {
+                    var def = definitions[0].Definition;
+                    return GetRandomResponse("dictionary_query_found", word, def);
+                }
+
+                _context.SetContext(ContextKeys.PendingDictionaryWord, word);
+                return GetRandomResponse("dictionary_query_not_found", word);
+            }
+        }
+
+        return null;
+    }
+
+    private string? HandleThesaurusQuery(string input)
+    {
+        var lower = input.ToLowerInvariant().Trim();
+
+        var patterns = new (Regex Regex, int WordGroup)[]
+        {
+            (new Regex(@"^(?:another word|synonyms?|words?) (?:for|like|similar to) (\w+)"), 1),
+            (new Regex(@"^what (?:is|are) (?:another word|a synonym|synonyms) for (\w+)"), 1),
+            (new Regex(@"^give me (?:another word|a synonym|synonyms) for (\w+)"), 1),
+        };
+
+        foreach (var (regex, group) in patterns)
+        {
+            var match = regex.Match(lower);
+            if (match.Success)
+            {
+                var word = match.Groups[group].Value.ToLowerInvariant();
+                var related = _knowledgeStore.GetRelatedWords(word);
+
+                if (related.Count > 0)
+                {
+                    var joined = string.Join(", ", related.Take(5));
+                    return GetRandomResponse("thesaurus_query_found", word, joined);
+                }
+
+                return GetRandomResponse("thesaurus_query_none", word);
+            }
+        }
+
+        return null;
+    }
+
+    private string? HandleLinkCreation(string input)
+    {
+        var lower = input.ToLowerInvariant().Trim();
+
+        var patterns = new (Regex Regex, int SourceGroup, int TargetGroup, string LinkType)[]
+        {
+            (new Regex(@"^(\w+) (?:is like|is similar to|is related to) (\w+)"), 1, 2, "similar"),
+            (new Regex(@"^(\w+) (?:and|&) (\w+) are (?:similar|related|alike)"), 1, 2, "similar"),
+            (new Regex(@"^(\w+) is a (?:type|kind|form) of (\w+)"), 1, 2, "type_of"),
+            (new Regex(@"^(\w+) is a (?:synonym for|synonym of) (\w+)"), 1, 2, "synonym"),
+            (new Regex(@"^(\w+) is the opposite of (\w+)"), 1, 2, "antonym"),
+        };
+
+        foreach (var (regex, sourceGroup, targetGroup, linkType) in patterns)
+        {
+            var match = regex.Match(lower);
+            if (match.Success)
+            {
+                var source = match.Groups[sourceGroup].Value.ToLowerInvariant();
+                var target = match.Groups[targetGroup].Value.ToLowerInvariant();
+
+                if (source == target) continue;
+
+                _knowledgeStore.AddWordLink(source, target, linkType);
+                _knowledgeStore.AddWordLink(target, source, linkType);
+
+                return GetRandomResponse("link_saved", source, target);
+            }
+        }
+
+        return null;
     }
 }

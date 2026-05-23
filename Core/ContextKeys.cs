@@ -7,4 +7,5 @@ public static class ContextKeys
     public const string UnknownWords = "unknown_words";
     public const string LastResponse = "last_response";
     public const string UserName = "user_name";
+    public const string PendingDictionaryWord = "pending_dictionary_word";
 }

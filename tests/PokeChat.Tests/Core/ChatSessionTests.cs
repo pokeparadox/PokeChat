@@ -1,3 +1,4 @@
+using PokeChat.Data.Entities;
 using PokeChat.Core;
 using PokeChat.Knowledge;
 using PokeChat.NLP;
@@ -15,25 +16,33 @@ public class ChatSessionTests
         HashSet<string>? greetingWords = null)
     {
         var db = new FreshDbContext();
+        SeedBotResponses(db.Context);
         var store = new KnowledgeStore(db.Context);
         var contextTracker = new ContextTracker();
         var spellChecker = new SpellChecker();
 
         var posEntries = store.GetPosDictionary();
-        PosTagger.Reset();
-        PosTagger.Initialize(posEntries);
+        var posTagger = new PosTagger(posEntries);
 
         var spellDict = new HashSet<string>(posEntries.Select(e => e.Word), StringComparer.OrdinalIgnoreCase);
         var misspellings = store.GetMisspellings();
-        spellChecker.Initialize(spellDict, misspellings);
+        spellChecker.Initialise(spellDict, misspellings);
 
-        var responseEngine = new ResponseEngine(store, contextTracker, spellChecker);
+        var tokeniser = new Tokeniser();
+        var sentenceSplitter = new SentenceSplitter();
+        var svoExtractor = new SvoExtractor();
+
+        var responseEngine = new ResponseEngine(store, contextTracker, spellChecker, posTagger, tokeniser, svoExtractor);
 
         var session = new ChatSession(
             db.Context,
             store,
             responseEngine,
             spellChecker,
+            posTagger,
+            tokeniser,
+            sentenceSplitter,
+            svoExtractor,
             contextTracker,
             namePatterns ?? new List<string> { "my name is", "i am", "i'm", "call me" },
             botCommands ?? new List<string> { "quit", "exit" }.ToHashSet(StringComparer.OrdinalIgnoreCase),
@@ -41,6 +50,42 @@ public class ChatSessionTests
         );
 
         return (session, db);
+    }
+
+    private static void SeedBotResponses(PokeChat.Data.PokeChatDbContext db)
+    {
+        var now = DateTime.UtcNow.ToString("O");
+        db.BotResponses.AddRange(
+            new BotResponse { Category = "default_response", ResponseText = "Interesting! Tell me more.", CreatedAt = now },
+            new BotResponse { Category = "default_response", ResponseText = "I see.", CreatedAt = now },
+            new BotResponse { Category = "existing_fact", ResponseText = "I already know that {0} {1} {2}.", CreatedAt = now },
+            new BotResponse { Category = "context_followup", ResponseText = "Tell me more about {0}.", CreatedAt = now },
+            new BotResponse { Category = "context_followup_with_object", ResponseText = "You said {0} is related to {1}.", CreatedAt = now },
+            new BotResponse { Category = "random_fact_followup", ResponseText = "Speaking of {0}, you mentioned they {1} {2}.", CreatedAt = now },
+            new BotResponse { Category = "dictionary_query_found", ResponseText = "A {0} is {1}.", CreatedAt = now },
+            new BotResponse { Category = "dictionary_query_not_found", ResponseText = "I don't know what {0} means.", CreatedAt = now },
+            new BotResponse { Category = "thesaurus_query_found", ResponseText = "Some words related to {0} are: {1}.", CreatedAt = now },
+            new BotResponse { Category = "thesaurus_query_none", ResponseText = "I don't know of any related words.", CreatedAt = now },
+            new BotResponse { Category = "link_saved", ResponseText = "I've noted that {0} is related to {1}.", CreatedAt = now },
+            new BotResponse { Category = "unknown_word_suggestion", ResponseText = "Did you mean '{0}' instead of '{1}'?", CreatedAt = now },
+            new BotResponse { Category = "unknown_word_no_suggestion", ResponseText = "I don't know the word '{0}'. What does it mean?", CreatedAt = now }
+        );
+
+        db.PosDictionary.AddRange(
+            new PosDictionaryEntry { Word = "i", WordType = "pronoun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "like", WordType = "verb", CreatedAt = now },
+            new PosDictionaryEntry { Word = "pizza", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "is", WordType = "verb", CreatedAt = now },
+            new PosDictionaryEntry { Word = "my", WordType = "pronoun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "name", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "the", WordType = "determiner", CreatedAt = now },
+            new PosDictionaryEntry { Word = "cat", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "sky", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "blue", WordType = "adjective", CreatedAt = now },
+            new PosDictionaryEntry { Word = "hate", WordType = "verb", CreatedAt = now },
+            new PosDictionaryEntry { Word = "broccoli", WordType = "noun", CreatedAt = now }
+        );
+        db.SaveChanges();
     }
 
     [Fact]
@@ -159,7 +204,7 @@ public class ChatSessionTests
         using (db)
         {
             session.HandleNameInput("my name is Alice");
-            session.ClassifyPredicate("Alice", "is", "nice").ShouldBe("personal_attribute");
+            session.ClassifyPredicate("Alice", "is", "nice").ShouldBe(PredicateType.PersonalAttribute);
         }
     }
 
@@ -169,7 +214,7 @@ public class ChatSessionTests
         var (session, db) = CreateSessionAndDb();
         using (db)
         {
-            session.ClassifyPredicate("sky", "is", "blue").ShouldBe("general_fact");
+            session.ClassifyPredicate("sky", "is", "blue").ShouldBe(PredicateType.GeneralFact);
         }
     }
 
@@ -179,7 +224,7 @@ public class ChatSessionTests
         var (session, db) = CreateSessionAndDb();
         using (db)
         {
-            session.ClassifyPredicate("I", "like", "pizza").ShouldBe("preference");
+            session.ClassifyPredicate("I", "like", "pizza").ShouldBe(PredicateType.Preference);
         }
     }
 
@@ -189,7 +234,7 @@ public class ChatSessionTests
         var (session, db) = CreateSessionAndDb();
         using (db)
         {
-            session.ClassifyPredicate("I", "hate", "broccoli").ShouldBe("dislike");
+            session.ClassifyPredicate("I", "hate", "broccoli").ShouldBe(PredicateType.Dislike);
         }
     }
 

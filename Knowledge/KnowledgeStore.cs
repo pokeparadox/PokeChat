@@ -212,4 +212,78 @@ public class KnowledgeStore(PokeChatDbContext context)
 
         context.PosDictionary.Add(entry);
     }
+
+    public List<WordDefinition> GetDefinitions(string word)
+    {
+        return context.WordDefinitions
+            .Where(d => d.Word == word.ToLowerInvariant())
+            .ToList();
+    }
+
+    public WordDefinition? GetDefinition(string word)
+    {
+        return context.WordDefinitions
+            .Where(d => d.Word == word.ToLowerInvariant())
+            .FirstOrDefault();
+    }
+
+    public void SetDefinition(string word, string definition, int? userId = null)
+    {
+        var entry = new WordDefinition
+        {
+            Word = word.ToLowerInvariant(),
+            Definition = definition,
+            DefinedByUserId = userId,
+            CreatedAt = DateTime.UtcNow.ToString("o")
+        };
+
+        context.WordDefinitions.Add(entry);
+    }
+
+    public void AddWordLink(string sourceWord, string targetWord, string linkType, int? userId = null)
+    {
+        var link = new WordLink
+        {
+            SourceWord = sourceWord.ToLowerInvariant(),
+            TargetWord = targetWord.ToLowerInvariant(),
+            LinkType = linkType.ToLowerInvariant(),
+            CreatedByUserId = userId,
+            CreatedAt = DateTime.UtcNow.ToString("o")
+        };
+
+        context.WordLinks.Add(link);
+    }
+
+    public List<string> GetRelatedWords(string word, string? linkType = null)
+    {
+        var query = context.WordLinks
+            .Where(l => l.SourceWord == word.ToLowerInvariant());
+
+        if (!string.IsNullOrEmpty(linkType))
+            query = query.Where(l => l.LinkType == linkType.ToLowerInvariant());
+
+        return query.Select(l => l.TargetWord).Distinct().ToList();
+    }
+
+    public List<string> GetRelatedTo(string word, string? linkType = null)
+    {
+        var query = context.WordLinks
+            .Where(l => l.TargetWord == word.ToLowerInvariant());
+
+        if (!string.IsNullOrEmpty(linkType))
+            query = query.Where(l => l.LinkType == linkType.ToLowerInvariant());
+
+        return query.Select(l => l.SourceWord).Distinct().ToList();
+    }
+
+    public List<string> SearchDictionary(string partial)
+    {
+        var lower = partial.ToLowerInvariant();
+        return context.PosDictionary
+            .Where(p => p.Word.StartsWith(lower))
+            .Select(p => p.Word)
+            .Distinct()
+            .Take(10)
+            .ToList();
+    }
 }

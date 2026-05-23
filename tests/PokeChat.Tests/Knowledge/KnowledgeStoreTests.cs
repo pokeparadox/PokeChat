@@ -20,6 +20,7 @@ public class KnowledgeStoreTests
             CreatedAt = DateTime.UtcNow.ToString("O")
         };
         store.StoreFact(fact);
+        store.Save();
         var retrieved = store.GetFact("Alice", "likes", "pizza");
         retrieved.ShouldNotBeNull();
         retrieved.Subject.ShouldBe("Alice");
@@ -42,6 +43,7 @@ public class KnowledgeStoreTests
         var store = new KnowledgeStore(db.Context);
         store.StoreFact(new Fact { Subject = "Bob", Verb = "has", Object = "car", PredicateType = "possession", CreatedAt = DateTime.UtcNow.ToString("O") });
         store.StoreFact(new Fact { Subject = "Bob", Verb = "likes", Object = "dogs", PredicateType = "preference", CreatedAt = DateTime.UtcNow.ToString("O") });
+        store.Save();
         var facts = store.GetFactsBySubject("Bob");
         facts.Count.ShouldBe(2);
     }
@@ -53,6 +55,7 @@ public class KnowledgeStoreTests
         var store = new KnowledgeStore(db.Context);
         var userId = store.GetOrCreateUser("Charlie");
         store.StoreFact(new Fact { UserId = userId, Subject = "Charlie", Verb = "likes", Object = "cats", PredicateType = "preference", CreatedAt = DateTime.UtcNow.ToString("O") });
+        store.Save();
         var facts = store.GetFactsByUser(userId!.Value);
         facts.Count.ShouldBe(1);
     }
@@ -83,6 +86,7 @@ public class KnowledgeStoreTests
         var store = new KnowledgeStore(db.Context);
         var userId = store.GetOrCreateUser("Frank");
         store.StoreConversation(userId!.Value, "hello", "hi there");
+        store.Save();
         var conversations = db.Context.Conversations.ToList();
         conversations.Count.ShouldBe(1);
         conversations[0].UserInput.ShouldBe("hello");
@@ -94,6 +98,7 @@ public class KnowledgeStoreTests
         using var db = new FreshDbContext();
         var store = new KnowledgeStore(db.Context);
         store.AddGreeting("Hello there!");
+        store.Save();
         var greetings = store.GetGreetings();
         greetings.Count.ShouldBe(1);
         greetings[0].Text.ShouldBe("Hello there!");
@@ -114,6 +119,7 @@ public class KnowledgeStoreTests
         var store = new KnowledgeStore(db.Context);
         var userId = store.GetOrCreateUser("Grace");
         store.AddGreetingWord("howdy", userId);
+        store.Save();
         store.IsGreetingWord("howdy").ShouldBeTrue();
     }
 

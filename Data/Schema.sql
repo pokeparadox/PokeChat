@@ -75,6 +75,32 @@ CREATE TABLE IF NOT EXISTS misspellings (
     created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS bot_responses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category TEXT NOT NULL,
+    response_text TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS word_definitions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    word TEXT NOT NULL,
+    definition TEXT NOT NULL,
+    defined_by_user_id INTEGER,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (defined_by_user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS word_links (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_word TEXT NOT NULL,
+    target_word TEXT NOT NULL,
+    link_type TEXT NOT NULL,
+    created_by_user_id INTEGER,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (created_by_user_id) REFERENCES users(id)
+);
+
 CREATE TABLE IF NOT EXISTS bot_commands (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     command TEXT NOT NULL UNIQUE,

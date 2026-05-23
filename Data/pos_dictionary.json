@@ -11030,5 +11030,369 @@
   {
     "Word": "thallium",
     "Type": "noun"
+  },
+  {
+    "Word": "colour",
+    "Type": "noun"
+  },
+  {
+    "Word": "colours",
+    "Type": "noun"
+  },
+  {
+    "Word": "coloured",
+    "Type": "adjective"
+  },
+  {
+    "Word": "favourite",
+    "Type": "adjective"
+  },
+  {
+    "Word": "favourites",
+    "Type": "noun"
+  },
+  {
+    "Word": "favour",
+    "Type": "noun"
+  },
+  {
+    "Word": "favoured",
+    "Type": "adjective"
+  },
+  {
+    "Word": "centre",
+    "Type": "noun"
+  },
+  {
+    "Word": "centres",
+    "Type": "noun"
+  },
+  {
+    "Word": "centred",
+    "Type": "adjective"
+  },
+  {
+    "Word": "programme",
+    "Type": "noun"
+  },
+  {
+    "Word": "programmes",
+    "Type": "noun"
+  },
+  {
+    "Word": "organise",
+    "Type": "verb"
+  },
+  {
+    "Word": "organises",
+    "Type": "verb"
+  },
+  {
+    "Word": "organised",
+    "Type": "adjective"
+  },
+  {
+    "Word": "organising",
+    "Type": "verb"
+  },
+  {
+    "Word": "realise",
+    "Type": "verb"
+  },
+  {
+    "Word": "realises",
+    "Type": "verb"
+  },
+  {
+    "Word": "realised",
+    "Type": "verb"
+  },
+  {
+    "Word": "realising",
+    "Type": "verb"
+  },
+  {
+    "Word": "recognise",
+    "Type": "verb"
+  },
+  {
+    "Word": "recognises",
+    "Type": "verb"
+  },
+  {
+    "Word": "recognised",
+    "Type": "adjective"
+  },
+  {
+    "Word": "recognising",
+    "Type": "verb"
+  },
+  {
+    "Word": "apologise",
+    "Type": "verb"
+  },
+  {
+    "Word": "apologises",
+    "Type": "verb"
+  },
+  {
+    "Word": "apologised",
+    "Type": "verb"
+  },
+  {
+    "Word": "apologising",
+    "Type": "verb"
+  },
+  {
+    "Word": "analyse",
+    "Type": "verb"
+  },
+  {
+    "Word": "analyses",
+    "Type": "verb"
+  },
+  {
+    "Word": "analysed",
+    "Type": "verb"
+  },
+  {
+    "Word": "analysing",
+    "Type": "verb"
+  },
+  {
+    "Word": "catalogue",
+    "Type": "noun"
+  },
+  {
+    "Word": "catalogues",
+    "Type": "noun"
+  },
+  {
+    "Word": "catalogued",
+    "Type": "verb"
+  },
+  {
+    "Word": "dialogue",
+    "Type": "noun"
+  },
+  {
+    "Word": "dialogues",
+    "Type": "noun"
+  },
+  {
+    "Word": "behaviour",
+    "Type": "noun"
+  },
+  {
+    "Word": "behaviours",
+    "Type": "noun"
+  },
+  {
+    "Word": "behavioural",
+    "Type": "adjective"
+  },
+  {
+    "Word": "labour",
+    "Type": "noun"
+  },
+  {
+    "Word": "labours",
+    "Type": "verb"
+  },
+  {
+    "Word": "laboured",
+    "Type": "adjective"
+  },
+  {
+    "Word": "neighbour",
+    "Type": "noun"
+  },
+  {
+    "Word": "neighbours",
+    "Type": "noun"
+  },
+  {
+    "Word": "neighbourhood",
+    "Type": "noun"
+  },
+  {
+    "Word": "honour",
+    "Type": "noun"
+  },
+  {
+    "Word": "honours",
+    "Type": "noun"
+  },
+  {
+    "Word": "honoured",
+    "Type": "adjective"
+  },
+  {
+    "Word": "flavour",
+    "Type": "noun"
+  },
+  {
+    "Word": "flavours",
+    "Type": "noun"
+  },
+  {
+    "Word": "flavoured",
+    "Type": "adjective"
+  },
+  {
+    "Word": "harbour",
+    "Type": "noun"
+  },
+  {
+    "Word": "harbours",
+    "Type": "noun"
+  },
+  {
+    "Word": "rumour",
+    "Type": "noun"
+  },
+  {
+    "Word": "rumours",
+    "Type": "noun"
+  },
+  {
+    "Word": "theatre",
+    "Type": "noun"
+  },
+  {
+    "Word": "theatres",
+    "Type": "noun"
+  },
+  {
+    "Word": "theatrical",
+    "Type": "adjective"
+  },
+  {
+    "Word": "metre",
+    "Type": "noun"
+  },
+  {
+    "Word": "metres",
+    "Type": "noun"
+  },
+  {
+    "Word": "litre",
+    "Type": "noun"
+  },
+  {
+    "Word": "litres",
+    "Type": "noun"
+  },
+  {
+    "Word": "fibre",
+    "Type": "noun"
+  },
+  {
+    "Word": "fibres",
+    "Type": "noun"
+  },
+  {
+    "Word": "defence",
+    "Type": "noun"
+  },
+  {
+    "Word": "defences",
+    "Type": "noun"
+  },
+  {
+    "Word": "offence",
+    "Type": "noun"
+  },
+  {
+    "Word": "offences",
+    "Type": "noun"
+  },
+  {
+    "Word": "licence",
+    "Type": "noun"
+  },
+  {
+    "Word": "licences",
+    "Type": "noun"
+  },
+  {
+    "Word": "practise",
+    "Type": "verb"
+  },
+  {
+    "Word": "practises",
+    "Type": "verb"
+  },
+  {
+    "Word": "practised",
+    "Type": "verb"
+  },
+  {
+    "Word": "practising",
+    "Type": "verb"
+  },
+  {
+    "Word": "travelling",
+    "Type": "verb"
+  },
+  {
+    "Word": "travelled",
+    "Type": "verb"
+  },
+  {
+    "Word": "traveller",
+    "Type": "noun"
+  },
+  {
+    "Word": "travellers",
+    "Type": "noun"
+  },
+  {
+    "Word": "jewellery",
+    "Type": "noun"
+  },
+  {
+    "Word": "modelled",
+    "Type": "verb"
+  },
+  {
+    "Word": "modelling",
+    "Type": "verb"
+  },
+  {
+    "Word": "labelled",
+    "Type": "adjective"
+  },
+  {
+    "Word": "labelling",
+    "Type": "verb"
+  },
+  {
+    "Word": "cancelled",
+    "Type": "verb"
+  },
+  {
+    "Word": "cancelling",
+    "Type": "verb"
+  },
+  {
+    "Word": "marvellous",
+    "Type": "adjective"
+  },
+  {
+    "Word": "aluminium",
+    "Type": "noun"
+  },
+  {
+    "Word": "speciality",
+    "Type": "noun"
+  },
+  {
+    "Word": "specialities",
+    "Type": "noun"
+  },
+  {
+    "Word": "definitely",
+    "Type": "adverb"
   }
 ]

@@ -2,6 +2,9 @@ namespace PokeChat.NLP;
 
 public class SpellChecker
 {
+    private static readonly HashSet<string> MathOperators = new(StringComparer.OrdinalIgnoreCase)
+        { "+", "-", "*", "/", "^" };
+
     private HashSet<string> _dictionary;
     private Dictionary<string, string> _misspellings;
 
@@ -11,7 +14,7 @@ public class SpellChecker
         _misspellings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     }
 
-    public void Initialize(HashSet<string> dictionary, Dictionary<string, string> misspellings)
+    public void Initialise(HashSet<string> dictionary, Dictionary<string, string> misspellings)
     {
         _dictionary = dictionary;
         _misspellings = misspellings;
@@ -54,6 +57,9 @@ public class SpellChecker
         foreach (var token in tokens)
         {
             if (IsPunctuation(token))
+                continue;
+
+            if (MathOperators.Contains(token))
                 continue;
 
             if (token.Length > 0 && char.IsDigit(token[0]))

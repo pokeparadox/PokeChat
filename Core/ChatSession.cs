@@ -12,7 +12,7 @@ public class ChatSession
     private readonly ResponseEngine _responseEngine;
     private readonly SpellChecker _spellChecker;
     private readonly IPosTagger _posTagger;
-    private readonly ITokenizer _tokenizer;
+    private readonly ITokeniser _tokeniser;
     private readonly ISentenceSplitter _sentenceSplitter;
     private readonly ISvoExtractor _svoExtractor;
     private readonly ContextTracker _context;
@@ -30,16 +30,16 @@ public class ChatSession
         _knowledgeStore = new KnowledgeStore(_dbContext);
         _context = new ContextTracker();
         _spellChecker = new SpellChecker();
-        _tokenizer = new Tokenizer();
+        _tokeniser = new Tokeniser();
         _sentenceSplitter = new SentenceSplitter();
         _svoExtractor = new SvoExtractor();
         var posEntries = _knowledgeStore.GetPosDictionary();
         _posTagger = new PosTagger(posEntries);
-        _responseEngine = new ResponseEngine(_knowledgeStore, _context, _spellChecker, _posTagger, _tokenizer, _svoExtractor);
+        _responseEngine = new ResponseEngine(_knowledgeStore, _context, _spellChecker, _posTagger, _tokeniser, _svoExtractor);
 
         var spellDict = new HashSet<string>(posEntries.Select(e => e.Word), StringComparer.OrdinalIgnoreCase);
         var misspellings = _knowledgeStore.GetMisspellings();
-        _spellChecker.Initialize(spellDict, misspellings);
+        _spellChecker.Initialise(spellDict, misspellings);
 
         _namePatterns = _knowledgeStore.GetNamePatterns().Select(p => p.Pattern.ToLowerInvariant()).ToList();
         _botCommands = _knowledgeStore.GetBotCommands().Select(c => c.Command.ToLowerInvariant()).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -52,7 +52,7 @@ public class ChatSession
         ResponseEngine responseEngine,
         SpellChecker spellChecker,
         IPosTagger posTagger,
-        ITokenizer tokenizer,
+        ITokeniser tokeniser,
         ISentenceSplitter sentenceSplitter,
         ISvoExtractor svoExtractor,
         ContextTracker context,
@@ -65,7 +65,7 @@ public class ChatSession
         _responseEngine = responseEngine;
         _spellChecker = spellChecker;
         _posTagger = posTagger;
-        _tokenizer = tokenizer;
+        _tokeniser = tokeniser;
         _sentenceSplitter = sentenceSplitter;
         _svoExtractor = svoExtractor;
         _context = context;
@@ -116,6 +116,12 @@ public class ChatSession
             return HandleClarification(input, pendingWord);
         }
 
+        var dictWord = _context.GetContext(ContextKeys.PendingDictionaryWord);
+        if (dictWord != null)
+        {
+            return HandleDictionaryDefinition(input, dictWord);
+        }
+
         _context.SetContext(ContextKeys.UnknownWords, null);
 
         LearnGreetingWords(input);
@@ -135,7 +141,7 @@ public class ChatSession
 
     internal void LearnGreetingWords(string input)
     {
-        var tokens = _tokenizer.Tokenize(input);
+        var tokens = _tokeniser.Tokenise(input);
         if (tokens.Count > 0)
         {
             var firstWord = tokens[0];
@@ -157,7 +163,7 @@ public class ChatSession
 
     internal void ProcessSentence(string sentence)
     {
-        var tokens = _tokenizer.Tokenize(sentence);
+        var tokens = _tokeniser.Tokenise(sentence);
         var correctedTokens = _spellChecker.AutoCorrect(tokens);
 
         var unknownWords = _spellChecker.GetUnknownWords(correctedTokens);
@@ -303,9 +309,57 @@ public class ChatSession
         }
     }
 
+    internal string HandleDictionaryDefinition(string input, string word)
+    {
+        _context.SetContext(ContextKeys.PendingDictionaryWord, null);
+
+        var tokens = _tokeniser.Tokenise(input.ToLowerInvariant());
+        var definition = string.Empty;
+
+        for (var i = 0; i < tokens.Count; i++)
+        {
+            if (tokens[i] is "is" or "are" or "means" or "mean" or "refers to")
+            {
+                if (i + 1 < tokens.Count)
+                {
+                    definition = string.Join(" ", tokens.Skip(i + 1));
+                }
+                break;
+            }
+        }
+
+        if (string.IsNullOrEmpty(definition) && tokens.Count > 0)
+        {
+            if (tokens[0] == word && tokens.Count > 1)
+                definition = string.Join(" ", tokens.Skip(1));
+            else
+                definition = input.Trim();
+        }
+
+        _knowledgeStore.SetDefinition(word, definition, _currentUserId);
+        _knowledgeStore.AddLearnedWord(word);
+        _spellChecker.AddToDictionary(word);
+        _knowledgeStore.Save();
+
+        return GetRandomDictionaryResponse(word, definition);
+    }
+
+    private string GetRandomDictionaryResponse(string word, string definition)
+    {
+        var responses = new List<string>
+        {
+            $"Thanks! I've learned that {word} means {definition}.",
+            $"Got it! {word}: {definition}. I'll remember that.",
+            $"I understand now — {word} means {definition}. Thank you!",
+            $"Great! I've added '{word}' to my vocabulary with the definition: {definition}."
+        };
+
+        return responses[Random.Shared.Next(responses.Count)];
+    }
+
     internal string HandleNameInput(string input)
     {
-        var tokens = _tokenizer.Tokenize(input);
+        var tokens = _tokeniser.Tokenise(input);
         var name = ExtractName(input, tokens);
 
         if (string.IsNullOrEmpty(name))
@@ -340,7 +394,7 @@ public class ChatSession
             if (idx >= 0)
             {
                 var namePart = input.Substring(idx + pattern.Length).Trim();
-                var nameTokens = _tokenizer.Tokenize(namePart);
+                var nameTokens = _tokeniser.Tokenise(namePart);
                 if (nameTokens.Count > 0)
                 {
                     return nameTokens[0];

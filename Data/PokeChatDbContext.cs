@@ -47,6 +47,8 @@ public sealed class PokeChatDbContext : DbContext
     public DbSet<BotCommand> BotCommands => Set<BotCommand>();
     public DbSet<Misspelling> Misspellings => Set<Misspelling>();
     public DbSet<BotResponse> BotResponses => Set<BotResponse>();
+    public DbSet<WordDefinition> WordDefinitions => Set<WordDefinition>();
+    public DbSet<WordLink> WordLinks => Set<WordLink>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -170,6 +172,29 @@ public sealed class PokeChatDbContext : DbContext
             entity.Property(e => e.Category).IsRequired();
             entity.Property(e => e.ResponseText).IsRequired();
             entity.Property(e => e.CreatedAt).IsRequired();
+        });
+
+        modelBuilder.Entity<WordDefinition>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Word).IsRequired();
+            entity.Property(e => e.Definition).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => e.DefinedByUserId);
+        });
+
+        modelBuilder.Entity<WordLink>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.SourceWord).IsRequired();
+            entity.Property(e => e.TargetWord).IsRequired();
+            entity.Property(e => e.LinkType).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => e.CreatedByUserId);
         });
     }
 }

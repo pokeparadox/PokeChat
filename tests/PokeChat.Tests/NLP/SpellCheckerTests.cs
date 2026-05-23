@@ -17,7 +17,7 @@ public class SpellCheckerTests
             ["recieve"] = "receive"
         };
         var checker = new SpellChecker();
-        checker.Initialize(dict, misspellings);
+        checker.Initialise(dict, misspellings);
         return checker;
     }
 
@@ -50,6 +50,14 @@ public class SpellCheckerTests
     {
         var checker = CreateChecker();
         var result = checker.GetUnknownWords(["hello", "123"]);
+        result.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void GetUnknownWords_MathOperatorsIgnored()
+    {
+        var checker = CreateChecker();
+        var result = checker.GetUnknownWords(["2", "+", "3", "*", "5"]);
         result.ShouldBeEmpty();
     }
 
