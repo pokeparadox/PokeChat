@@ -2,11 +2,11 @@ using System.Text;
 
 namespace PokeChat.NLP;
 
-public static class SentenceSplitter
+public class SentenceSplitter : ISentenceSplitter
 {
     private static readonly char[] SentenceEndings = { '.', '!', '?' };
 
-    public static List<string> Split(string input)
+    public List<string> Split(string input)
     {
         var sentences = new List<string>();
         var current = new StringBuilder();
@@ -28,8 +28,8 @@ public static class SentenceSplitter
                         isEndOfSentence = false;
                     }
 
-                    string commonAbbr = current.ToString().Trim().ToLowerInvariant();
-                    if (commonAbbr is "mr" or "mrs" or "ms" or "dr" or "prof" or "st" or "jr" or "sr" or "vs" or "etc" or "inc" or "ltd" or "co" or "corp" or "dept" or "est" or "approx" or "avg" or "approx.")
+                    string commonAbbr = current.ToString().Trim().TrimEnd('.').ToLowerInvariant();
+                    if (commonAbbr is "mr" or "mrs" or "ms" or "dr" or "prof" or "st" or "jr" or "sr" or "vs" or "etc" or "inc" or "ltd" or "co" or "corp" or "dept" or "est" or "approx" or "avg")
                     {
                         isEndOfSentence = false;
                     }

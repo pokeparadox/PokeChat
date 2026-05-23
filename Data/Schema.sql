@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS name_patterns (
 
 CREATE TABLE IF NOT EXISTS misspellings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    misspelling TEXT NOT NULL UNIQUE,
+    wrong_word TEXT NOT NULL UNIQUE,
     correction TEXT NOT NULL,
     created_at TEXT NOT NULL
 );

@@ -2,11 +2,11 @@ using System.Text.RegularExpressions;
 
 namespace PokeChat.NLP;
 
-public static class Tokenizer
+public class Tokenizer : ITokenizer
 {
     private static readonly Regex TokenRegex = new(@"\b[\w'-+\$%&]+\b|[.,!?;:()\""]", RegexOptions.Compiled);
 
-    public static List<string> Tokenize(string input)
+    public List<string> Tokenize(string input)
     {
         var tokens = new List<string>();
         var matches = TokenRegex.Matches(input.ToLowerInvariant());

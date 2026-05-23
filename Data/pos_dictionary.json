@@ -1,0 +1,11034 @@
+[
+  {
+    "Word": "i",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "you",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "he",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "she",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "it",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "we",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "they",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "me",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "him",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "her",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "us",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "them",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "my",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "your",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "his",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "its",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "our",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "their",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "mine",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "yours",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "hers",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "ours",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "theirs",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "myself",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "yourself",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "himself",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "herself",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "itself",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "ourselves",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "themselves",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "this",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "that",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "these",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "those",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "what",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "who",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "whom",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "which",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "whose",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "the",
+    "Type": "determiner"
+  },
+  {
+    "Word": "a",
+    "Type": "determiner"
+  },
+  {
+    "Word": "an",
+    "Type": "determiner"
+  },
+  {
+    "Word": "some",
+    "Type": "determiner"
+  },
+  {
+    "Word": "any",
+    "Type": "determiner"
+  },
+  {
+    "Word": "no",
+    "Type": "determiner"
+  },
+  {
+    "Word": "every",
+    "Type": "determiner"
+  },
+  {
+    "Word": "each",
+    "Type": "determiner"
+  },
+  {
+    "Word": "all",
+    "Type": "determiner"
+  },
+  {
+    "Word": "both",
+    "Type": "determiner"
+  },
+  {
+    "Word": "few",
+    "Type": "determiner"
+  },
+  {
+    "Word": "many",
+    "Type": "determiner"
+  },
+  {
+    "Word": "much",
+    "Type": "determiner"
+  },
+  {
+    "Word": "several",
+    "Type": "determiner"
+  },
+  {
+    "Word": "in",
+    "Type": "preposition"
+  },
+  {
+    "Word": "on",
+    "Type": "preposition"
+  },
+  {
+    "Word": "at",
+    "Type": "preposition"
+  },
+  {
+    "Word": "by",
+    "Type": "preposition"
+  },
+  {
+    "Word": "for",
+    "Type": "preposition"
+  },
+  {
+    "Word": "with",
+    "Type": "preposition"
+  },
+  {
+    "Word": "about",
+    "Type": "preposition"
+  },
+  {
+    "Word": "against",
+    "Type": "preposition"
+  },
+  {
+    "Word": "between",
+    "Type": "preposition"
+  },
+  {
+    "Word": "into",
+    "Type": "preposition"
+  },
+  {
+    "Word": "through",
+    "Type": "preposition"
+  },
+  {
+    "Word": "during",
+    "Type": "preposition"
+  },
+  {
+    "Word": "before",
+    "Type": "preposition"
+  },
+  {
+    "Word": "after",
+    "Type": "preposition"
+  },
+  {
+    "Word": "above",
+    "Type": "preposition"
+  },
+  {
+    "Word": "below",
+    "Type": "preposition"
+  },
+  {
+    "Word": "to",
+    "Type": "preposition"
+  },
+  {
+    "Word": "from",
+    "Type": "preposition"
+  },
+  {
+    "Word": "up",
+    "Type": "preposition"
+  },
+  {
+    "Word": "down",
+    "Type": "preposition"
+  },
+  {
+    "Word": "out",
+    "Type": "preposition"
+  },
+  {
+    "Word": "off",
+    "Type": "preposition"
+  },
+  {
+    "Word": "over",
+    "Type": "preposition"
+  },
+  {
+    "Word": "under",
+    "Type": "preposition"
+  },
+  {
+    "Word": "of",
+    "Type": "preposition"
+  },
+  {
+    "Word": "as",
+    "Type": "preposition"
+  },
+  {
+    "Word": "and",
+    "Type": "conjunction"
+  },
+  {
+    "Word": "but",
+    "Type": "conjunction"
+  },
+  {
+    "Word": "or",
+    "Type": "conjunction"
+  },
+  {
+    "Word": "nor",
+    "Type": "conjunction"
+  },
+  {
+    "Word": "so",
+    "Type": "conjunction"
+  },
+  {
+    "Word": "yet",
+    "Type": "conjunction"
+  },
+  {
+    "Word": "because",
+    "Type": "conjunction"
+  },
+  {
+    "Word": "although",
+    "Type": "conjunction"
+  },
+  {
+    "Word": "if",
+    "Type": "conjunction"
+  },
+  {
+    "Word": "when",
+    "Type": "conjunction"
+  },
+  {
+    "Word": "while",
+    "Type": "conjunction"
+  },
+  {
+    "Word": "unless",
+    "Type": "conjunction"
+  },
+  {
+    "Word": "is",
+    "Type": "verb"
+  },
+  {
+    "Word": "am",
+    "Type": "verb"
+  },
+  {
+    "Word": "are",
+    "Type": "verb"
+  },
+  {
+    "Word": "was",
+    "Type": "verb"
+  },
+  {
+    "Word": "were",
+    "Type": "verb"
+  },
+  {
+    "Word": "be",
+    "Type": "verb"
+  },
+  {
+    "Word": "been",
+    "Type": "verb"
+  },
+  {
+    "Word": "being",
+    "Type": "verb"
+  },
+  {
+    "Word": "have",
+    "Type": "verb"
+  },
+  {
+    "Word": "has",
+    "Type": "verb"
+  },
+  {
+    "Word": "had",
+    "Type": "verb"
+  },
+  {
+    "Word": "do",
+    "Type": "verb"
+  },
+  {
+    "Word": "does",
+    "Type": "verb"
+  },
+  {
+    "Word": "did",
+    "Type": "verb"
+  },
+  {
+    "Word": "will",
+    "Type": "verb"
+  },
+  {
+    "Word": "would",
+    "Type": "verb"
+  },
+  {
+    "Word": "could",
+    "Type": "verb"
+  },
+  {
+    "Word": "should",
+    "Type": "verb"
+  },
+  {
+    "Word": "may",
+    "Type": "verb"
+  },
+  {
+    "Word": "might",
+    "Type": "verb"
+  },
+  {
+    "Word": "must",
+    "Type": "verb"
+  },
+  {
+    "Word": "shall",
+    "Type": "verb"
+  },
+  {
+    "Word": "can",
+    "Type": "verb"
+  },
+  {
+    "Word": "need",
+    "Type": "verb"
+  },
+  {
+    "Word": "like",
+    "Type": "verb"
+  },
+  {
+    "Word": "love",
+    "Type": "verb"
+  },
+  {
+    "Word": "hate",
+    "Type": "verb"
+  },
+  {
+    "Word": "know",
+    "Type": "verb"
+  },
+  {
+    "Word": "think",
+    "Type": "verb"
+  },
+  {
+    "Word": "want",
+    "Type": "verb"
+  },
+  {
+    "Word": "see",
+    "Type": "verb"
+  },
+  {
+    "Word": "come",
+    "Type": "verb"
+  },
+  {
+    "Word": "go",
+    "Type": "verb"
+  },
+  {
+    "Word": "get",
+    "Type": "verb"
+  },
+  {
+    "Word": "make",
+    "Type": "verb"
+  },
+  {
+    "Word": "say",
+    "Type": "verb"
+  },
+  {
+    "Word": "tell",
+    "Type": "verb"
+  },
+  {
+    "Word": "take",
+    "Type": "verb"
+  },
+  {
+    "Word": "give",
+    "Type": "verb"
+  },
+  {
+    "Word": "find",
+    "Type": "verb"
+  },
+  {
+    "Word": "feel",
+    "Type": "verb"
+  },
+  {
+    "Word": "hear",
+    "Type": "verb"
+  },
+  {
+    "Word": "play",
+    "Type": "verb"
+  },
+  {
+    "Word": "run",
+    "Type": "verb"
+  },
+  {
+    "Word": "walk",
+    "Type": "verb"
+  },
+  {
+    "Word": "talk",
+    "Type": "verb"
+  },
+  {
+    "Word": "eat",
+    "Type": "verb"
+  },
+  {
+    "Word": "drink",
+    "Type": "verb"
+  },
+  {
+    "Word": "sleep",
+    "Type": "verb"
+  },
+  {
+    "Word": "read",
+    "Type": "verb"
+  },
+  {
+    "Word": "write",
+    "Type": "verb"
+  },
+  {
+    "Word": "learn",
+    "Type": "verb"
+  },
+  {
+    "Word": "teach",
+    "Type": "verb"
+  },
+  {
+    "Word": "work",
+    "Type": "verb"
+  },
+  {
+    "Word": "live",
+    "Type": "verb"
+  },
+  {
+    "Word": "believe",
+    "Type": "verb"
+  },
+  {
+    "Word": "remember",
+    "Type": "verb"
+  },
+  {
+    "Word": "understand",
+    "Type": "verb"
+  },
+  {
+    "Word": "enjoy",
+    "Type": "verb"
+  },
+  {
+    "Word": "prefer",
+    "Type": "verb"
+  },
+  {
+    "Word": "watch",
+    "Type": "verb"
+  },
+  {
+    "Word": "listen",
+    "Type": "verb"
+  },
+  {
+    "Word": "call",
+    "Type": "verb"
+  },
+  {
+    "Word": "ask",
+    "Type": "verb"
+  },
+  {
+    "Word": "try",
+    "Type": "verb"
+  },
+  {
+    "Word": "help",
+    "Type": "verb"
+  },
+  {
+    "Word": "start",
+    "Type": "verb"
+  },
+  {
+    "Word": "begin",
+    "Type": "verb"
+  },
+  {
+    "Word": "keep",
+    "Type": "verb"
+  },
+  {
+    "Word": "hold",
+    "Type": "verb"
+  },
+  {
+    "Word": "turn",
+    "Type": "verb"
+  },
+  {
+    "Word": "show",
+    "Type": "verb"
+  },
+  {
+    "Word": "move",
+    "Type": "verb"
+  },
+  {
+    "Word": "pay",
+    "Type": "verb"
+  },
+  {
+    "Word": "meet",
+    "Type": "verb"
+  },
+  {
+    "Word": "include",
+    "Type": "verb"
+  },
+  {
+    "Word": "continue",
+    "Type": "verb"
+  },
+  {
+    "Word": "set",
+    "Type": "verb"
+  },
+  {
+    "Word": "change",
+    "Type": "verb"
+  },
+  {
+    "Word": "lead",
+    "Type": "verb"
+  },
+  {
+    "Word": "allow",
+    "Type": "verb"
+  },
+  {
+    "Word": "leave",
+    "Type": "verb"
+  },
+  {
+    "Word": "put",
+    "Type": "verb"
+  },
+  {
+    "Word": "mean",
+    "Type": "verb"
+  },
+  {
+    "Word": "become",
+    "Type": "verb"
+  },
+  {
+    "Word": "seem",
+    "Type": "verb"
+  },
+  {
+    "Word": "appear",
+    "Type": "verb"
+  },
+  {
+    "Word": "stay",
+    "Type": "verb"
+  },
+  {
+    "Word": "fall",
+    "Type": "verb"
+  },
+  {
+    "Word": "send",
+    "Type": "verb"
+  },
+  {
+    "Word": "build",
+    "Type": "verb"
+  },
+  {
+    "Word": "hope",
+    "Type": "verb"
+  },
+  {
+    "Word": "wish",
+    "Type": "verb"
+  },
+  {
+    "Word": "name",
+    "Type": "verb"
+  },
+  {
+    "Word": "own",
+    "Type": "verb"
+  },
+  {
+    "Word": "belong",
+    "Type": "verb"
+  },
+  {
+    "Word": "contain",
+    "Type": "verb"
+  },
+  {
+    "Word": "cost",
+    "Type": "verb"
+  },
+  {
+    "Word": "fit",
+    "Type": "verb"
+  },
+  {
+    "Word": "matter",
+    "Type": "verb"
+  },
+  {
+    "Word": "sound",
+    "Type": "verb"
+  },
+  {
+    "Word": "taste",
+    "Type": "verb"
+  },
+  {
+    "Word": "smell",
+    "Type": "verb"
+  },
+  {
+    "Word": "touch",
+    "Type": "verb"
+  },
+  {
+    "Word": "look",
+    "Type": "verb"
+  },
+  {
+    "Word": "notice",
+    "Type": "verb"
+  },
+  {
+    "Word": "recognize",
+    "Type": "verb"
+  },
+  {
+    "Word": "consider",
+    "Type": "verb"
+  },
+  {
+    "Word": "expect",
+    "Type": "verb"
+  },
+  {
+    "Word": "suggest",
+    "Type": "verb"
+  },
+  {
+    "Word": "suppose",
+    "Type": "verb"
+  },
+  {
+    "Word": "imagine",
+    "Type": "verb"
+  },
+  {
+    "Word": "realize",
+    "Type": "verb"
+  },
+  {
+    "Word": "admit",
+    "Type": "verb"
+  },
+  {
+    "Word": "claim",
+    "Type": "verb"
+  },
+  {
+    "Word": "argue",
+    "Type": "verb"
+  },
+  {
+    "Word": "explain",
+    "Type": "verb"
+  },
+  {
+    "Word": "describe",
+    "Type": "verb"
+  },
+  {
+    "Word": "mention",
+    "Type": "verb"
+  },
+  {
+    "Word": "announce",
+    "Type": "verb"
+  },
+  {
+    "Word": "declare",
+    "Type": "verb"
+  },
+  {
+    "Word": "state",
+    "Type": "verb"
+  },
+  {
+    "Word": "report",
+    "Type": "verb"
+  },
+  {
+    "Word": "reveal",
+    "Type": "verb"
+  },
+  {
+    "Word": "prove",
+    "Type": "verb"
+  },
+  {
+    "Word": "demonstrate",
+    "Type": "verb"
+  },
+  {
+    "Word": "indicate",
+    "Type": "verb"
+  },
+  {
+    "Word": "represent",
+    "Type": "verb"
+  },
+  {
+    "Word": "define",
+    "Type": "verb"
+  },
+  {
+    "Word": "identify",
+    "Type": "verb"
+  },
+  {
+    "Word": "establish",
+    "Type": "verb"
+  },
+  {
+    "Word": "achieve",
+    "Type": "verb"
+  },
+  {
+    "Word": "accomplish",
+    "Type": "verb"
+  },
+  {
+    "Word": "complete",
+    "Type": "verb"
+  },
+  {
+    "Word": "finish",
+    "Type": "verb"
+  },
+  {
+    "Word": "end",
+    "Type": "verb"
+  },
+  {
+    "Word": "stop",
+    "Type": "verb"
+  },
+  {
+    "Word": "pause",
+    "Type": "verb"
+  },
+  {
+    "Word": "rest",
+    "Type": "verb"
+  },
+  {
+    "Word": "wait",
+    "Type": "verb"
+  },
+  {
+    "Word": "prepare",
+    "Type": "verb"
+  },
+  {
+    "Word": "plan",
+    "Type": "verb"
+  },
+  {
+    "Word": "decide",
+    "Type": "verb"
+  },
+  {
+    "Word": "choose",
+    "Type": "verb"
+  },
+  {
+    "Word": "select",
+    "Type": "verb"
+  },
+  {
+    "Word": "pick",
+    "Type": "verb"
+  },
+  {
+    "Word": "accept",
+    "Type": "verb"
+  },
+  {
+    "Word": "receive",
+    "Type": "verb"
+  },
+  {
+    "Word": "obtain",
+    "Type": "verb"
+  },
+  {
+    "Word": "gain",
+    "Type": "verb"
+  },
+  {
+    "Word": "win",
+    "Type": "verb"
+  },
+  {
+    "Word": "lose",
+    "Type": "verb"
+  },
+  {
+    "Word": "miss",
+    "Type": "verb"
+  },
+  {
+    "Word": "fail",
+    "Type": "verb"
+  },
+  {
+    "Word": "succeed",
+    "Type": "verb"
+  },
+  {
+    "Word": "grow",
+    "Type": "verb"
+  },
+  {
+    "Word": "develop",
+    "Type": "verb"
+  },
+  {
+    "Word": "increase",
+    "Type": "verb"
+  },
+  {
+    "Word": "decrease",
+    "Type": "verb"
+  },
+  {
+    "Word": "reduce",
+    "Type": "verb"
+  },
+  {
+    "Word": "raise",
+    "Type": "verb"
+  },
+  {
+    "Word": "lower",
+    "Type": "verb"
+  },
+  {
+    "Word": "rise",
+    "Type": "verb"
+  },
+  {
+    "Word": "drop",
+    "Type": "verb"
+  },
+  {
+    "Word": "jump",
+    "Type": "verb"
+  },
+  {
+    "Word": "climb",
+    "Type": "verb"
+  },
+  {
+    "Word": "fly",
+    "Type": "verb"
+  },
+  {
+    "Word": "swim",
+    "Type": "verb"
+  },
+  {
+    "Word": "drive",
+    "Type": "verb"
+  },
+  {
+    "Word": "ride",
+    "Type": "verb"
+  },
+  {
+    "Word": "travel",
+    "Type": "verb"
+  },
+  {
+    "Word": "visit",
+    "Type": "verb"
+  },
+  {
+    "Word": "arrive",
+    "Type": "verb"
+  },
+  {
+    "Word": "reach",
+    "Type": "verb"
+  },
+  {
+    "Word": "enter",
+    "Type": "verb"
+  },
+  {
+    "Word": "exit",
+    "Type": "verb"
+  },
+  {
+    "Word": "return",
+    "Type": "verb"
+  },
+  {
+    "Word": "follow",
+    "Type": "verb"
+  },
+  {
+    "Word": "guide",
+    "Type": "verb"
+  },
+  {
+    "Word": "direct",
+    "Type": "verb"
+  },
+  {
+    "Word": "manage",
+    "Type": "verb"
+  },
+  {
+    "Word": "control",
+    "Type": "verb"
+  },
+  {
+    "Word": "handle",
+    "Type": "verb"
+  },
+  {
+    "Word": "deal",
+    "Type": "verb"
+  },
+  {
+    "Word": "cope",
+    "Type": "verb"
+  },
+  {
+    "Word": "face",
+    "Type": "verb"
+  },
+  {
+    "Word": "confront",
+    "Type": "verb"
+  },
+  {
+    "Word": "challenge",
+    "Type": "verb"
+  },
+  {
+    "Word": "defend",
+    "Type": "verb"
+  },
+  {
+    "Word": "protect",
+    "Type": "verb"
+  },
+  {
+    "Word": "support",
+    "Type": "verb"
+  },
+  {
+    "Word": "encourage",
+    "Type": "verb"
+  },
+  {
+    "Word": "inspire",
+    "Type": "verb"
+  },
+  {
+    "Word": "motivate",
+    "Type": "verb"
+  },
+  {
+    "Word": "persuade",
+    "Type": "verb"
+  },
+  {
+    "Word": "convince",
+    "Type": "verb"
+  },
+  {
+    "Word": "influence",
+    "Type": "verb"
+  },
+  {
+    "Word": "affect",
+    "Type": "verb"
+  },
+  {
+    "Word": "impact",
+    "Type": "verb"
+  },
+  {
+    "Word": "impress",
+    "Type": "verb"
+  },
+  {
+    "Word": "satisfy",
+    "Type": "verb"
+  },
+  {
+    "Word": "please",
+    "Type": "verb"
+  },
+  {
+    "Word": "disappoint",
+    "Type": "verb"
+  },
+  {
+    "Word": "surprise",
+    "Type": "verb"
+  },
+  {
+    "Word": "shock",
+    "Type": "verb"
+  },
+  {
+    "Word": "amaze",
+    "Type": "verb"
+  },
+  {
+    "Word": "confuse",
+    "Type": "verb"
+  },
+  {
+    "Word": "puzzle",
+    "Type": "verb"
+  },
+  {
+    "Word": "interest",
+    "Type": "verb"
+  },
+  {
+    "Word": "bore",
+    "Type": "verb"
+  },
+  {
+    "Word": "tire",
+    "Type": "verb"
+  },
+  {
+    "Word": "exhaust",
+    "Type": "verb"
+  },
+  {
+    "Word": "relax",
+    "Type": "verb"
+  },
+  {
+    "Word": "calm",
+    "Type": "verb"
+  },
+  {
+    "Word": "soothe",
+    "Type": "verb"
+  },
+  {
+    "Word": "comfort",
+    "Type": "verb"
+  },
+  {
+    "Word": "cheer",
+    "Type": "verb"
+  },
+  {
+    "Word": "amuse",
+    "Type": "verb"
+  },
+  {
+    "Word": "entertain",
+    "Type": "verb"
+  },
+  {
+    "Word": "celebrate",
+    "Type": "verb"
+  },
+  {
+    "Word": "honor",
+    "Type": "verb"
+  },
+  {
+    "Word": "respect",
+    "Type": "verb"
+  },
+  {
+    "Word": "admire",
+    "Type": "verb"
+  },
+  {
+    "Word": "appreciate",
+    "Type": "verb"
+  },
+  {
+    "Word": "value",
+    "Type": "verb"
+  },
+  {
+    "Word": "treasure",
+    "Type": "verb"
+  },
+  {
+    "Word": "cherish",
+    "Type": "verb"
+  },
+  {
+    "Word": "forget",
+    "Type": "verb"
+  },
+  {
+    "Word": "ignore",
+    "Type": "verb"
+  },
+  {
+    "Word": "neglect",
+    "Type": "verb"
+  },
+  {
+    "Word": "avoid",
+    "Type": "verb"
+  },
+  {
+    "Word": "escape",
+    "Type": "verb"
+  },
+  {
+    "Word": "hide",
+    "Type": "verb"
+  },
+  {
+    "Word": "seek",
+    "Type": "verb"
+  },
+  {
+    "Word": "search",
+    "Type": "verb"
+  },
+  {
+    "Word": "hunt",
+    "Type": "verb"
+  },
+  {
+    "Word": "explore",
+    "Type": "verb"
+  },
+  {
+    "Word": "discover",
+    "Type": "verb"
+  },
+  {
+    "Word": "invent",
+    "Type": "verb"
+  },
+  {
+    "Word": "create",
+    "Type": "verb"
+  },
+  {
+    "Word": "design",
+    "Type": "verb"
+  },
+  {
+    "Word": "produce",
+    "Type": "verb"
+  },
+  {
+    "Word": "manufacture",
+    "Type": "verb"
+  },
+  {
+    "Word": "construct",
+    "Type": "verb"
+  },
+  {
+    "Word": "assemble",
+    "Type": "verb"
+  },
+  {
+    "Word": "repair",
+    "Type": "verb"
+  },
+  {
+    "Word": "fix",
+    "Type": "verb"
+  },
+  {
+    "Word": "maintain",
+    "Type": "verb"
+  },
+  {
+    "Word": "preserve",
+    "Type": "verb"
+  },
+  {
+    "Word": "save",
+    "Type": "verb"
+  },
+  {
+    "Word": "store",
+    "Type": "verb"
+  },
+  {
+    "Word": "collect",
+    "Type": "verb"
+  },
+  {
+    "Word": "gather",
+    "Type": "verb"
+  },
+  {
+    "Word": "organize",
+    "Type": "verb"
+  },
+  {
+    "Word": "arrange",
+    "Type": "verb"
+  },
+  {
+    "Word": "sort",
+    "Type": "verb"
+  },
+  {
+    "Word": "classify",
+    "Type": "verb"
+  },
+  {
+    "Word": "categorize",
+    "Type": "verb"
+  },
+  {
+    "Word": "group",
+    "Type": "verb"
+  },
+  {
+    "Word": "divide",
+    "Type": "verb"
+  },
+  {
+    "Word": "separate",
+    "Type": "verb"
+  },
+  {
+    "Word": "combine",
+    "Type": "verb"
+  },
+  {
+    "Word": "mix",
+    "Type": "verb"
+  },
+  {
+    "Word": "blend",
+    "Type": "verb"
+  },
+  {
+    "Word": "merge",
+    "Type": "verb"
+  },
+  {
+    "Word": "join",
+    "Type": "verb"
+  },
+  {
+    "Word": "connect",
+    "Type": "verb"
+  },
+  {
+    "Word": "link",
+    "Type": "verb"
+  },
+  {
+    "Word": "attach",
+    "Type": "verb"
+  },
+  {
+    "Word": "bind",
+    "Type": "verb"
+  },
+  {
+    "Word": "tie",
+    "Type": "verb"
+  },
+  {
+    "Word": "fasten",
+    "Type": "verb"
+  },
+  {
+    "Word": "secure",
+    "Type": "verb"
+  },
+  {
+    "Word": "lock",
+    "Type": "verb"
+  },
+  {
+    "Word": "close",
+    "Type": "verb"
+  },
+  {
+    "Word": "open",
+    "Type": "verb"
+  },
+  {
+    "Word": "unlock",
+    "Type": "verb"
+  },
+  {
+    "Word": "release",
+    "Type": "verb"
+  },
+  {
+    "Word": "free",
+    "Type": "verb"
+  },
+  {
+    "Word": "liberate",
+    "Type": "verb"
+  },
+  {
+    "Word": "deliver",
+    "Type": "verb"
+  },
+  {
+    "Word": "rescue",
+    "Type": "verb"
+  },
+  {
+    "Word": "recover",
+    "Type": "verb"
+  },
+  {
+    "Word": "heal",
+    "Type": "verb"
+  },
+  {
+    "Word": "cure",
+    "Type": "verb"
+  },
+  {
+    "Word": "treat",
+    "Type": "verb"
+  },
+  {
+    "Word": "diagnose",
+    "Type": "verb"
+  },
+  {
+    "Word": "examine",
+    "Type": "verb"
+  },
+  {
+    "Word": "inspect",
+    "Type": "verb"
+  },
+  {
+    "Word": "check",
+    "Type": "verb"
+  },
+  {
+    "Word": "test",
+    "Type": "verb"
+  },
+  {
+    "Word": "measure",
+    "Type": "verb"
+  },
+  {
+    "Word": "weigh",
+    "Type": "verb"
+  },
+  {
+    "Word": "count",
+    "Type": "verb"
+  },
+  {
+    "Word": "calculate",
+    "Type": "verb"
+  },
+  {
+    "Word": "compute",
+    "Type": "verb"
+  },
+  {
+    "Word": "estimate",
+    "Type": "verb"
+  },
+  {
+    "Word": "predict",
+    "Type": "verb"
+  },
+  {
+    "Word": "forecast",
+    "Type": "verb"
+  },
+  {
+    "Word": "guess",
+    "Type": "verb"
+  },
+  {
+    "Word": "assume",
+    "Type": "verb"
+  },
+  {
+    "Word": "presume",
+    "Type": "verb"
+  },
+  {
+    "Word": "wonder",
+    "Type": "verb"
+  },
+  {
+    "Word": "question",
+    "Type": "verb"
+  },
+  {
+    "Word": "doubt",
+    "Type": "verb"
+  },
+  {
+    "Word": "suspect",
+    "Type": "verb"
+  },
+  {
+    "Word": "trust",
+    "Type": "verb"
+  },
+  {
+    "Word": "rely",
+    "Type": "verb"
+  },
+  {
+    "Word": "depend",
+    "Type": "verb"
+  },
+  {
+    "Word": "care",
+    "Type": "verb"
+  },
+  {
+    "Word": "mind",
+    "Type": "verb"
+  },
+  {
+    "Word": "bother",
+    "Type": "verb"
+  },
+  {
+    "Word": "worry",
+    "Type": "verb"
+  },
+  {
+    "Word": "fear",
+    "Type": "verb"
+  },
+  {
+    "Word": "dread",
+    "Type": "verb"
+  },
+  {
+    "Word": "panic",
+    "Type": "verb"
+  },
+  {
+    "Word": "stress",
+    "Type": "verb"
+  },
+  {
+    "Word": "strain",
+    "Type": "verb"
+  },
+  {
+    "Word": "struggle",
+    "Type": "verb"
+  },
+  {
+    "Word": "fight",
+    "Type": "verb"
+  },
+  {
+    "Word": "battle",
+    "Type": "verb"
+  },
+  {
+    "Word": "compete",
+    "Type": "verb"
+  },
+  {
+    "Word": "race",
+    "Type": "verb"
+  },
+  {
+    "Word": "contest",
+    "Type": "verb"
+  },
+  {
+    "Word": "vie",
+    "Type": "verb"
+  },
+  {
+    "Word": "rival",
+    "Type": "verb"
+  },
+  {
+    "Word": "match",
+    "Type": "verb"
+  },
+  {
+    "Word": "equal",
+    "Type": "verb"
+  },
+  {
+    "Word": "compare",
+    "Type": "verb"
+  },
+  {
+    "Word": "contrast",
+    "Type": "verb"
+  },
+  {
+    "Word": "differ",
+    "Type": "verb"
+  },
+  {
+    "Word": "vary",
+    "Type": "verb"
+  },
+  {
+    "Word": "alter",
+    "Type": "verb"
+  },
+  {
+    "Word": "modify",
+    "Type": "verb"
+  },
+  {
+    "Word": "adjust",
+    "Type": "verb"
+  },
+  {
+    "Word": "adapt",
+    "Type": "verb"
+  },
+  {
+    "Word": "convert",
+    "Type": "verb"
+  },
+  {
+    "Word": "transform",
+    "Type": "verb"
+  },
+  {
+    "Word": "shift",
+    "Type": "verb"
+  },
+  {
+    "Word": "switch",
+    "Type": "verb"
+  },
+  {
+    "Word": "swap",
+    "Type": "verb"
+  },
+  {
+    "Word": "exchange",
+    "Type": "verb"
+  },
+  {
+    "Word": "trade",
+    "Type": "verb"
+  },
+  {
+    "Word": "sell",
+    "Type": "verb"
+  },
+  {
+    "Word": "buy",
+    "Type": "verb"
+  },
+  {
+    "Word": "purchase",
+    "Type": "verb"
+  },
+  {
+    "Word": "shop",
+    "Type": "verb"
+  },
+  {
+    "Word": "spend",
+    "Type": "verb"
+  },
+  {
+    "Word": "invest",
+    "Type": "verb"
+  },
+  {
+    "Word": "earn",
+    "Type": "verb"
+  },
+  {
+    "Word": "generate",
+    "Type": "verb"
+  },
+  {
+    "Word": "yield",
+    "Type": "verb"
+  },
+  {
+    "Word": "provide",
+    "Type": "verb"
+  },
+  {
+    "Word": "supply",
+    "Type": "verb"
+  },
+  {
+    "Word": "offer",
+    "Type": "verb"
+  },
+  {
+    "Word": "present",
+    "Type": "verb"
+  },
+  {
+    "Word": "submit",
+    "Type": "verb"
+  },
+  {
+    "Word": "propose",
+    "Type": "verb"
+  },
+  {
+    "Word": "recommend",
+    "Type": "verb"
+  },
+  {
+    "Word": "advise",
+    "Type": "verb"
+  },
+  {
+    "Word": "counsel",
+    "Type": "verb"
+  },
+  {
+    "Word": "warn",
+    "Type": "verb"
+  },
+  {
+    "Word": "alert",
+    "Type": "verb"
+  },
+  {
+    "Word": "notify",
+    "Type": "verb"
+  },
+  {
+    "Word": "inform",
+    "Type": "verb"
+  },
+  {
+    "Word": "update",
+    "Type": "verb"
+  },
+  {
+    "Word": "brief",
+    "Type": "verb"
+  },
+  {
+    "Word": "remind",
+    "Type": "verb"
+  },
+  {
+    "Word": "prompt",
+    "Type": "verb"
+  },
+  {
+    "Word": "urge",
+    "Type": "verb"
+  },
+  {
+    "Word": "push",
+    "Type": "verb"
+  },
+  {
+    "Word": "press",
+    "Type": "verb"
+  },
+  {
+    "Word": "force",
+    "Type": "verb"
+  },
+  {
+    "Word": "compel",
+    "Type": "verb"
+  },
+  {
+    "Word": "oblige",
+    "Type": "verb"
+  },
+  {
+    "Word": "require",
+    "Type": "verb"
+  },
+  {
+    "Word": "demand",
+    "Type": "verb"
+  },
+  {
+    "Word": "request",
+    "Type": "verb"
+  },
+  {
+    "Word": "beg",
+    "Type": "verb"
+  },
+  {
+    "Word": "plead",
+    "Type": "verb"
+  },
+  {
+    "Word": "pray",
+    "Type": "verb"
+  },
+  {
+    "Word": "desire",
+    "Type": "verb"
+  },
+  {
+    "Word": "crave",
+    "Type": "verb"
+  },
+  {
+    "Word": "long",
+    "Type": "verb"
+  },
+  {
+    "Word": "yearn",
+    "Type": "verb"
+  },
+  {
+    "Word": "ache",
+    "Type": "verb"
+  },
+  {
+    "Word": "hurt",
+    "Type": "verb"
+  },
+  {
+    "Word": "pain",
+    "Type": "verb"
+  },
+  {
+    "Word": "suffer",
+    "Type": "verb"
+  },
+  {
+    "Word": "endure",
+    "Type": "verb"
+  },
+  {
+    "Word": "bear",
+    "Type": "verb"
+  },
+  {
+    "Word": "tolerate",
+    "Type": "verb"
+  },
+  {
+    "Word": "stand",
+    "Type": "verb"
+  },
+  {
+    "Word": "agree",
+    "Type": "verb"
+  },
+  {
+    "Word": "consent",
+    "Type": "verb"
+  },
+  {
+    "Word": "approve",
+    "Type": "verb"
+  },
+  {
+    "Word": "permit",
+    "Type": "verb"
+  },
+  {
+    "Word": "let",
+    "Type": "verb"
+  },
+  {
+    "Word": "enable",
+    "Type": "verb"
+  },
+  {
+    "Word": "empower",
+    "Type": "verb"
+  },
+  {
+    "Word": "authorize",
+    "Type": "verb"
+  },
+  {
+    "Word": "license",
+    "Type": "verb"
+  },
+  {
+    "Word": "certify",
+    "Type": "verb"
+  },
+  {
+    "Word": "qualify",
+    "Type": "verb"
+  },
+  {
+    "Word": "train",
+    "Type": "verb"
+  },
+  {
+    "Word": "educate",
+    "Type": "verb"
+  },
+  {
+    "Word": "instruct",
+    "Type": "verb"
+  },
+  {
+    "Word": "coach",
+    "Type": "verb"
+  },
+  {
+    "Word": "mentor",
+    "Type": "verb"
+  },
+  {
+    "Word": "tutor",
+    "Type": "verb"
+  },
+  {
+    "Word": "drill",
+    "Type": "verb"
+  },
+  {
+    "Word": "practice",
+    "Type": "verb"
+  },
+  {
+    "Word": "rehearse",
+    "Type": "verb"
+  },
+  {
+    "Word": "perform",
+    "Type": "verb"
+  },
+  {
+    "Word": "act",
+    "Type": "verb"
+  },
+  {
+    "Word": "sing",
+    "Type": "verb"
+  },
+  {
+    "Word": "dance",
+    "Type": "verb"
+  },
+  {
+    "Word": "draw",
+    "Type": "verb"
+  },
+  {
+    "Word": "paint",
+    "Type": "verb"
+  },
+  {
+    "Word": "sketch",
+    "Type": "verb"
+  },
+  {
+    "Word": "color",
+    "Type": "verb"
+  },
+  {
+    "Word": "shade",
+    "Type": "verb"
+  },
+  {
+    "Word": "highlight",
+    "Type": "verb"
+  },
+  {
+    "Word": "emphasize",
+    "Type": "verb"
+  },
+  {
+    "Word": "accent",
+    "Type": "verb"
+  },
+  {
+    "Word": "pronounce",
+    "Type": "verb"
+  },
+  {
+    "Word": "speak",
+    "Type": "verb"
+  },
+  {
+    "Word": "chat",
+    "Type": "verb"
+  },
+  {
+    "Word": "converse",
+    "Type": "verb"
+  },
+  {
+    "Word": "discuss",
+    "Type": "verb"
+  },
+  {
+    "Word": "debate",
+    "Type": "verb"
+  },
+  {
+    "Word": "quarrel",
+    "Type": "verb"
+  },
+  {
+    "Word": "disagree",
+    "Type": "verb"
+  },
+  {
+    "Word": "object",
+    "Type": "verb"
+  },
+  {
+    "Word": "protest",
+    "Type": "verb"
+  },
+  {
+    "Word": "complain",
+    "Type": "verb"
+  },
+  {
+    "Word": "grumble",
+    "Type": "verb"
+  },
+  {
+    "Word": "mutter",
+    "Type": "verb"
+  },
+  {
+    "Word": "whisper",
+    "Type": "verb"
+  },
+  {
+    "Word": "murmur",
+    "Type": "verb"
+  },
+  {
+    "Word": "shout",
+    "Type": "verb"
+  },
+  {
+    "Word": "yell",
+    "Type": "verb"
+  },
+  {
+    "Word": "scream",
+    "Type": "verb"
+  },
+  {
+    "Word": "cry",
+    "Type": "verb"
+  },
+  {
+    "Word": "weep",
+    "Type": "verb"
+  },
+  {
+    "Word": "sob",
+    "Type": "verb"
+  },
+  {
+    "Word": "laugh",
+    "Type": "verb"
+  },
+  {
+    "Word": "giggle",
+    "Type": "verb"
+  },
+  {
+    "Word": "chuckle",
+    "Type": "verb"
+  },
+  {
+    "Word": "smile",
+    "Type": "verb"
+  },
+  {
+    "Word": "grin",
+    "Type": "verb"
+  },
+  {
+    "Word": "frown",
+    "Type": "verb"
+  },
+  {
+    "Word": "scowl",
+    "Type": "verb"
+  },
+  {
+    "Word": "glare",
+    "Type": "verb"
+  },
+  {
+    "Word": "stare",
+    "Type": "verb"
+  },
+  {
+    "Word": "gaze",
+    "Type": "verb"
+  },
+  {
+    "Word": "peer",
+    "Type": "verb"
+  },
+  {
+    "Word": "glance",
+    "Type": "verb"
+  },
+  {
+    "Word": "peek",
+    "Type": "verb"
+  },
+  {
+    "Word": "observe",
+    "Type": "verb"
+  },
+  {
+    "Word": "spot",
+    "Type": "verb"
+  },
+  {
+    "Word": "view",
+    "Type": "verb"
+  },
+  {
+    "Word": "regard",
+    "Type": "verb"
+  },
+  {
+    "Word": "ponder",
+    "Type": "verb"
+  },
+  {
+    "Word": "reflect",
+    "Type": "verb"
+  },
+  {
+    "Word": "contemplate",
+    "Type": "verb"
+  },
+  {
+    "Word": "meditate",
+    "Type": "verb"
+  },
+  {
+    "Word": "concentrate",
+    "Type": "verb"
+  },
+  {
+    "Word": "focus",
+    "Type": "verb"
+  },
+  {
+    "Word": "attend",
+    "Type": "verb"
+  },
+  {
+    "Word": "ring",
+    "Type": "verb"
+  },
+  {
+    "Word": "chime",
+    "Type": "verb"
+  },
+  {
+    "Word": "buzz",
+    "Type": "verb"
+  },
+  {
+    "Word": "hum",
+    "Type": "verb"
+  },
+  {
+    "Word": "whistle",
+    "Type": "verb"
+  },
+  {
+    "Word": "blow",
+    "Type": "verb"
+  },
+  {
+    "Word": "breathe",
+    "Type": "verb"
+  },
+  {
+    "Word": "sigh",
+    "Type": "verb"
+  },
+  {
+    "Word": "yawn",
+    "Type": "verb"
+  },
+  {
+    "Word": "snore",
+    "Type": "verb"
+  },
+  {
+    "Word": "cough",
+    "Type": "verb"
+  },
+  {
+    "Word": "sneeze",
+    "Type": "verb"
+  },
+  {
+    "Word": "sniff",
+    "Type": "verb"
+  },
+  {
+    "Word": "lick",
+    "Type": "verb"
+  },
+  {
+    "Word": "sip",
+    "Type": "verb"
+  },
+  {
+    "Word": "gulp",
+    "Type": "verb"
+  },
+  {
+    "Word": "swallow",
+    "Type": "verb"
+  },
+  {
+    "Word": "chew",
+    "Type": "verb"
+  },
+  {
+    "Word": "bite",
+    "Type": "verb"
+  },
+  {
+    "Word": "nibble",
+    "Type": "verb"
+  },
+  {
+    "Word": "munch",
+    "Type": "verb"
+  },
+  {
+    "Word": "crunch",
+    "Type": "verb"
+  },
+  {
+    "Word": "crush",
+    "Type": "verb"
+  },
+  {
+    "Word": "grind",
+    "Type": "verb"
+  },
+  {
+    "Word": "smash",
+    "Type": "verb"
+  },
+  {
+    "Word": "break",
+    "Type": "verb"
+  },
+  {
+    "Word": "crack",
+    "Type": "verb"
+  },
+  {
+    "Word": "split",
+    "Type": "verb"
+  },
+  {
+    "Word": "tear",
+    "Type": "verb"
+  },
+  {
+    "Word": "rip",
+    "Type": "verb"
+  },
+  {
+    "Word": "cut",
+    "Type": "verb"
+  },
+  {
+    "Word": "slice",
+    "Type": "verb"
+  },
+  {
+    "Word": "chop",
+    "Type": "verb"
+  },
+  {
+    "Word": "hack",
+    "Type": "verb"
+  },
+  {
+    "Word": "slash",
+    "Type": "verb"
+  },
+  {
+    "Word": "stab",
+    "Type": "verb"
+  },
+  {
+    "Word": "pierce",
+    "Type": "verb"
+  },
+  {
+    "Word": "puncture",
+    "Type": "verb"
+  },
+  {
+    "Word": "prick",
+    "Type": "verb"
+  },
+  {
+    "Word": "poke",
+    "Type": "verb"
+  },
+  {
+    "Word": "shove",
+    "Type": "verb"
+  },
+  {
+    "Word": "thrust",
+    "Type": "verb"
+  },
+  {
+    "Word": "squeeze",
+    "Type": "verb"
+  },
+  {
+    "Word": "pinch",
+    "Type": "verb"
+  },
+  {
+    "Word": "grip",
+    "Type": "verb"
+  },
+  {
+    "Word": "grab",
+    "Type": "verb"
+  },
+  {
+    "Word": "snatch",
+    "Type": "verb"
+  },
+  {
+    "Word": "seize",
+    "Type": "verb"
+  },
+  {
+    "Word": "catch",
+    "Type": "verb"
+  },
+  {
+    "Word": "capture",
+    "Type": "verb"
+  },
+  {
+    "Word": "trap",
+    "Type": "verb"
+  },
+  {
+    "Word": "snare",
+    "Type": "verb"
+  },
+  {
+    "Word": "hook",
+    "Type": "verb"
+  },
+  {
+    "Word": "hang",
+    "Type": "verb"
+  },
+  {
+    "Word": "suspend",
+    "Type": "verb"
+  },
+  {
+    "Word": "dangle",
+    "Type": "verb"
+  },
+  {
+    "Word": "swing",
+    "Type": "verb"
+  },
+  {
+    "Word": "sway",
+    "Type": "verb"
+  },
+  {
+    "Word": "rock",
+    "Type": "verb"
+  },
+  {
+    "Word": "roll",
+    "Type": "verb"
+  },
+  {
+    "Word": "spin",
+    "Type": "verb"
+  },
+  {
+    "Word": "twirl",
+    "Type": "verb"
+  },
+  {
+    "Word": "whirl",
+    "Type": "verb"
+  },
+  {
+    "Word": "rotate",
+    "Type": "verb"
+  },
+  {
+    "Word": "revolve",
+    "Type": "verb"
+  },
+  {
+    "Word": "twist",
+    "Type": "verb"
+  },
+  {
+    "Word": "bend",
+    "Type": "verb"
+  },
+  {
+    "Word": "fold",
+    "Type": "verb"
+  },
+  {
+    "Word": "curl",
+    "Type": "verb"
+  },
+  {
+    "Word": "coil",
+    "Type": "verb"
+  },
+  {
+    "Word": "wrap",
+    "Type": "verb"
+  },
+  {
+    "Word": "cover",
+    "Type": "verb"
+  },
+  {
+    "Word": "conceal",
+    "Type": "verb"
+  },
+  {
+    "Word": "mask",
+    "Type": "verb"
+  },
+  {
+    "Word": "disguise",
+    "Type": "verb"
+  },
+  {
+    "Word": "camouflage",
+    "Type": "verb"
+  },
+  {
+    "Word": "stir",
+    "Type": "verb"
+  },
+  {
+    "Word": "shake",
+    "Type": "verb"
+  },
+  {
+    "Word": "tremble",
+    "Type": "verb"
+  },
+  {
+    "Word": "shiver",
+    "Type": "verb"
+  },
+  {
+    "Word": "quiver",
+    "Type": "verb"
+  },
+  {
+    "Word": "vibrate",
+    "Type": "verb"
+  },
+  {
+    "Word": "oscillate",
+    "Type": "verb"
+  },
+  {
+    "Word": "wave",
+    "Type": "verb"
+  },
+  {
+    "Word": "ripple",
+    "Type": "verb"
+  },
+  {
+    "Word": "flow",
+    "Type": "verb"
+  },
+  {
+    "Word": "stream",
+    "Type": "verb"
+  },
+  {
+    "Word": "pour",
+    "Type": "verb"
+  },
+  {
+    "Word": "spill",
+    "Type": "verb"
+  },
+  {
+    "Word": "leak",
+    "Type": "verb"
+  },
+  {
+    "Word": "drip",
+    "Type": "verb"
+  },
+  {
+    "Word": "plunge",
+    "Type": "verb"
+  },
+  {
+    "Word": "dive",
+    "Type": "verb"
+  },
+  {
+    "Word": "sink",
+    "Type": "verb"
+  },
+  {
+    "Word": "descend",
+    "Type": "verb"
+  },
+  {
+    "Word": "decline",
+    "Type": "verb"
+  },
+  {
+    "Word": "shrink",
+    "Type": "verb"
+  },
+  {
+    "Word": "contract",
+    "Type": "verb"
+  },
+  {
+    "Word": "compress",
+    "Type": "verb"
+  },
+  {
+    "Word": "condense",
+    "Type": "verb"
+  },
+  {
+    "Word": "wither",
+    "Type": "verb"
+  },
+  {
+    "Word": "fade",
+    "Type": "verb"
+  },
+  {
+    "Word": "dim",
+    "Type": "verb"
+  },
+  {
+    "Word": "darken",
+    "Type": "verb"
+  },
+  {
+    "Word": "blacken",
+    "Type": "verb"
+  },
+  {
+    "Word": "lighten",
+    "Type": "verb"
+  },
+  {
+    "Word": "brighten",
+    "Type": "verb"
+  },
+  {
+    "Word": "shine",
+    "Type": "verb"
+  },
+  {
+    "Word": "glow",
+    "Type": "verb"
+  },
+  {
+    "Word": "flash",
+    "Type": "verb"
+  },
+  {
+    "Word": "sparkle",
+    "Type": "verb"
+  },
+  {
+    "Word": "twinkle",
+    "Type": "verb"
+  },
+  {
+    "Word": "flicker",
+    "Type": "verb"
+  },
+  {
+    "Word": "flutter",
+    "Type": "verb"
+  },
+  {
+    "Word": "flap",
+    "Type": "verb"
+  },
+  {
+    "Word": "swish",
+    "Type": "verb"
+  },
+  {
+    "Word": "rustle",
+    "Type": "verb"
+  },
+  {
+    "Word": "creak",
+    "Type": "verb"
+  },
+  {
+    "Word": "groan",
+    "Type": "verb"
+  },
+  {
+    "Word": "moan",
+    "Type": "verb"
+  },
+  {
+    "Word": "howl",
+    "Type": "verb"
+  },
+  {
+    "Word": "roar",
+    "Type": "verb"
+  },
+  {
+    "Word": "growl",
+    "Type": "verb"
+  },
+  {
+    "Word": "snarl",
+    "Type": "verb"
+  },
+  {
+    "Word": "bark",
+    "Type": "verb"
+  },
+  {
+    "Word": "yelp",
+    "Type": "verb"
+  },
+  {
+    "Word": "whine",
+    "Type": "verb"
+  },
+  {
+    "Word": "squeak",
+    "Type": "verb"
+  },
+  {
+    "Word": "chirp",
+    "Type": "verb"
+  },
+  {
+    "Word": "tweet",
+    "Type": "verb"
+  },
+  {
+    "Word": "peep",
+    "Type": "verb"
+  },
+  {
+    "Word": "cluck",
+    "Type": "verb"
+  },
+  {
+    "Word": "cackle",
+    "Type": "verb"
+  },
+  {
+    "Word": "hoot",
+    "Type": "verb"
+  },
+  {
+    "Word": "hiss",
+    "Type": "verb"
+  },
+  {
+    "Word": "drone",
+    "Type": "verb"
+  },
+  {
+    "Word": "mumble",
+    "Type": "verb"
+  },
+  {
+    "Word": "snap",
+    "Type": "verb"
+  },
+  {
+    "Word": "crackle",
+    "Type": "verb"
+  },
+  {
+    "Word": "pop",
+    "Type": "verb"
+  },
+  {
+    "Word": "bang",
+    "Type": "verb"
+  },
+  {
+    "Word": "boom",
+    "Type": "verb"
+  },
+  {
+    "Word": "blast",
+    "Type": "verb"
+  },
+  {
+    "Word": "explode",
+    "Type": "verb"
+  },
+  {
+    "Word": "burst",
+    "Type": "verb"
+  },
+  {
+    "Word": "erupt",
+    "Type": "verb"
+  },
+  {
+    "Word": "puff",
+    "Type": "verb"
+  },
+  {
+    "Word": "huff",
+    "Type": "verb"
+  },
+  {
+    "Word": "wheeze",
+    "Type": "verb"
+  },
+  {
+    "Word": "gasp",
+    "Type": "verb"
+  },
+  {
+    "Word": "pant",
+    "Type": "verb"
+  },
+  {
+    "Word": "inhale",
+    "Type": "verb"
+  },
+  {
+    "Word": "exhale",
+    "Type": "verb"
+  },
+  {
+    "Word": "stretch",
+    "Type": "verb"
+  },
+  {
+    "Word": "reach",
+    "Type": "verb"
+  },
+  {
+    "Word": "extend",
+    "Type": "verb"
+  },
+  {
+    "Word": "spread",
+    "Type": "verb"
+  },
+  {
+    "Word": "expand",
+    "Type": "verb"
+  },
+  {
+    "Word": "multiply",
+    "Type": "verb"
+  },
+  {
+    "Word": "reproduce",
+    "Type": "verb"
+  },
+  {
+    "Word": "breed",
+    "Type": "verb"
+  },
+  {
+    "Word": "spawn",
+    "Type": "verb"
+  },
+  {
+    "Word": "hatch",
+    "Type": "verb"
+  },
+  {
+    "Word": "birth",
+    "Type": "verb"
+  },
+  {
+    "Word": "nurse",
+    "Type": "verb"
+  },
+  {
+    "Word": "feed",
+    "Type": "verb"
+  },
+  {
+    "Word": "nourish",
+    "Type": "verb"
+  },
+  {
+    "Word": "sustain",
+    "Type": "verb"
+  },
+  {
+    "Word": "carry",
+    "Type": "verb"
+  },
+  {
+    "Word": "transport",
+    "Type": "verb"
+  },
+  {
+    "Word": "convey",
+    "Type": "verb"
+  },
+  {
+    "Word": "transfer",
+    "Type": "verb"
+  },
+  {
+    "Word": "relocate",
+    "Type": "verb"
+  },
+  {
+    "Word": "migrate",
+    "Type": "verb"
+  },
+  {
+    "Word": "journey",
+    "Type": "verb"
+  },
+  {
+    "Word": "voyage",
+    "Type": "verb"
+  },
+  {
+    "Word": "sail",
+    "Type": "verb"
+  },
+  {
+    "Word": "cruise",
+    "Type": "verb"
+  },
+  {
+    "Word": "float",
+    "Type": "verb"
+  },
+  {
+    "Word": "drift",
+    "Type": "verb"
+  },
+  {
+    "Word": "glide",
+    "Type": "verb"
+  },
+  {
+    "Word": "slide",
+    "Type": "verb"
+  },
+  {
+    "Word": "slip",
+    "Type": "verb"
+  },
+  {
+    "Word": "skid",
+    "Type": "verb"
+  },
+  {
+    "Word": "skate",
+    "Type": "verb"
+  },
+  {
+    "Word": "ski",
+    "Type": "verb"
+  },
+  {
+    "Word": "surf",
+    "Type": "verb"
+  },
+  {
+    "Word": "pedal",
+    "Type": "verb"
+  },
+  {
+    "Word": "bike",
+    "Type": "verb"
+  },
+  {
+    "Word": "cycle",
+    "Type": "verb"
+  },
+  {
+    "Word": "steer",
+    "Type": "verb"
+  },
+  {
+    "Word": "navigate",
+    "Type": "verb"
+  },
+  {
+    "Word": "pilot",
+    "Type": "verb"
+  },
+  {
+    "Word": "soar",
+    "Type": "verb"
+  },
+  {
+    "Word": "hover",
+    "Type": "verb"
+  },
+  {
+    "Word": "land",
+    "Type": "verb"
+  },
+  {
+    "Word": "touch",
+    "Type": "verb"
+  },
+  {
+    "Word": "alight",
+    "Type": "verb"
+  },
+  {
+    "Word": "perch",
+    "Type": "verb"
+  },
+  {
+    "Word": "sit",
+    "Type": "verb"
+  },
+  {
+    "Word": "lie",
+    "Type": "verb"
+  },
+  {
+    "Word": "recline",
+    "Type": "verb"
+  },
+  {
+    "Word": "lean",
+    "Type": "verb"
+  },
+  {
+    "Word": "slouch",
+    "Type": "verb"
+  },
+  {
+    "Word": "slump",
+    "Type": "verb"
+  },
+  {
+    "Word": "collapse",
+    "Type": "verb"
+  },
+  {
+    "Word": "tumble",
+    "Type": "verb"
+  },
+  {
+    "Word": "trip",
+    "Type": "verb"
+  },
+  {
+    "Word": "stumble",
+    "Type": "verb"
+  },
+  {
+    "Word": "crash",
+    "Type": "verb"
+  },
+  {
+    "Word": "collide",
+    "Type": "verb"
+  },
+  {
+    "Word": "bump",
+    "Type": "verb"
+  },
+  {
+    "Word": "knock",
+    "Type": "verb"
+  },
+  {
+    "Word": "hit",
+    "Type": "verb"
+  },
+  {
+    "Word": "strike",
+    "Type": "verb"
+  },
+  {
+    "Word": "punch",
+    "Type": "verb"
+  },
+  {
+    "Word": "kick",
+    "Type": "verb"
+  },
+  {
+    "Word": "slap",
+    "Type": "verb"
+  },
+  {
+    "Word": "smack",
+    "Type": "verb"
+  },
+  {
+    "Word": "spank",
+    "Type": "verb"
+  },
+  {
+    "Word": "whip",
+    "Type": "verb"
+  },
+  {
+    "Word": "lash",
+    "Type": "verb"
+  },
+  {
+    "Word": "beat",
+    "Type": "verb"
+  },
+  {
+    "Word": "pound",
+    "Type": "verb"
+  },
+  {
+    "Word": "hammer",
+    "Type": "verb"
+  },
+  {
+    "Word": "thump",
+    "Type": "verb"
+  },
+  {
+    "Word": "thud",
+    "Type": "verb"
+  },
+  {
+    "Word": "clunk",
+    "Type": "verb"
+  },
+  {
+    "Word": "clonk",
+    "Type": "verb"
+  },
+  {
+    "Word": "clink",
+    "Type": "verb"
+  },
+  {
+    "Word": "clang",
+    "Type": "verb"
+  },
+  {
+    "Word": "clash",
+    "Type": "verb"
+  },
+  {
+    "Word": "squash",
+    "Type": "verb"
+  },
+  {
+    "Word": "propel",
+    "Type": "verb"
+  },
+  {
+    "Word": "drag",
+    "Type": "verb"
+  },
+  {
+    "Word": "haul",
+    "Type": "verb"
+  },
+  {
+    "Word": "tow",
+    "Type": "verb"
+  },
+  {
+    "Word": "tug",
+    "Type": "verb"
+  },
+  {
+    "Word": "yank",
+    "Type": "verb"
+  },
+  {
+    "Word": "wrench",
+    "Type": "verb"
+  },
+  {
+    "Word": "circle",
+    "Type": "verb"
+  },
+  {
+    "Word": "orbit",
+    "Type": "verb"
+  },
+  {
+    "Word": "swirl",
+    "Type": "verb"
+  },
+  {
+    "Word": "merge",
+    "Type": "verb"
+  },
+  {
+    "Word": "blend",
+    "Type": "verb"
+  },
+  {
+    "Word": "mix",
+    "Type": "verb"
+  },
+  {
+    "Word": "shiver",
+    "Type": "verb"
+  },
+  {
+    "Word": "quiver",
+    "Type": "verb"
+  },
+  {
+    "Word": "vibrate",
+    "Type": "verb"
+  },
+  {
+    "Word": "ripple",
+    "Type": "verb"
+  },
+  {
+    "Word": "flow",
+    "Type": "verb"
+  },
+  {
+    "Word": "stream",
+    "Type": "verb"
+  },
+  {
+    "Word": "pour",
+    "Type": "verb"
+  },
+  {
+    "Word": "spill",
+    "Type": "verb"
+  },
+  {
+    "Word": "leak",
+    "Type": "verb"
+  },
+  {
+    "Word": "drip",
+    "Type": "verb"
+  },
+  {
+    "Word": "drop",
+    "Type": "verb"
+  },
+  {
+    "Word": "fall",
+    "Type": "verb"
+  },
+  {
+    "Word": "plunge",
+    "Type": "verb"
+  },
+  {
+    "Word": "dive",
+    "Type": "verb"
+  },
+  {
+    "Word": "sink",
+    "Type": "verb"
+  },
+  {
+    "Word": "descend",
+    "Type": "verb"
+  },
+  {
+    "Word": "lower",
+    "Type": "verb"
+  },
+  {
+    "Word": "decline",
+    "Type": "verb"
+  },
+  {
+    "Word": "shrink",
+    "Type": "verb"
+  },
+  {
+    "Word": "contract",
+    "Type": "verb"
+  },
+  {
+    "Word": "compress",
+    "Type": "verb"
+  },
+  {
+    "Word": "condense",
+    "Type": "verb"
+  },
+  {
+    "Word": "wither",
+    "Type": "verb"
+  },
+  {
+    "Word": "fade",
+    "Type": "verb"
+  },
+  {
+    "Word": "dim",
+    "Type": "verb"
+  },
+  {
+    "Word": "darken",
+    "Type": "verb"
+  },
+  {
+    "Word": "blacken",
+    "Type": "verb"
+  },
+  {
+    "Word": "lighten",
+    "Type": "verb"
+  },
+  {
+    "Word": "brighten",
+    "Type": "verb"
+  },
+  {
+    "Word": "shine",
+    "Type": "verb"
+  },
+  {
+    "Word": "glow",
+    "Type": "verb"
+  },
+  {
+    "Word": "flash",
+    "Type": "verb"
+  },
+  {
+    "Word": "sparkle",
+    "Type": "verb"
+  },
+  {
+    "Word": "twinkle",
+    "Type": "verb"
+  },
+  {
+    "Word": "flicker",
+    "Type": "verb"
+  },
+  {
+    "Word": "flutter",
+    "Type": "verb"
+  },
+  {
+    "Word": "flap",
+    "Type": "verb"
+  },
+  {
+    "Word": "swish",
+    "Type": "verb"
+  },
+  {
+    "Word": "rustle",
+    "Type": "verb"
+  },
+  {
+    "Word": "creak",
+    "Type": "verb"
+  },
+  {
+    "Word": "groan",
+    "Type": "verb"
+  },
+  {
+    "Word": "moan",
+    "Type": "verb"
+  },
+  {
+    "Word": "howl",
+    "Type": "verb"
+  },
+  {
+    "Word": "roar",
+    "Type": "verb"
+  },
+  {
+    "Word": "growl",
+    "Type": "verb"
+  },
+  {
+    "Word": "snarl",
+    "Type": "verb"
+  },
+  {
+    "Word": "bark",
+    "Type": "verb"
+  },
+  {
+    "Word": "yelp",
+    "Type": "verb"
+  },
+  {
+    "Word": "whine",
+    "Type": "verb"
+  },
+  {
+    "Word": "squeak",
+    "Type": "verb"
+  },
+  {
+    "Word": "chirp",
+    "Type": "verb"
+  },
+  {
+    "Word": "tweet",
+    "Type": "verb"
+  },
+  {
+    "Word": "peep",
+    "Type": "verb"
+  },
+  {
+    "Word": "cluck",
+    "Type": "verb"
+  },
+  {
+    "Word": "cackle",
+    "Type": "verb"
+  },
+  {
+    "Word": "hoot",
+    "Type": "verb"
+  },
+  {
+    "Word": "hiss",
+    "Type": "verb"
+  },
+  {
+    "Word": "drone",
+    "Type": "verb"
+  },
+  {
+    "Word": "mumble",
+    "Type": "verb"
+  },
+  {
+    "Word": "snap",
+    "Type": "verb"
+  },
+  {
+    "Word": "crackle",
+    "Type": "verb"
+  },
+  {
+    "Word": "pop",
+    "Type": "verb"
+  },
+  {
+    "Word": "bang",
+    "Type": "verb"
+  },
+  {
+    "Word": "boom",
+    "Type": "verb"
+  },
+  {
+    "Word": "blast",
+    "Type": "verb"
+  },
+  {
+    "Word": "explode",
+    "Type": "verb"
+  },
+  {
+    "Word": "burst",
+    "Type": "verb"
+  },
+  {
+    "Word": "erupt",
+    "Type": "verb"
+  },
+  {
+    "Word": "puff",
+    "Type": "verb"
+  },
+  {
+    "Word": "huff",
+    "Type": "verb"
+  },
+  {
+    "Word": "wheeze",
+    "Type": "verb"
+  },
+  {
+    "Word": "gasp",
+    "Type": "verb"
+  },
+  {
+    "Word": "pant",
+    "Type": "verb"
+  },
+  {
+    "Word": "inhale",
+    "Type": "verb"
+  },
+  {
+    "Word": "exhale",
+    "Type": "verb"
+  },
+  {
+    "Word": "stretch",
+    "Type": "verb"
+  },
+  {
+    "Word": "reach",
+    "Type": "verb"
+  },
+  {
+    "Word": "extend",
+    "Type": "verb"
+  },
+  {
+    "Word": "spread",
+    "Type": "verb"
+  },
+  {
+    "Word": "expand",
+    "Type": "verb"
+  },
+  {
+    "Word": "multiply",
+    "Type": "verb"
+  },
+  {
+    "Word": "reproduce",
+    "Type": "verb"
+  },
+  {
+    "Word": "breed",
+    "Type": "verb"
+  },
+  {
+    "Word": "spawn",
+    "Type": "verb"
+  },
+  {
+    "Word": "hatch",
+    "Type": "verb"
+  },
+  {
+    "Word": "birth",
+    "Type": "verb"
+  },
+  {
+    "Word": "nurse",
+    "Type": "verb"
+  },
+  {
+    "Word": "feed",
+    "Type": "verb"
+  },
+  {
+    "Word": "nourish",
+    "Type": "verb"
+  },
+  {
+    "Word": "sustain",
+    "Type": "verb"
+  },
+  {
+    "Word": "carry",
+    "Type": "verb"
+  },
+  {
+    "Word": "transport",
+    "Type": "verb"
+  },
+  {
+    "Word": "convey",
+    "Type": "verb"
+  },
+  {
+    "Word": "transfer",
+    "Type": "verb"
+  },
+  {
+    "Word": "relocate",
+    "Type": "verb"
+  },
+  {
+    "Word": "migrate",
+    "Type": "verb"
+  },
+  {
+    "Word": "journey",
+    "Type": "verb"
+  },
+  {
+    "Word": "voyage",
+    "Type": "verb"
+  },
+  {
+    "Word": "sail",
+    "Type": "verb"
+  },
+  {
+    "Word": "cruise",
+    "Type": "verb"
+  },
+  {
+    "Word": "float",
+    "Type": "verb"
+  },
+  {
+    "Word": "drift",
+    "Type": "verb"
+  },
+  {
+    "Word": "glide",
+    "Type": "verb"
+  },
+  {
+    "Word": "slide",
+    "Type": "verb"
+  },
+  {
+    "Word": "slip",
+    "Type": "verb"
+  },
+  {
+    "Word": "skid",
+    "Type": "verb"
+  },
+  {
+    "Word": "skate",
+    "Type": "verb"
+  },
+  {
+    "Word": "ski",
+    "Type": "verb"
+  },
+  {
+    "Word": "surf",
+    "Type": "verb"
+  },
+  {
+    "Word": "pedal",
+    "Type": "verb"
+  },
+  {
+    "Word": "bike",
+    "Type": "verb"
+  },
+  {
+    "Word": "cycle",
+    "Type": "verb"
+  },
+  {
+    "Word": "steer",
+    "Type": "verb"
+  },
+  {
+    "Word": "navigate",
+    "Type": "verb"
+  },
+  {
+    "Word": "pilot",
+    "Type": "verb"
+  },
+  {
+    "Word": "soar",
+    "Type": "verb"
+  },
+  {
+    "Word": "hover",
+    "Type": "verb"
+  },
+  {
+    "Word": "land",
+    "Type": "verb"
+  },
+  {
+    "Word": "touch",
+    "Type": "verb"
+  },
+  {
+    "Word": "alight",
+    "Type": "verb"
+  },
+  {
+    "Word": "perch",
+    "Type": "verb"
+  },
+  {
+    "Word": "sit",
+    "Type": "verb"
+  },
+  {
+    "Word": "lie",
+    "Type": "verb"
+  },
+  {
+    "Word": "recline",
+    "Type": "verb"
+  },
+  {
+    "Word": "lean",
+    "Type": "verb"
+  },
+  {
+    "Word": "slouch",
+    "Type": "verb"
+  },
+  {
+    "Word": "slump",
+    "Type": "verb"
+  },
+  {
+    "Word": "collapse",
+    "Type": "verb"
+  },
+  {
+    "Word": "tumble",
+    "Type": "verb"
+  },
+  {
+    "Word": "trip",
+    "Type": "verb"
+  },
+  {
+    "Word": "stumble",
+    "Type": "verb"
+  },
+  {
+    "Word": "crash",
+    "Type": "verb"
+  },
+  {
+    "Word": "collide",
+    "Type": "verb"
+  },
+  {
+    "Word": "bump",
+    "Type": "verb"
+  },
+  {
+    "Word": "knock",
+    "Type": "verb"
+  },
+  {
+    "Word": "hit",
+    "Type": "verb"
+  },
+  {
+    "Word": "strike",
+    "Type": "verb"
+  },
+  {
+    "Word": "punch",
+    "Type": "verb"
+  },
+  {
+    "Word": "kick",
+    "Type": "verb"
+  },
+  {
+    "Word": "slap",
+    "Type": "verb"
+  },
+  {
+    "Word": "smack",
+    "Type": "verb"
+  },
+  {
+    "Word": "spank",
+    "Type": "verb"
+  },
+  {
+    "Word": "whip",
+    "Type": "verb"
+  },
+  {
+    "Word": "lash",
+    "Type": "verb"
+  },
+  {
+    "Word": "beat",
+    "Type": "verb"
+  },
+  {
+    "Word": "pound",
+    "Type": "verb"
+  },
+  {
+    "Word": "hammer",
+    "Type": "verb"
+  },
+  {
+    "Word": "thump",
+    "Type": "verb"
+  },
+  {
+    "Word": "thud",
+    "Type": "verb"
+  },
+  {
+    "Word": "clunk",
+    "Type": "verb"
+  },
+  {
+    "Word": "clonk",
+    "Type": "verb"
+  },
+  {
+    "Word": "clink",
+    "Type": "verb"
+  },
+  {
+    "Word": "clang",
+    "Type": "verb"
+  },
+  {
+    "Word": "clash",
+    "Type": "verb"
+  },
+  {
+    "Word": "squash",
+    "Type": "verb"
+  },
+  {
+    "Word": "propel",
+    "Type": "verb"
+  },
+  {
+    "Word": "drag",
+    "Type": "verb"
+  },
+  {
+    "Word": "haul",
+    "Type": "verb"
+  },
+  {
+    "Word": "tow",
+    "Type": "verb"
+  },
+  {
+    "Word": "tug",
+    "Type": "verb"
+  },
+  {
+    "Word": "yank",
+    "Type": "verb"
+  },
+  {
+    "Word": "wrench",
+    "Type": "verb"
+  },
+  {
+    "Word": "circle",
+    "Type": "verb"
+  },
+  {
+    "Word": "orbit",
+    "Type": "verb"
+  },
+  {
+    "Word": "swirl",
+    "Type": "verb"
+  },
+  {
+    "Word": "good",
+    "Type": "adjective"
+  },
+  {
+    "Word": "bad",
+    "Type": "adjective"
+  },
+  {
+    "Word": "new",
+    "Type": "adjective"
+  },
+  {
+    "Word": "old",
+    "Type": "adjective"
+  },
+  {
+    "Word": "high",
+    "Type": "adjective"
+  },
+  {
+    "Word": "low",
+    "Type": "adjective"
+  },
+  {
+    "Word": "big",
+    "Type": "adjective"
+  },
+  {
+    "Word": "small",
+    "Type": "adjective"
+  },
+  {
+    "Word": "large",
+    "Type": "adjective"
+  },
+  {
+    "Word": "little",
+    "Type": "adjective"
+  },
+  {
+    "Word": "long",
+    "Type": "adjective"
+  },
+  {
+    "Word": "short",
+    "Type": "adjective"
+  },
+  {
+    "Word": "young",
+    "Type": "adjective"
+  },
+  {
+    "Word": "right",
+    "Type": "adjective"
+  },
+  {
+    "Word": "wrong",
+    "Type": "adjective"
+  },
+  {
+    "Word": "true",
+    "Type": "adjective"
+  },
+  {
+    "Word": "false",
+    "Type": "adjective"
+  },
+  {
+    "Word": "real",
+    "Type": "adjective"
+  },
+  {
+    "Word": "full",
+    "Type": "adjective"
+  },
+  {
+    "Word": "empty",
+    "Type": "adjective"
+  },
+  {
+    "Word": "hot",
+    "Type": "adjective"
+  },
+  {
+    "Word": "cold",
+    "Type": "adjective"
+  },
+  {
+    "Word": "warm",
+    "Type": "adjective"
+  },
+  {
+    "Word": "cool",
+    "Type": "adjective"
+  },
+  {
+    "Word": "hard",
+    "Type": "adjective"
+  },
+  {
+    "Word": "soft",
+    "Type": "adjective"
+  },
+  {
+    "Word": "easy",
+    "Type": "adjective"
+  },
+  {
+    "Word": "difficult",
+    "Type": "adjective"
+  },
+  {
+    "Word": "fast",
+    "Type": "adjective"
+  },
+  {
+    "Word": "slow",
+    "Type": "adjective"
+  },
+  {
+    "Word": "quick",
+    "Type": "adjective"
+  },
+  {
+    "Word": "early",
+    "Type": "adjective"
+  },
+  {
+    "Word": "late",
+    "Type": "adjective"
+  },
+  {
+    "Word": "clean",
+    "Type": "adjective"
+  },
+  {
+    "Word": "dirty",
+    "Type": "adjective"
+  },
+  {
+    "Word": "dark",
+    "Type": "adjective"
+  },
+  {
+    "Word": "light",
+    "Type": "adjective"
+  },
+  {
+    "Word": "bright",
+    "Type": "adjective"
+  },
+  {
+    "Word": "heavy",
+    "Type": "adjective"
+  },
+  {
+    "Word": "thin",
+    "Type": "adjective"
+  },
+  {
+    "Word": "thick",
+    "Type": "adjective"
+  },
+  {
+    "Word": "wide",
+    "Type": "adjective"
+  },
+  {
+    "Word": "narrow",
+    "Type": "adjective"
+  },
+  {
+    "Word": "deep",
+    "Type": "adjective"
+  },
+  {
+    "Word": "shallow",
+    "Type": "adjective"
+  },
+  {
+    "Word": "rich",
+    "Type": "adjective"
+  },
+  {
+    "Word": "poor",
+    "Type": "adjective"
+  },
+  {
+    "Word": "strong",
+    "Type": "adjective"
+  },
+  {
+    "Word": "weak",
+    "Type": "adjective"
+  },
+  {
+    "Word": "safe",
+    "Type": "adjective"
+  },
+  {
+    "Word": "dangerous",
+    "Type": "adjective"
+  },
+  {
+    "Word": "happy",
+    "Type": "adjective"
+  },
+  {
+    "Word": "sad",
+    "Type": "adjective"
+  },
+  {
+    "Word": "angry",
+    "Type": "adjective"
+  },
+  {
+    "Word": "calm",
+    "Type": "adjective"
+  },
+  {
+    "Word": "busy",
+    "Type": "adjective"
+  },
+  {
+    "Word": "free",
+    "Type": "adjective"
+  },
+  {
+    "Word": "open",
+    "Type": "adjective"
+  },
+  {
+    "Word": "closed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "alive",
+    "Type": "adjective"
+  },
+  {
+    "Word": "dead",
+    "Type": "adjective"
+  },
+  {
+    "Word": "fresh",
+    "Type": "adjective"
+  },
+  {
+    "Word": "stale",
+    "Type": "adjective"
+  },
+  {
+    "Word": "sweet",
+    "Type": "adjective"
+  },
+  {
+    "Word": "sour",
+    "Type": "adjective"
+  },
+  {
+    "Word": "bitter",
+    "Type": "adjective"
+  },
+  {
+    "Word": "salty",
+    "Type": "adjective"
+  },
+  {
+    "Word": "spicy",
+    "Type": "adjective"
+  },
+  {
+    "Word": "smooth",
+    "Type": "adjective"
+  },
+  {
+    "Word": "rough",
+    "Type": "adjective"
+  },
+  {
+    "Word": "sharp",
+    "Type": "adjective"
+  },
+  {
+    "Word": "dull",
+    "Type": "adjective"
+  },
+  {
+    "Word": "loud",
+    "Type": "adjective"
+  },
+  {
+    "Word": "quiet",
+    "Type": "adjective"
+  },
+  {
+    "Word": "noisy",
+    "Type": "adjective"
+  },
+  {
+    "Word": "silent",
+    "Type": "adjective"
+  },
+  {
+    "Word": "clear",
+    "Type": "adjective"
+  },
+  {
+    "Word": "cloudy",
+    "Type": "adjective"
+  },
+  {
+    "Word": "foggy",
+    "Type": "adjective"
+  },
+  {
+    "Word": "rainy",
+    "Type": "adjective"
+  },
+  {
+    "Word": "sunny",
+    "Type": "adjective"
+  },
+  {
+    "Word": "windy",
+    "Type": "adjective"
+  },
+  {
+    "Word": "blue",
+    "Type": "adjective"
+  },
+  {
+    "Word": "red",
+    "Type": "adjective"
+  },
+  {
+    "Word": "green",
+    "Type": "adjective"
+  },
+  {
+    "Word": "yellow",
+    "Type": "adjective"
+  },
+  {
+    "Word": "black",
+    "Type": "adjective"
+  },
+  {
+    "Word": "white",
+    "Type": "adjective"
+  },
+  {
+    "Word": "brown",
+    "Type": "adjective"
+  },
+  {
+    "Word": "gray",
+    "Type": "adjective"
+  },
+  {
+    "Word": "grey",
+    "Type": "adjective"
+  },
+  {
+    "Word": "orange",
+    "Type": "adjective"
+  },
+  {
+    "Word": "purple",
+    "Type": "adjective"
+  },
+  {
+    "Word": "pink",
+    "Type": "adjective"
+  },
+  {
+    "Word": "silver",
+    "Type": "adjective"
+  },
+  {
+    "Word": "golden",
+    "Type": "adjective"
+  },
+  {
+    "Word": "beautiful",
+    "Type": "adjective"
+  },
+  {
+    "Word": "ugly",
+    "Type": "adjective"
+  },
+  {
+    "Word": "pretty",
+    "Type": "adjective"
+  },
+  {
+    "Word": "handsome",
+    "Type": "adjective"
+  },
+  {
+    "Word": "cute",
+    "Type": "adjective"
+  },
+  {
+    "Word": "lovely",
+    "Type": "adjective"
+  },
+  {
+    "Word": "nice",
+    "Type": "adjective"
+  },
+  {
+    "Word": "kind",
+    "Type": "adjective"
+  },
+  {
+    "Word": "mean",
+    "Type": "adjective"
+  },
+  {
+    "Word": "cruel",
+    "Type": "adjective"
+  },
+  {
+    "Word": "gentle",
+    "Type": "adjective"
+  },
+  {
+    "Word": "fierce",
+    "Type": "adjective"
+  },
+  {
+    "Word": "brave",
+    "Type": "adjective"
+  },
+  {
+    "Word": "cowardly",
+    "Type": "adjective"
+  },
+  {
+    "Word": "smart",
+    "Type": "adjective"
+  },
+  {
+    "Word": "stupid",
+    "Type": "adjective"
+  },
+  {
+    "Word": "clever",
+    "Type": "adjective"
+  },
+  {
+    "Word": "foolish",
+    "Type": "adjective"
+  },
+  {
+    "Word": "wise",
+    "Type": "adjective"
+  },
+  {
+    "Word": "silly",
+    "Type": "adjective"
+  },
+  {
+    "Word": "funny",
+    "Type": "adjective"
+  },
+  {
+    "Word": "serious",
+    "Type": "adjective"
+  },
+  {
+    "Word": "boring",
+    "Type": "adjective"
+  },
+  {
+    "Word": "interesting",
+    "Type": "adjective"
+  },
+  {
+    "Word": "exciting",
+    "Type": "adjective"
+  },
+  {
+    "Word": "amazing",
+    "Type": "adjective"
+  },
+  {
+    "Word": "wonderful",
+    "Type": "adjective"
+  },
+  {
+    "Word": "terrible",
+    "Type": "adjective"
+  },
+  {
+    "Word": "awful",
+    "Type": "adjective"
+  },
+  {
+    "Word": "horrible",
+    "Type": "adjective"
+  },
+  {
+    "Word": "great",
+    "Type": "adjective"
+  },
+  {
+    "Word": "excellent",
+    "Type": "adjective"
+  },
+  {
+    "Word": "perfect",
+    "Type": "adjective"
+  },
+  {
+    "Word": "fine",
+    "Type": "adjective"
+  },
+  {
+    "Word": "okay",
+    "Type": "adjective"
+  },
+  {
+    "Word": "important",
+    "Type": "adjective"
+  },
+  {
+    "Word": "necessary",
+    "Type": "adjective"
+  },
+  {
+    "Word": "essential",
+    "Type": "adjective"
+  },
+  {
+    "Word": "useful",
+    "Type": "adjective"
+  },
+  {
+    "Word": "useless",
+    "Type": "adjective"
+  },
+  {
+    "Word": "helpful",
+    "Type": "adjective"
+  },
+  {
+    "Word": "harmful",
+    "Type": "adjective"
+  },
+  {
+    "Word": "possible",
+    "Type": "adjective"
+  },
+  {
+    "Word": "impossible",
+    "Type": "adjective"
+  },
+  {
+    "Word": "likely",
+    "Type": "adjective"
+  },
+  {
+    "Word": "unlikely",
+    "Type": "adjective"
+  },
+  {
+    "Word": "certain",
+    "Type": "adjective"
+  },
+  {
+    "Word": "uncertain",
+    "Type": "adjective"
+  },
+  {
+    "Word": "sure",
+    "Type": "adjective"
+  },
+  {
+    "Word": "unsure",
+    "Type": "adjective"
+  },
+  {
+    "Word": "obvious",
+    "Type": "adjective"
+  },
+  {
+    "Word": "hidden",
+    "Type": "adjective"
+  },
+  {
+    "Word": "visible",
+    "Type": "adjective"
+  },
+  {
+    "Word": "invisible",
+    "Type": "adjective"
+  },
+  {
+    "Word": "public",
+    "Type": "adjective"
+  },
+  {
+    "Word": "private",
+    "Type": "adjective"
+  },
+  {
+    "Word": "personal",
+    "Type": "adjective"
+  },
+  {
+    "Word": "common",
+    "Type": "adjective"
+  },
+  {
+    "Word": "rare",
+    "Type": "adjective"
+  },
+  {
+    "Word": "unique",
+    "Type": "adjective"
+  },
+  {
+    "Word": "special",
+    "Type": "adjective"
+  },
+  {
+    "Word": "ordinary",
+    "Type": "adjective"
+  },
+  {
+    "Word": "normal",
+    "Type": "adjective"
+  },
+  {
+    "Word": "strange",
+    "Type": "adjective"
+  },
+  {
+    "Word": "weird",
+    "Type": "adjective"
+  },
+  {
+    "Word": "odd",
+    "Type": "adjective"
+  },
+  {
+    "Word": "regular",
+    "Type": "adjective"
+  },
+  {
+    "Word": "irregular",
+    "Type": "adjective"
+  },
+  {
+    "Word": "simple",
+    "Type": "adjective"
+  },
+  {
+    "Word": "complex",
+    "Type": "adjective"
+  },
+  {
+    "Word": "complicated",
+    "Type": "adjective"
+  },
+  {
+    "Word": "basic",
+    "Type": "adjective"
+  },
+  {
+    "Word": "advanced",
+    "Type": "adjective"
+  },
+  {
+    "Word": "modern",
+    "Type": "adjective"
+  },
+  {
+    "Word": "ancient",
+    "Type": "adjective"
+  },
+  {
+    "Word": "traditional",
+    "Type": "adjective"
+  },
+  {
+    "Word": "contemporary",
+    "Type": "adjective"
+  },
+  {
+    "Word": "classic",
+    "Type": "adjective"
+  },
+  {
+    "Word": "original",
+    "Type": "adjective"
+  },
+  {
+    "Word": "fake",
+    "Type": "adjective"
+  },
+  {
+    "Word": "genuine",
+    "Type": "adjective"
+  },
+  {
+    "Word": "authentic",
+    "Type": "adjective"
+  },
+  {
+    "Word": "natural",
+    "Type": "adjective"
+  },
+  {
+    "Word": "artificial",
+    "Type": "adjective"
+  },
+  {
+    "Word": "synthetic",
+    "Type": "adjective"
+  },
+  {
+    "Word": "organic",
+    "Type": "adjective"
+  },
+  {
+    "Word": "chemical",
+    "Type": "adjective"
+  },
+  {
+    "Word": "physical",
+    "Type": "adjective"
+  },
+  {
+    "Word": "mental",
+    "Type": "adjective"
+  },
+  {
+    "Word": "emotional",
+    "Type": "adjective"
+  },
+  {
+    "Word": "spiritual",
+    "Type": "adjective"
+  },
+  {
+    "Word": "social",
+    "Type": "adjective"
+  },
+  {
+    "Word": "political",
+    "Type": "adjective"
+  },
+  {
+    "Word": "economic",
+    "Type": "adjective"
+  },
+  {
+    "Word": "financial",
+    "Type": "adjective"
+  },
+  {
+    "Word": "commercial",
+    "Type": "adjective"
+  },
+  {
+    "Word": "industrial",
+    "Type": "adjective"
+  },
+  {
+    "Word": "medical",
+    "Type": "adjective"
+  },
+  {
+    "Word": "scientific",
+    "Type": "adjective"
+  },
+  {
+    "Word": "technical",
+    "Type": "adjective"
+  },
+  {
+    "Word": "digital",
+    "Type": "adjective"
+  },
+  {
+    "Word": "electronic",
+    "Type": "adjective"
+  },
+  {
+    "Word": "mechanical",
+    "Type": "adjective"
+  },
+  {
+    "Word": "electrical",
+    "Type": "adjective"
+  },
+  {
+    "Word": "nuclear",
+    "Type": "adjective"
+  },
+  {
+    "Word": "solar",
+    "Type": "adjective"
+  },
+  {
+    "Word": "lunar",
+    "Type": "adjective"
+  },
+  {
+    "Word": "cosmic",
+    "Type": "adjective"
+  },
+  {
+    "Word": "global",
+    "Type": "adjective"
+  },
+  {
+    "Word": "local",
+    "Type": "adjective"
+  },
+  {
+    "Word": "national",
+    "Type": "adjective"
+  },
+  {
+    "Word": "international",
+    "Type": "adjective"
+  },
+  {
+    "Word": "universal",
+    "Type": "adjective"
+  },
+  {
+    "Word": "general",
+    "Type": "adjective"
+  },
+  {
+    "Word": "specific",
+    "Type": "adjective"
+  },
+  {
+    "Word": "particular",
+    "Type": "adjective"
+  },
+  {
+    "Word": "individual",
+    "Type": "adjective"
+  },
+  {
+    "Word": "collective",
+    "Type": "adjective"
+  },
+  {
+    "Word": "shared",
+    "Type": "adjective"
+  },
+  {
+    "Word": "joint",
+    "Type": "adjective"
+  },
+  {
+    "Word": "mutual",
+    "Type": "adjective"
+  },
+  {
+    "Word": "separate",
+    "Type": "adjective"
+  },
+  {
+    "Word": "distinct",
+    "Type": "adjective"
+  },
+  {
+    "Word": "different",
+    "Type": "adjective"
+  },
+  {
+    "Word": "similar",
+    "Type": "adjective"
+  },
+  {
+    "Word": "same",
+    "Type": "adjective"
+  },
+  {
+    "Word": "equal",
+    "Type": "adjective"
+  },
+  {
+    "Word": "identical",
+    "Type": "adjective"
+  },
+  {
+    "Word": "various",
+    "Type": "adjective"
+  },
+  {
+    "Word": "diverse",
+    "Type": "adjective"
+  },
+  {
+    "Word": "multiple",
+    "Type": "adjective"
+  },
+  {
+    "Word": "single",
+    "Type": "adjective"
+  },
+  {
+    "Word": "double",
+    "Type": "adjective"
+  },
+  {
+    "Word": "triple",
+    "Type": "adjective"
+  },
+  {
+    "Word": "whole",
+    "Type": "adjective"
+  },
+  {
+    "Word": "partial",
+    "Type": "adjective"
+  },
+  {
+    "Word": "complete",
+    "Type": "adjective"
+  },
+  {
+    "Word": "incomplete",
+    "Type": "adjective"
+  },
+  {
+    "Word": "total",
+    "Type": "adjective"
+  },
+  {
+    "Word": "absolute",
+    "Type": "adjective"
+  },
+  {
+    "Word": "relative",
+    "Type": "adjective"
+  },
+  {
+    "Word": "positive",
+    "Type": "adjective"
+  },
+  {
+    "Word": "negative",
+    "Type": "adjective"
+  },
+  {
+    "Word": "neutral",
+    "Type": "adjective"
+  },
+  {
+    "Word": "active",
+    "Type": "adjective"
+  },
+  {
+    "Word": "passive",
+    "Type": "adjective"
+  },
+  {
+    "Word": "dynamic",
+    "Type": "adjective"
+  },
+  {
+    "Word": "static",
+    "Type": "adjective"
+  },
+  {
+    "Word": "stable",
+    "Type": "adjective"
+  },
+  {
+    "Word": "unstable",
+    "Type": "adjective"
+  },
+  {
+    "Word": "steady",
+    "Type": "adjective"
+  },
+  {
+    "Word": "unsteady",
+    "Type": "adjective"
+  },
+  {
+    "Word": "constant",
+    "Type": "adjective"
+  },
+  {
+    "Word": "variable",
+    "Type": "adjective"
+  },
+  {
+    "Word": "fixed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "flexible",
+    "Type": "adjective"
+  },
+  {
+    "Word": "rigid",
+    "Type": "adjective"
+  },
+  {
+    "Word": "solid",
+    "Type": "adjective"
+  },
+  {
+    "Word": "liquid",
+    "Type": "adjective"
+  },
+  {
+    "Word": "gaseous",
+    "Type": "adjective"
+  },
+  {
+    "Word": "dry",
+    "Type": "adjective"
+  },
+  {
+    "Word": "wet",
+    "Type": "adjective"
+  },
+  {
+    "Word": "moist",
+    "Type": "adjective"
+  },
+  {
+    "Word": "damp",
+    "Type": "adjective"
+  },
+  {
+    "Word": "humid",
+    "Type": "adjective"
+  },
+  {
+    "Word": "arid",
+    "Type": "adjective"
+  },
+  {
+    "Word": "frozen",
+    "Type": "adjective"
+  },
+  {
+    "Word": "melted",
+    "Type": "adjective"
+  },
+  {
+    "Word": "boiled",
+    "Type": "adjective"
+  },
+  {
+    "Word": "cooked",
+    "Type": "adjective"
+  },
+  {
+    "Word": "raw",
+    "Type": "adjective"
+  },
+  {
+    "Word": "ripe",
+    "Type": "adjective"
+  },
+  {
+    "Word": "rotten",
+    "Type": "adjective"
+  },
+  {
+    "Word": "spoiled",
+    "Type": "adjective"
+  },
+  {
+    "Word": "used",
+    "Type": "adjective"
+  },
+  {
+    "Word": "worn",
+    "Type": "adjective"
+  },
+  {
+    "Word": "torn",
+    "Type": "adjective"
+  },
+  {
+    "Word": "broken",
+    "Type": "adjective"
+  },
+  {
+    "Word": "damaged",
+    "Type": "adjective"
+  },
+  {
+    "Word": "repaired",
+    "Type": "adjective"
+  },
+  {
+    "Word": "restored",
+    "Type": "adjective"
+  },
+  {
+    "Word": "renovated",
+    "Type": "adjective"
+  },
+  {
+    "Word": "updated",
+    "Type": "adjective"
+  },
+  {
+    "Word": "upgraded",
+    "Type": "adjective"
+  },
+  {
+    "Word": "improved",
+    "Type": "adjective"
+  },
+  {
+    "Word": "enhanced",
+    "Type": "adjective"
+  },
+  {
+    "Word": "modified",
+    "Type": "adjective"
+  },
+  {
+    "Word": "changed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "altered",
+    "Type": "adjective"
+  },
+  {
+    "Word": "adjusted",
+    "Type": "adjective"
+  },
+  {
+    "Word": "adapted",
+    "Type": "adjective"
+  },
+  {
+    "Word": "converted",
+    "Type": "adjective"
+  },
+  {
+    "Word": "transformed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "translated",
+    "Type": "adjective"
+  },
+  {
+    "Word": "transferred",
+    "Type": "adjective"
+  },
+  {
+    "Word": "moved",
+    "Type": "adjective"
+  },
+  {
+    "Word": "shifted",
+    "Type": "adjective"
+  },
+  {
+    "Word": "relocated",
+    "Type": "adjective"
+  },
+  {
+    "Word": "displaced",
+    "Type": "adjective"
+  },
+  {
+    "Word": "positioned",
+    "Type": "adjective"
+  },
+  {
+    "Word": "placed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "located",
+    "Type": "adjective"
+  },
+  {
+    "Word": "situated",
+    "Type": "adjective"
+  },
+  {
+    "Word": "found",
+    "Type": "adjective"
+  },
+  {
+    "Word": "discovered",
+    "Type": "adjective"
+  },
+  {
+    "Word": "revealed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "exposed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "covered",
+    "Type": "adjective"
+  },
+  {
+    "Word": "concealed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "protected",
+    "Type": "adjective"
+  },
+  {
+    "Word": "defended",
+    "Type": "adjective"
+  },
+  {
+    "Word": "guarded",
+    "Type": "adjective"
+  },
+  {
+    "Word": "secured",
+    "Type": "adjective"
+  },
+  {
+    "Word": "locked",
+    "Type": "adjective"
+  },
+  {
+    "Word": "closed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "shut",
+    "Type": "adjective"
+  },
+  {
+    "Word": "sealed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "opened",
+    "Type": "adjective"
+  },
+  {
+    "Word": "unlocked",
+    "Type": "adjective"
+  },
+  {
+    "Word": "unsealed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "released",
+    "Type": "adjective"
+  },
+  {
+    "Word": "freed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "liberated",
+    "Type": "adjective"
+  },
+  {
+    "Word": "delivered",
+    "Type": "adjective"
+  },
+  {
+    "Word": "saved",
+    "Type": "adjective"
+  },
+  {
+    "Word": "rescued",
+    "Type": "adjective"
+  },
+  {
+    "Word": "recovered",
+    "Type": "adjective"
+  },
+  {
+    "Word": "healed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "cured",
+    "Type": "adjective"
+  },
+  {
+    "Word": "treated",
+    "Type": "adjective"
+  },
+  {
+    "Word": "examined",
+    "Type": "adjective"
+  },
+  {
+    "Word": "tested",
+    "Type": "adjective"
+  },
+  {
+    "Word": "checked",
+    "Type": "adjective"
+  },
+  {
+    "Word": "inspected",
+    "Type": "adjective"
+  },
+  {
+    "Word": "observed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "watched",
+    "Type": "adjective"
+  },
+  {
+    "Word": "monitored",
+    "Type": "adjective"
+  },
+  {
+    "Word": "tracked",
+    "Type": "adjective"
+  },
+  {
+    "Word": "followed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "pursued",
+    "Type": "adjective"
+  },
+  {
+    "Word": "chased",
+    "Type": "adjective"
+  },
+  {
+    "Word": "hunted",
+    "Type": "adjective"
+  },
+  {
+    "Word": "sought",
+    "Type": "adjective"
+  },
+  {
+    "Word": "searched",
+    "Type": "adjective"
+  },
+  {
+    "Word": "explored",
+    "Type": "adjective"
+  },
+  {
+    "Word": "investigated",
+    "Type": "adjective"
+  },
+  {
+    "Word": "studied",
+    "Type": "adjective"
+  },
+  {
+    "Word": "researched",
+    "Type": "adjective"
+  },
+  {
+    "Word": "analyzed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "evaluated",
+    "Type": "adjective"
+  },
+  {
+    "Word": "assessed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "reviewed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "considered",
+    "Type": "adjective"
+  },
+  {
+    "Word": "thought",
+    "Type": "adjective"
+  },
+  {
+    "Word": "pondered",
+    "Type": "adjective"
+  },
+  {
+    "Word": "reflected",
+    "Type": "adjective"
+  },
+  {
+    "Word": "contemplated",
+    "Type": "adjective"
+  },
+  {
+    "Word": "meditated",
+    "Type": "adjective"
+  },
+  {
+    "Word": "concentrated",
+    "Type": "adjective"
+  },
+  {
+    "Word": "focused",
+    "Type": "adjective"
+  },
+  {
+    "Word": "attended",
+    "Type": "adjective"
+  },
+  {
+    "Word": "listened",
+    "Type": "adjective"
+  },
+  {
+    "Word": "heard",
+    "Type": "adjective"
+  },
+  {
+    "Word": "seen",
+    "Type": "adjective"
+  },
+  {
+    "Word": "viewed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "looked",
+    "Type": "adjective"
+  },
+  {
+    "Word": "regarded",
+    "Type": "adjective"
+  },
+  {
+    "Word": "noticed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "spotted",
+    "Type": "adjective"
+  },
+  {
+    "Word": "recognized",
+    "Type": "adjective"
+  },
+  {
+    "Word": "identified",
+    "Type": "adjective"
+  },
+  {
+    "Word": "known",
+    "Type": "adjective"
+  },
+  {
+    "Word": "understood",
+    "Type": "adjective"
+  },
+  {
+    "Word": "comprehended",
+    "Type": "adjective"
+  },
+  {
+    "Word": "grasped",
+    "Type": "adjective"
+  },
+  {
+    "Word": "realized",
+    "Type": "adjective"
+  },
+  {
+    "Word": "acknowledged",
+    "Type": "adjective"
+  },
+  {
+    "Word": "admitted",
+    "Type": "adjective"
+  },
+  {
+    "Word": "accepted",
+    "Type": "adjective"
+  },
+  {
+    "Word": "agreed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "consented",
+    "Type": "adjective"
+  },
+  {
+    "Word": "approved",
+    "Type": "adjective"
+  },
+  {
+    "Word": "permitted",
+    "Type": "adjective"
+  },
+  {
+    "Word": "allowed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "enabled",
+    "Type": "adjective"
+  },
+  {
+    "Word": "empowered",
+    "Type": "adjective"
+  },
+  {
+    "Word": "authorized",
+    "Type": "adjective"
+  },
+  {
+    "Word": "licensed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "certified",
+    "Type": "adjective"
+  },
+  {
+    "Word": "qualified",
+    "Type": "adjective"
+  },
+  {
+    "Word": "trained",
+    "Type": "adjective"
+  },
+  {
+    "Word": "educated",
+    "Type": "adjective"
+  },
+  {
+    "Word": "instructed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "coached",
+    "Type": "adjective"
+  },
+  {
+    "Word": "mentored",
+    "Type": "adjective"
+  },
+  {
+    "Word": "tutored",
+    "Type": "adjective"
+  },
+  {
+    "Word": "drilled",
+    "Type": "adjective"
+  },
+  {
+    "Word": "practiced",
+    "Type": "adjective"
+  },
+  {
+    "Word": "rehearsed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "performed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "acted",
+    "Type": "adjective"
+  },
+  {
+    "Word": "played",
+    "Type": "adjective"
+  },
+  {
+    "Word": "sung",
+    "Type": "adjective"
+  },
+  {
+    "Word": "danced",
+    "Type": "adjective"
+  },
+  {
+    "Word": "drawn",
+    "Type": "adjective"
+  },
+  {
+    "Word": "painted",
+    "Type": "adjective"
+  },
+  {
+    "Word": "sketched",
+    "Type": "adjective"
+  },
+  {
+    "Word": "colored",
+    "Type": "adjective"
+  },
+  {
+    "Word": "shaded",
+    "Type": "adjective"
+  },
+  {
+    "Word": "highlighted",
+    "Type": "adjective"
+  },
+  {
+    "Word": "emphasized",
+    "Type": "adjective"
+  },
+  {
+    "Word": "stressed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "accented",
+    "Type": "adjective"
+  },
+  {
+    "Word": "pronounced",
+    "Type": "adjective"
+  },
+  {
+    "Word": "spoken",
+    "Type": "adjective"
+  },
+  {
+    "Word": "talked",
+    "Type": "adjective"
+  },
+  {
+    "Word": "chatted",
+    "Type": "adjective"
+  },
+  {
+    "Word": "conversed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "discussed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "debated",
+    "Type": "adjective"
+  },
+  {
+    "Word": "argued",
+    "Type": "adjective"
+  },
+  {
+    "Word": "quarreled",
+    "Type": "adjective"
+  },
+  {
+    "Word": "disagreed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "objected",
+    "Type": "adjective"
+  },
+  {
+    "Word": "protested",
+    "Type": "adjective"
+  },
+  {
+    "Word": "complained",
+    "Type": "adjective"
+  },
+  {
+    "Word": "grumbled",
+    "Type": "adjective"
+  },
+  {
+    "Word": "muttered",
+    "Type": "adjective"
+  },
+  {
+    "Word": "whispered",
+    "Type": "adjective"
+  },
+  {
+    "Word": "murmured",
+    "Type": "adjective"
+  },
+  {
+    "Word": "shouted",
+    "Type": "adjective"
+  },
+  {
+    "Word": "yelled",
+    "Type": "adjective"
+  },
+  {
+    "Word": "screamed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "cried",
+    "Type": "adjective"
+  },
+  {
+    "Word": "wept",
+    "Type": "adjective"
+  },
+  {
+    "Word": "sobbed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "laughed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "giggled",
+    "Type": "adjective"
+  },
+  {
+    "Word": "chuckled",
+    "Type": "adjective"
+  },
+  {
+    "Word": "smiled",
+    "Type": "adjective"
+  },
+  {
+    "Word": "grinned",
+    "Type": "adjective"
+  },
+  {
+    "Word": "frowned",
+    "Type": "adjective"
+  },
+  {
+    "Word": "scowled",
+    "Type": "adjective"
+  },
+  {
+    "Word": "glared",
+    "Type": "adjective"
+  },
+  {
+    "Word": "stared",
+    "Type": "adjective"
+  },
+  {
+    "Word": "gazed",
+    "Type": "adjective"
+  },
+  {
+    "Word": "peered",
+    "Type": "adjective"
+  },
+  {
+    "Word": "glanced",
+    "Type": "adjective"
+  },
+  {
+    "Word": "peeked",
+    "Type": "adjective"
+  },
+  {
+    "Word": "time",
+    "Type": "noun"
+  },
+  {
+    "Word": "year",
+    "Type": "noun"
+  },
+  {
+    "Word": "people",
+    "Type": "noun"
+  },
+  {
+    "Word": "way",
+    "Type": "noun"
+  },
+  {
+    "Word": "day",
+    "Type": "noun"
+  },
+  {
+    "Word": "man",
+    "Type": "noun"
+  },
+  {
+    "Word": "woman",
+    "Type": "noun"
+  },
+  {
+    "Word": "child",
+    "Type": "noun"
+  },
+  {
+    "Word": "world",
+    "Type": "noun"
+  },
+  {
+    "Word": "life",
+    "Type": "noun"
+  },
+  {
+    "Word": "hand",
+    "Type": "noun"
+  },
+  {
+    "Word": "part",
+    "Type": "noun"
+  },
+  {
+    "Word": "place",
+    "Type": "noun"
+  },
+  {
+    "Word": "case",
+    "Type": "noun"
+  },
+  {
+    "Word": "week",
+    "Type": "noun"
+  },
+  {
+    "Word": "company",
+    "Type": "noun"
+  },
+  {
+    "Word": "system",
+    "Type": "noun"
+  },
+  {
+    "Word": "program",
+    "Type": "noun"
+  },
+  {
+    "Word": "question",
+    "Type": "noun"
+  },
+  {
+    "Word": "work",
+    "Type": "noun"
+  },
+  {
+    "Word": "government",
+    "Type": "noun"
+  },
+  {
+    "Word": "number",
+    "Type": "noun"
+  },
+  {
+    "Word": "night",
+    "Type": "noun"
+  },
+  {
+    "Word": "point",
+    "Type": "noun"
+  },
+  {
+    "Word": "home",
+    "Type": "noun"
+  },
+  {
+    "Word": "water",
+    "Type": "noun"
+  },
+  {
+    "Word": "room",
+    "Type": "noun"
+  },
+  {
+    "Word": "mother",
+    "Type": "noun"
+  },
+  {
+    "Word": "area",
+    "Type": "noun"
+  },
+  {
+    "Word": "money",
+    "Type": "noun"
+  },
+  {
+    "Word": "story",
+    "Type": "noun"
+  },
+  {
+    "Word": "fact",
+    "Type": "noun"
+  },
+  {
+    "Word": "month",
+    "Type": "noun"
+  },
+  {
+    "Word": "lot",
+    "Type": "noun"
+  },
+  {
+    "Word": "right",
+    "Type": "noun"
+  },
+  {
+    "Word": "study",
+    "Type": "noun"
+  },
+  {
+    "Word": "book",
+    "Type": "noun"
+  },
+  {
+    "Word": "eye",
+    "Type": "noun"
+  },
+  {
+    "Word": "job",
+    "Type": "noun"
+  },
+  {
+    "Word": "word",
+    "Type": "noun"
+  },
+  {
+    "Word": "business",
+    "Type": "noun"
+  },
+  {
+    "Word": "issue",
+    "Type": "noun"
+  },
+  {
+    "Word": "side",
+    "Type": "noun"
+  },
+  {
+    "Word": "kind",
+    "Type": "noun"
+  },
+  {
+    "Word": "head",
+    "Type": "noun"
+  },
+  {
+    "Word": "house",
+    "Type": "noun"
+  },
+  {
+    "Word": "service",
+    "Type": "noun"
+  },
+  {
+    "Word": "friend",
+    "Type": "noun"
+  },
+  {
+    "Word": "father",
+    "Type": "noun"
+  },
+  {
+    "Word": "power",
+    "Type": "noun"
+  },
+  {
+    "Word": "hour",
+    "Type": "noun"
+  },
+  {
+    "Word": "game",
+    "Type": "noun"
+  },
+  {
+    "Word": "line",
+    "Type": "noun"
+  },
+  {
+    "Word": "end",
+    "Type": "noun"
+  },
+  {
+    "Word": "member",
+    "Type": "noun"
+  },
+  {
+    "Word": "law",
+    "Type": "noun"
+  },
+  {
+    "Word": "car",
+    "Type": "noun"
+  },
+  {
+    "Word": "city",
+    "Type": "noun"
+  },
+  {
+    "Word": "community",
+    "Type": "noun"
+  },
+  {
+    "Word": "name",
+    "Type": "noun"
+  },
+  {
+    "Word": "president",
+    "Type": "noun"
+  },
+  {
+    "Word": "team",
+    "Type": "noun"
+  },
+  {
+    "Word": "minute",
+    "Type": "noun"
+  },
+  {
+    "Word": "idea",
+    "Type": "noun"
+  },
+  {
+    "Word": "body",
+    "Type": "noun"
+  },
+  {
+    "Word": "info",
+    "Type": "noun"
+  },
+  {
+    "Word": "back",
+    "Type": "noun"
+  },
+  {
+    "Word": "parent",
+    "Type": "noun"
+  },
+  {
+    "Word": "face",
+    "Type": "noun"
+  },
+  {
+    "Word": "others",
+    "Type": "noun"
+  },
+  {
+    "Word": "level",
+    "Type": "noun"
+  },
+  {
+    "Word": "office",
+    "Type": "noun"
+  },
+  {
+    "Word": "door",
+    "Type": "noun"
+  },
+  {
+    "Word": "health",
+    "Type": "noun"
+  },
+  {
+    "Word": "person",
+    "Type": "noun"
+  },
+  {
+    "Word": "art",
+    "Type": "noun"
+  },
+  {
+    "Word": "war",
+    "Type": "noun"
+  },
+  {
+    "Word": "history",
+    "Type": "noun"
+  },
+  {
+    "Word": "party",
+    "Type": "noun"
+  },
+  {
+    "Word": "result",
+    "Type": "noun"
+  },
+  {
+    "Word": "change",
+    "Type": "noun"
+  },
+  {
+    "Word": "morning",
+    "Type": "noun"
+  },
+  {
+    "Word": "reason",
+    "Type": "noun"
+  },
+  {
+    "Word": "research",
+    "Type": "noun"
+  },
+  {
+    "Word": "girl",
+    "Type": "noun"
+  },
+  {
+    "Word": "guy",
+    "Type": "noun"
+  },
+  {
+    "Word": "moment",
+    "Type": "noun"
+  },
+  {
+    "Word": "air",
+    "Type": "noun"
+  },
+  {
+    "Word": "teacher",
+    "Type": "noun"
+  },
+  {
+    "Word": "force",
+    "Type": "noun"
+  },
+  {
+    "Word": "education",
+    "Type": "noun"
+  },
+  {
+    "Word": "foot",
+    "Type": "noun"
+  },
+  {
+    "Word": "boy",
+    "Type": "noun"
+  },
+  {
+    "Word": "age",
+    "Type": "noun"
+  },
+  {
+    "Word": "policy",
+    "Type": "noun"
+  },
+  {
+    "Word": "process",
+    "Type": "noun"
+  },
+  {
+    "Word": "music",
+    "Type": "noun"
+  },
+  {
+    "Word": "market",
+    "Type": "noun"
+  },
+  {
+    "Word": "sense",
+    "Type": "noun"
+  },
+  {
+    "Word": "product",
+    "Type": "noun"
+  },
+  {
+    "Word": "material",
+    "Type": "noun"
+  },
+  {
+    "Word": "country",
+    "Type": "noun"
+  },
+  {
+    "Word": "school",
+    "Type": "noun"
+  },
+  {
+    "Word": "family",
+    "Type": "noun"
+  },
+  {
+    "Word": "group",
+    "Type": "noun"
+  },
+  {
+    "Word": "problem",
+    "Type": "noun"
+  },
+  {
+    "Word": "student",
+    "Type": "noun"
+  },
+  {
+    "Word": "figure",
+    "Type": "noun"
+  },
+  {
+    "Word": "report",
+    "Type": "noun"
+  },
+  {
+    "Word": "animal",
+    "Type": "noun"
+  },
+  {
+    "Word": "author",
+    "Type": "noun"
+  },
+  {
+    "Word": "blood",
+    "Type": "noun"
+  },
+  {
+    "Word": "demand",
+    "Type": "noun"
+  },
+  {
+    "Word": "effort",
+    "Type": "noun"
+  },
+  {
+    "Word": "image",
+    "Type": "noun"
+  },
+  {
+    "Word": "cause",
+    "Type": "noun"
+  },
+  {
+    "Word": "class",
+    "Type": "noun"
+  },
+  {
+    "Word": "computer",
+    "Type": "noun"
+  },
+  {
+    "Word": "culture",
+    "Type": "noun"
+  },
+  {
+    "Word": "data",
+    "Type": "noun"
+  },
+  {
+    "Word": "decision",
+    "Type": "noun"
+  },
+  {
+    "Word": "design",
+    "Type": "noun"
+  },
+  {
+    "Word": "difference",
+    "Type": "noun"
+  },
+  {
+    "Word": "economy",
+    "Type": "noun"
+  },
+  {
+    "Word": "energy",
+    "Type": "noun"
+  },
+  {
+    "Word": "event",
+    "Type": "noun"
+  },
+  {
+    "Word": "experience",
+    "Type": "noun"
+  },
+  {
+    "Word": "film",
+    "Type": "noun"
+  },
+  {
+    "Word": "food",
+    "Type": "noun"
+  },
+  {
+    "Word": "function",
+    "Type": "noun"
+  },
+  {
+    "Word": "future",
+    "Type": "noun"
+  },
+  {
+    "Word": "ground",
+    "Type": "noun"
+  },
+  {
+    "Word": "heart",
+    "Type": "noun"
+  },
+  {
+    "Word": "language",
+    "Type": "noun"
+  },
+  {
+    "Word": "machine",
+    "Type": "noun"
+  },
+  {
+    "Word": "matter",
+    "Type": "noun"
+  },
+  {
+    "Word": "mind",
+    "Type": "noun"
+  },
+  {
+    "Word": "nature",
+    "Type": "noun"
+  },
+  {
+    "Word": "news",
+    "Type": "noun"
+  },
+  {
+    "Word": "opportunity",
+    "Type": "noun"
+  },
+  {
+    "Word": "paper",
+    "Type": "noun"
+  },
+  {
+    "Word": "peace",
+    "Type": "noun"
+  },
+  {
+    "Word": "period",
+    "Type": "noun"
+  },
+  {
+    "Word": "phone",
+    "Type": "noun"
+  },
+  {
+    "Word": "plan",
+    "Type": "noun"
+  },
+  {
+    "Word": "plant",
+    "Type": "noun"
+  },
+  {
+    "Word": "price",
+    "Type": "noun"
+  },
+  {
+    "Word": "project",
+    "Type": "noun"
+  },
+  {
+    "Word": "purpose",
+    "Type": "noun"
+  },
+  {
+    "Word": "reality",
+    "Type": "noun"
+  },
+  {
+    "Word": "region",
+    "Type": "noun"
+  },
+  {
+    "Word": "relationship",
+    "Type": "noun"
+  },
+  {
+    "Word": "response",
+    "Type": "noun"
+  },
+  {
+    "Word": "role",
+    "Type": "noun"
+  },
+  {
+    "Word": "security",
+    "Type": "noun"
+  },
+  {
+    "Word": "situation",
+    "Type": "noun"
+  },
+  {
+    "Word": "society",
+    "Type": "noun"
+  },
+  {
+    "Word": "space",
+    "Type": "noun"
+  },
+  {
+    "Word": "sport",
+    "Type": "noun"
+  },
+  {
+    "Word": "stage",
+    "Type": "noun"
+  },
+  {
+    "Word": "state",
+    "Type": "noun"
+  },
+  {
+    "Word": "strategy",
+    "Type": "noun"
+  },
+  {
+    "Word": "street",
+    "Type": "noun"
+  },
+  {
+    "Word": "structure",
+    "Type": "noun"
+  },
+  {
+    "Word": "success",
+    "Type": "noun"
+  },
+  {
+    "Word": "support",
+    "Type": "noun"
+  },
+  {
+    "Word": "technology",
+    "Type": "noun"
+  },
+  {
+    "Word": "television",
+    "Type": "noun"
+  },
+  {
+    "Word": "theory",
+    "Type": "noun"
+  },
+  {
+    "Word": "thing",
+    "Type": "noun"
+  },
+  {
+    "Word": "thought",
+    "Type": "noun"
+  },
+  {
+    "Word": "trade",
+    "Type": "noun"
+  },
+  {
+    "Word": "truth",
+    "Type": "noun"
+  },
+  {
+    "Word": "value",
+    "Type": "noun"
+  },
+  {
+    "Word": "video",
+    "Type": "noun"
+  },
+  {
+    "Word": "view",
+    "Type": "noun"
+  },
+  {
+    "Word": "voice",
+    "Type": "noun"
+  },
+  {
+    "Word": "weather",
+    "Type": "noun"
+  },
+  {
+    "Word": "website",
+    "Type": "noun"
+  },
+  {
+    "Word": "wind",
+    "Type": "noun"
+  },
+  {
+    "Word": "window",
+    "Type": "noun"
+  },
+  {
+    "Word": "wood",
+    "Type": "noun"
+  },
+  {
+    "Word": "dog",
+    "Type": "noun"
+  },
+  {
+    "Word": "cat",
+    "Type": "noun"
+  },
+  {
+    "Word": "bird",
+    "Type": "noun"
+  },
+  {
+    "Word": "fish",
+    "Type": "noun"
+  },
+  {
+    "Word": "tree",
+    "Type": "noun"
+  },
+  {
+    "Word": "flower",
+    "Type": "noun"
+  },
+  {
+    "Word": "grass",
+    "Type": "noun"
+  },
+  {
+    "Word": "sky",
+    "Type": "noun"
+  },
+  {
+    "Word": "sun",
+    "Type": "noun"
+  },
+  {
+    "Word": "moon",
+    "Type": "noun"
+  },
+  {
+    "Word": "star",
+    "Type": "noun"
+  },
+  {
+    "Word": "cloud",
+    "Type": "noun"
+  },
+  {
+    "Word": "rain",
+    "Type": "noun"
+  },
+  {
+    "Word": "snow",
+    "Type": "noun"
+  },
+  {
+    "Word": "river",
+    "Type": "noun"
+  },
+  {
+    "Word": "lake",
+    "Type": "noun"
+  },
+  {
+    "Word": "ocean",
+    "Type": "noun"
+  },
+  {
+    "Word": "sea",
+    "Type": "noun"
+  },
+  {
+    "Word": "mountain",
+    "Type": "noun"
+  },
+  {
+    "Word": "hill",
+    "Type": "noun"
+  },
+  {
+    "Word": "valley",
+    "Type": "noun"
+  },
+  {
+    "Word": "forest",
+    "Type": "noun"
+  },
+  {
+    "Word": "desert",
+    "Type": "noun"
+  },
+  {
+    "Word": "island",
+    "Type": "noun"
+  },
+  {
+    "Word": "beach",
+    "Type": "noun"
+  },
+  {
+    "Word": "rock",
+    "Type": "noun"
+  },
+  {
+    "Word": "stone",
+    "Type": "noun"
+  },
+  {
+    "Word": "sand",
+    "Type": "noun"
+  },
+  {
+    "Word": "soil",
+    "Type": "noun"
+  },
+  {
+    "Word": "earth",
+    "Type": "noun"
+  },
+  {
+    "Word": "planet",
+    "Type": "noun"
+  },
+  {
+    "Word": "universe",
+    "Type": "noun"
+  },
+  {
+    "Word": "galaxy",
+    "Type": "noun"
+  },
+  {
+    "Word": "atom",
+    "Type": "noun"
+  },
+  {
+    "Word": "molecule",
+    "Type": "noun"
+  },
+  {
+    "Word": "cell",
+    "Type": "noun"
+  },
+  {
+    "Word": "organism",
+    "Type": "noun"
+  },
+  {
+    "Word": "species",
+    "Type": "noun"
+  },
+  {
+    "Word": "population",
+    "Type": "noun"
+  },
+  {
+    "Word": "race",
+    "Type": "noun"
+  },
+  {
+    "Word": "nation",
+    "Type": "noun"
+  },
+  {
+    "Word": "county",
+    "Type": "noun"
+  },
+  {
+    "Word": "district",
+    "Type": "noun"
+  },
+  {
+    "Word": "zone",
+    "Type": "noun"
+  },
+  {
+    "Word": "territory",
+    "Type": "noun"
+  },
+  {
+    "Word": "empire",
+    "Type": "noun"
+  },
+  {
+    "Word": "kingdom",
+    "Type": "noun"
+  },
+  {
+    "Word": "republic",
+    "Type": "noun"
+  },
+  {
+    "Word": "democracy",
+    "Type": "noun"
+  },
+  {
+    "Word": "dictatorship",
+    "Type": "noun"
+  },
+  {
+    "Word": "regime",
+    "Type": "noun"
+  },
+  {
+    "Word": "administration",
+    "Type": "noun"
+  },
+  {
+    "Word": "department",
+    "Type": "noun"
+  },
+  {
+    "Word": "agency",
+    "Type": "noun"
+  },
+  {
+    "Word": "bureau",
+    "Type": "noun"
+  },
+  {
+    "Word": "division",
+    "Type": "noun"
+  },
+  {
+    "Word": "section",
+    "Type": "noun"
+  },
+  {
+    "Word": "branch",
+    "Type": "noun"
+  },
+  {
+    "Word": "unit",
+    "Type": "noun"
+  },
+  {
+    "Word": "squad",
+    "Type": "noun"
+  },
+  {
+    "Word": "crew",
+    "Type": "noun"
+  },
+  {
+    "Word": "staff",
+    "Type": "noun"
+  },
+  {
+    "Word": "gang",
+    "Type": "noun"
+  },
+  {
+    "Word": "band",
+    "Type": "noun"
+  },
+  {
+    "Word": "club",
+    "Type": "noun"
+  },
+  {
+    "Word": "association",
+    "Type": "noun"
+  },
+  {
+    "Word": "organization",
+    "Type": "noun"
+  },
+  {
+    "Word": "institution",
+    "Type": "noun"
+  },
+  {
+    "Word": "foundation",
+    "Type": "noun"
+  },
+  {
+    "Word": "corporation",
+    "Type": "noun"
+  },
+  {
+    "Word": "enterprise",
+    "Type": "noun"
+  },
+  {
+    "Word": "firm",
+    "Type": "noun"
+  },
+  {
+    "Word": "industry",
+    "Type": "noun"
+  },
+  {
+    "Word": "factory",
+    "Type": "noun"
+  },
+  {
+    "Word": "mill",
+    "Type": "noun"
+  },
+  {
+    "Word": "shop",
+    "Type": "noun"
+  },
+  {
+    "Word": "store",
+    "Type": "noun"
+  },
+  {
+    "Word": "mall",
+    "Type": "noun"
+  },
+  {
+    "Word": "center",
+    "Type": "noun"
+  },
+  {
+    "Word": "station",
+    "Type": "noun"
+  },
+  {
+    "Word": "terminal",
+    "Type": "noun"
+  },
+  {
+    "Word": "port",
+    "Type": "noun"
+  },
+  {
+    "Word": "harbor",
+    "Type": "noun"
+  },
+  {
+    "Word": "airport",
+    "Type": "noun"
+  },
+  {
+    "Word": "base",
+    "Type": "noun"
+  },
+  {
+    "Word": "camp",
+    "Type": "noun"
+  },
+  {
+    "Word": "site",
+    "Type": "noun"
+  },
+  {
+    "Word": "spot",
+    "Type": "noun"
+  },
+  {
+    "Word": "location",
+    "Type": "noun"
+  },
+  {
+    "Word": "position",
+    "Type": "noun"
+  },
+  {
+    "Word": "neighborhood",
+    "Type": "noun"
+  },
+  {
+    "Word": "quarter",
+    "Type": "noun"
+  },
+  {
+    "Word": "block",
+    "Type": "noun"
+  },
+  {
+    "Word": "road",
+    "Type": "noun"
+  },
+  {
+    "Word": "avenue",
+    "Type": "noun"
+  },
+  {
+    "Word": "lane",
+    "Type": "noun"
+  },
+  {
+    "Word": "path",
+    "Type": "noun"
+  },
+  {
+    "Word": "trail",
+    "Type": "noun"
+  },
+  {
+    "Word": "route",
+    "Type": "noun"
+  },
+  {
+    "Word": "highway",
+    "Type": "noun"
+  },
+  {
+    "Word": "freeway",
+    "Type": "noun"
+  },
+  {
+    "Word": "bridge",
+    "Type": "noun"
+  },
+  {
+    "Word": "tunnel",
+    "Type": "noun"
+  },
+  {
+    "Word": "pass",
+    "Type": "noun"
+  },
+  {
+    "Word": "gate",
+    "Type": "noun"
+  },
+  {
+    "Word": "entrance",
+    "Type": "noun"
+  },
+  {
+    "Word": "exit",
+    "Type": "noun"
+  },
+  {
+    "Word": "doorway",
+    "Type": "noun"
+  },
+  {
+    "Word": "wall",
+    "Type": "noun"
+  },
+  {
+    "Word": "floor",
+    "Type": "noun"
+  },
+  {
+    "Word": "ceiling",
+    "Type": "noun"
+  },
+  {
+    "Word": "roof",
+    "Type": "noun"
+  },
+  {
+    "Word": "stairs",
+    "Type": "noun"
+  },
+  {
+    "Word": "step",
+    "Type": "noun"
+  },
+  {
+    "Word": "hall",
+    "Type": "noun"
+  },
+  {
+    "Word": "corridor",
+    "Type": "noun"
+  },
+  {
+    "Word": "lobby",
+    "Type": "noun"
+  },
+  {
+    "Word": "foyer",
+    "Type": "noun"
+  },
+  {
+    "Word": "porch",
+    "Type": "noun"
+  },
+  {
+    "Word": "patio",
+    "Type": "noun"
+  },
+  {
+    "Word": "deck",
+    "Type": "noun"
+  },
+  {
+    "Word": "balcony",
+    "Type": "noun"
+  },
+  {
+    "Word": "terrace",
+    "Type": "noun"
+  },
+  {
+    "Word": "garden",
+    "Type": "noun"
+  },
+  {
+    "Word": "yard",
+    "Type": "noun"
+  },
+  {
+    "Word": "lawn",
+    "Type": "noun"
+  },
+  {
+    "Word": "park",
+    "Type": "noun"
+  },
+  {
+    "Word": "playground",
+    "Type": "noun"
+  },
+  {
+    "Word": "field",
+    "Type": "noun"
+  },
+  {
+    "Word": "court",
+    "Type": "noun"
+  },
+  {
+    "Word": "pitch",
+    "Type": "noun"
+  },
+  {
+    "Word": "track",
+    "Type": "noun"
+  },
+  {
+    "Word": "pool",
+    "Type": "noun"
+  },
+  {
+    "Word": "bath",
+    "Type": "noun"
+  },
+  {
+    "Word": "shower",
+    "Type": "noun"
+  },
+  {
+    "Word": "toilet",
+    "Type": "noun"
+  },
+  {
+    "Word": "sink",
+    "Type": "noun"
+  },
+  {
+    "Word": "counter",
+    "Type": "noun"
+  },
+  {
+    "Word": "table",
+    "Type": "noun"
+  },
+  {
+    "Word": "desk",
+    "Type": "noun"
+  },
+  {
+    "Word": "chair",
+    "Type": "noun"
+  },
+  {
+    "Word": "sofa",
+    "Type": "noun"
+  },
+  {
+    "Word": "couch",
+    "Type": "noun"
+  },
+  {
+    "Word": "bed",
+    "Type": "noun"
+  },
+  {
+    "Word": "mattress",
+    "Type": "noun"
+  },
+  {
+    "Word": "pillow",
+    "Type": "noun"
+  },
+  {
+    "Word": "blanket",
+    "Type": "noun"
+  },
+  {
+    "Word": "sheet",
+    "Type": "noun"
+  },
+  {
+    "Word": "towel",
+    "Type": "noun"
+  },
+  {
+    "Word": "carpet",
+    "Type": "noun"
+  },
+  {
+    "Word": "rug",
+    "Type": "noun"
+  },
+  {
+    "Word": "mat",
+    "Type": "noun"
+  },
+  {
+    "Word": "curtain",
+    "Type": "noun"
+  },
+  {
+    "Word": "lamp",
+    "Type": "noun"
+  },
+  {
+    "Word": "light",
+    "Type": "noun"
+  },
+  {
+    "Word": "bulb",
+    "Type": "noun"
+  },
+  {
+    "Word": "switch",
+    "Type": "noun"
+  },
+  {
+    "Word": "socket",
+    "Type": "noun"
+  },
+  {
+    "Word": "plug",
+    "Type": "noun"
+  },
+  {
+    "Word": "cord",
+    "Type": "noun"
+  },
+  {
+    "Word": "wire",
+    "Type": "noun"
+  },
+  {
+    "Word": "cable",
+    "Type": "noun"
+  },
+  {
+    "Word": "pipe",
+    "Type": "noun"
+  },
+  {
+    "Word": "tube",
+    "Type": "noun"
+  },
+  {
+    "Word": "hose",
+    "Type": "noun"
+  },
+  {
+    "Word": "faucet",
+    "Type": "noun"
+  },
+  {
+    "Word": "valve",
+    "Type": "noun"
+  },
+  {
+    "Word": "pump",
+    "Type": "noun"
+  },
+  {
+    "Word": "motor",
+    "Type": "noun"
+  },
+  {
+    "Word": "engine",
+    "Type": "noun"
+  },
+  {
+    "Word": "generator",
+    "Type": "noun"
+  },
+  {
+    "Word": "battery",
+    "Type": "noun"
+  },
+  {
+    "Word": "charger",
+    "Type": "noun"
+  },
+  {
+    "Word": "adapter",
+    "Type": "noun"
+  },
+  {
+    "Word": "converter",
+    "Type": "noun"
+  },
+  {
+    "Word": "transformer",
+    "Type": "noun"
+  },
+  {
+    "Word": "relay",
+    "Type": "noun"
+  },
+  {
+    "Word": "sensor",
+    "Type": "noun"
+  },
+  {
+    "Word": "detector",
+    "Type": "noun"
+  },
+  {
+    "Word": "meter",
+    "Type": "noun"
+  },
+  {
+    "Word": "gauge",
+    "Type": "noun"
+  },
+  {
+    "Word": "dial",
+    "Type": "noun"
+  },
+  {
+    "Word": "knob",
+    "Type": "noun"
+  },
+  {
+    "Word": "button",
+    "Type": "noun"
+  },
+  {
+    "Word": "lever",
+    "Type": "noun"
+  },
+  {
+    "Word": "handle",
+    "Type": "noun"
+  },
+  {
+    "Word": "grip",
+    "Type": "noun"
+  },
+  {
+    "Word": "wheel",
+    "Type": "noun"
+  },
+  {
+    "Word": "gear",
+    "Type": "noun"
+  },
+  {
+    "Word": "belt",
+    "Type": "noun"
+  },
+  {
+    "Word": "chain",
+    "Type": "noun"
+  },
+  {
+    "Word": "rope",
+    "Type": "noun"
+  },
+  {
+    "Word": "string",
+    "Type": "noun"
+  },
+  {
+    "Word": "thread",
+    "Type": "noun"
+  },
+  {
+    "Word": "yarn",
+    "Type": "noun"
+  },
+  {
+    "Word": "fiber",
+    "Type": "noun"
+  },
+  {
+    "Word": "cloth",
+    "Type": "noun"
+  },
+  {
+    "Word": "fabric",
+    "Type": "noun"
+  },
+  {
+    "Word": "textile",
+    "Type": "noun"
+  },
+  {
+    "Word": "substance",
+    "Type": "noun"
+  },
+  {
+    "Word": "element",
+    "Type": "noun"
+  },
+  {
+    "Word": "compound",
+    "Type": "noun"
+  },
+  {
+    "Word": "mixture",
+    "Type": "noun"
+  },
+  {
+    "Word": "solution",
+    "Type": "noun"
+  },
+  {
+    "Word": "liquid",
+    "Type": "noun"
+  },
+  {
+    "Word": "fluid",
+    "Type": "noun"
+  },
+  {
+    "Word": "gas",
+    "Type": "noun"
+  },
+  {
+    "Word": "vapor",
+    "Type": "noun"
+  },
+  {
+    "Word": "steam",
+    "Type": "noun"
+  },
+  {
+    "Word": "smoke",
+    "Type": "noun"
+  },
+  {
+    "Word": "fume",
+    "Type": "noun"
+  },
+  {
+    "Word": "dust",
+    "Type": "noun"
+  },
+  {
+    "Word": "dirt",
+    "Type": "noun"
+  },
+  {
+    "Word": "grime",
+    "Type": "noun"
+  },
+  {
+    "Word": "mud",
+    "Type": "noun"
+  },
+  {
+    "Word": "clay",
+    "Type": "noun"
+  },
+  {
+    "Word": "gravel",
+    "Type": "noun"
+  },
+  {
+    "Word": "pebble",
+    "Type": "noun"
+  },
+  {
+    "Word": "boulder",
+    "Type": "noun"
+  },
+  {
+    "Word": "cliff",
+    "Type": "noun"
+  },
+  {
+    "Word": "canyon",
+    "Type": "noun"
+  },
+  {
+    "Word": "gorge",
+    "Type": "noun"
+  },
+  {
+    "Word": "plain",
+    "Type": "noun"
+  },
+  {
+    "Word": "plateau",
+    "Type": "noun"
+  },
+  {
+    "Word": "mesa",
+    "Type": "noun"
+  },
+  {
+    "Word": "butte",
+    "Type": "noun"
+  },
+  {
+    "Word": "ridge",
+    "Type": "noun"
+  },
+  {
+    "Word": "peak",
+    "Type": "noun"
+  },
+  {
+    "Word": "summit",
+    "Type": "noun"
+  },
+  {
+    "Word": "crest",
+    "Type": "noun"
+  },
+  {
+    "Word": "top",
+    "Type": "noun"
+  },
+  {
+    "Word": "bottom",
+    "Type": "noun"
+  },
+  {
+    "Word": "base",
+    "Type": "noun"
+  },
+  {
+    "Word": "foundation",
+    "Type": "noun"
+  },
+  {
+    "Word": "root",
+    "Type": "noun"
+  },
+  {
+    "Word": "stem",
+    "Type": "noun"
+  },
+  {
+    "Word": "trunk",
+    "Type": "noun"
+  },
+  {
+    "Word": "twig",
+    "Type": "noun"
+  },
+  {
+    "Word": "leaf",
+    "Type": "noun"
+  },
+  {
+    "Word": "bud",
+    "Type": "noun"
+  },
+  {
+    "Word": "bloom",
+    "Type": "noun"
+  },
+  {
+    "Word": "petal",
+    "Type": "noun"
+  },
+  {
+    "Word": "seed",
+    "Type": "noun"
+  },
+  {
+    "Word": "fruit",
+    "Type": "noun"
+  },
+  {
+    "Word": "berry",
+    "Type": "noun"
+  },
+  {
+    "Word": "nut",
+    "Type": "noun"
+  },
+  {
+    "Word": "grain",
+    "Type": "noun"
+  },
+  {
+    "Word": "kernel",
+    "Type": "noun"
+  },
+  {
+    "Word": "husk",
+    "Type": "noun"
+  },
+  {
+    "Word": "shell",
+    "Type": "noun"
+  },
+  {
+    "Word": "skin",
+    "Type": "noun"
+  },
+  {
+    "Word": "peel",
+    "Type": "noun"
+  },
+  {
+    "Word": "rind",
+    "Type": "noun"
+  },
+  {
+    "Word": "flesh",
+    "Type": "noun"
+  },
+  {
+    "Word": "pulp",
+    "Type": "noun"
+  },
+  {
+    "Word": "juice",
+    "Type": "noun"
+  },
+  {
+    "Word": "sap",
+    "Type": "noun"
+  },
+  {
+    "Word": "resin",
+    "Type": "noun"
+  },
+  {
+    "Word": "gum",
+    "Type": "noun"
+  },
+  {
+    "Word": "wax",
+    "Type": "noun"
+  },
+  {
+    "Word": "oil",
+    "Type": "noun"
+  },
+  {
+    "Word": "fat",
+    "Type": "noun"
+  },
+  {
+    "Word": "grease",
+    "Type": "noun"
+  },
+  {
+    "Word": "butter",
+    "Type": "noun"
+  },
+  {
+    "Word": "cream",
+    "Type": "noun"
+  },
+  {
+    "Word": "milk",
+    "Type": "noun"
+  },
+  {
+    "Word": "cheese",
+    "Type": "noun"
+  },
+  {
+    "Word": "yogurt",
+    "Type": "noun"
+  },
+  {
+    "Word": "egg",
+    "Type": "noun"
+  },
+  {
+    "Word": "meat",
+    "Type": "noun"
+  },
+  {
+    "Word": "beef",
+    "Type": "noun"
+  },
+  {
+    "Word": "pork",
+    "Type": "noun"
+  },
+  {
+    "Word": "chicken",
+    "Type": "noun"
+  },
+  {
+    "Word": "seafood",
+    "Type": "noun"
+  },
+  {
+    "Word": "shrimp",
+    "Type": "noun"
+  },
+  {
+    "Word": "crab",
+    "Type": "noun"
+  },
+  {
+    "Word": "lobster",
+    "Type": "noun"
+  },
+  {
+    "Word": "clam",
+    "Type": "noun"
+  },
+  {
+    "Word": "oyster",
+    "Type": "noun"
+  },
+  {
+    "Word": "mussel",
+    "Type": "noun"
+  },
+  {
+    "Word": "squid",
+    "Type": "noun"
+  },
+  {
+    "Word": "octopus",
+    "Type": "noun"
+  },
+  {
+    "Word": "whale",
+    "Type": "noun"
+  },
+  {
+    "Word": "dolphin",
+    "Type": "noun"
+  },
+  {
+    "Word": "shark",
+    "Type": "noun"
+  },
+  {
+    "Word": "seal",
+    "Type": "noun"
+  },
+  {
+    "Word": "walrus",
+    "Type": "noun"
+  },
+  {
+    "Word": "otter",
+    "Type": "noun"
+  },
+  {
+    "Word": "beaver",
+    "Type": "noun"
+  },
+  {
+    "Word": "bear",
+    "Type": "noun"
+  },
+  {
+    "Word": "wolf",
+    "Type": "noun"
+  },
+  {
+    "Word": "fox",
+    "Type": "noun"
+  },
+  {
+    "Word": "coyote",
+    "Type": "noun"
+  },
+  {
+    "Word": "jackal",
+    "Type": "noun"
+  },
+  {
+    "Word": "hyena",
+    "Type": "noun"
+  },
+  {
+    "Word": "lion",
+    "Type": "noun"
+  },
+  {
+    "Word": "tiger",
+    "Type": "noun"
+  },
+  {
+    "Word": "leopard",
+    "Type": "noun"
+  },
+  {
+    "Word": "cheetah",
+    "Type": "noun"
+  },
+  {
+    "Word": "jaguar",
+    "Type": "noun"
+  },
+  {
+    "Word": "panther",
+    "Type": "noun"
+  },
+  {
+    "Word": "cougar",
+    "Type": "noun"
+  },
+  {
+    "Word": "lynx",
+    "Type": "noun"
+  },
+  {
+    "Word": "bobcat",
+    "Type": "noun"
+  },
+  {
+    "Word": "kitten",
+    "Type": "noun"
+  },
+  {
+    "Word": "puppy",
+    "Type": "noun"
+  },
+  {
+    "Word": "horse",
+    "Type": "noun"
+  },
+  {
+    "Word": "pony",
+    "Type": "noun"
+  },
+  {
+    "Word": "donkey",
+    "Type": "noun"
+  },
+  {
+    "Word": "mule",
+    "Type": "noun"
+  },
+  {
+    "Word": "zebra",
+    "Type": "noun"
+  },
+  {
+    "Word": "cow",
+    "Type": "noun"
+  },
+  {
+    "Word": "bull",
+    "Type": "noun"
+  },
+  {
+    "Word": "calf",
+    "Type": "noun"
+  },
+  {
+    "Word": "ox",
+    "Type": "noun"
+  },
+  {
+    "Word": "buffalo",
+    "Type": "noun"
+  },
+  {
+    "Word": "bison",
+    "Type": "noun"
+  },
+  {
+    "Word": "yak",
+    "Type": "noun"
+  },
+  {
+    "Word": "sheep",
+    "Type": "noun"
+  },
+  {
+    "Word": "lamb",
+    "Type": "noun"
+  },
+  {
+    "Word": "goat",
+    "Type": "noun"
+  },
+  {
+    "Word": "kid",
+    "Type": "noun"
+  },
+  {
+    "Word": "pig",
+    "Type": "noun"
+  },
+  {
+    "Word": "hog",
+    "Type": "noun"
+  },
+  {
+    "Word": "boar",
+    "Type": "noun"
+  },
+  {
+    "Word": "rabbit",
+    "Type": "noun"
+  },
+  {
+    "Word": "hare",
+    "Type": "noun"
+  },
+  {
+    "Word": "squirrel",
+    "Type": "noun"
+  },
+  {
+    "Word": "chipmunk",
+    "Type": "noun"
+  },
+  {
+    "Word": "mouse",
+    "Type": "noun"
+  },
+  {
+    "Word": "rat",
+    "Type": "noun"
+  },
+  {
+    "Word": "hamster",
+    "Type": "noun"
+  },
+  {
+    "Word": "gerbil",
+    "Type": "noun"
+  },
+  {
+    "Word": "ferret",
+    "Type": "noun"
+  },
+  {
+    "Word": "weasel",
+    "Type": "noun"
+  },
+  {
+    "Word": "badger",
+    "Type": "noun"
+  },
+  {
+    "Word": "skunk",
+    "Type": "noun"
+  },
+  {
+    "Word": "raccoon",
+    "Type": "noun"
+  },
+  {
+    "Word": "opossum",
+    "Type": "noun"
+  },
+  {
+    "Word": "kangaroo",
+    "Type": "noun"
+  },
+  {
+    "Word": "koala",
+    "Type": "noun"
+  },
+  {
+    "Word": "wombat",
+    "Type": "noun"
+  },
+  {
+    "Word": "platypus",
+    "Type": "noun"
+  },
+  {
+    "Word": "echidna",
+    "Type": "noun"
+  },
+  {
+    "Word": "penguin",
+    "Type": "noun"
+  },
+  {
+    "Word": "ostrich",
+    "Type": "noun"
+  },
+  {
+    "Word": "emu",
+    "Type": "noun"
+  },
+  {
+    "Word": "cassowary",
+    "Type": "noun"
+  },
+  {
+    "Word": "kiwi",
+    "Type": "noun"
+  },
+  {
+    "Word": "eagle",
+    "Type": "noun"
+  },
+  {
+    "Word": "hawk",
+    "Type": "noun"
+  },
+  {
+    "Word": "falcon",
+    "Type": "noun"
+  },
+  {
+    "Word": "owl",
+    "Type": "noun"
+  },
+  {
+    "Word": "vulture",
+    "Type": "noun"
+  },
+  {
+    "Word": "condor",
+    "Type": "noun"
+  },
+  {
+    "Word": "crow",
+    "Type": "noun"
+  },
+  {
+    "Word": "raven",
+    "Type": "noun"
+  },
+  {
+    "Word": "robin",
+    "Type": "noun"
+  },
+  {
+    "Word": "sparrow",
+    "Type": "noun"
+  },
+  {
+    "Word": "finch",
+    "Type": "noun"
+  },
+  {
+    "Word": "canary",
+    "Type": "noun"
+  },
+  {
+    "Word": "parrot",
+    "Type": "noun"
+  },
+  {
+    "Word": "macaw",
+    "Type": "noun"
+  },
+  {
+    "Word": "cockatoo",
+    "Type": "noun"
+  },
+  {
+    "Word": "pigeon",
+    "Type": "noun"
+  },
+  {
+    "Word": "dove",
+    "Type": "noun"
+  },
+  {
+    "Word": "seagull",
+    "Type": "noun"
+  },
+  {
+    "Word": "pelican",
+    "Type": "noun"
+  },
+  {
+    "Word": "stork",
+    "Type": "noun"
+  },
+  {
+    "Word": "heron",
+    "Type": "noun"
+  },
+  {
+    "Word": "crane",
+    "Type": "noun"
+  },
+  {
+    "Word": "flamingo",
+    "Type": "noun"
+  },
+  {
+    "Word": "swan",
+    "Type": "noun"
+  },
+  {
+    "Word": "duck",
+    "Type": "noun"
+  },
+  {
+    "Word": "goose",
+    "Type": "noun"
+  },
+  {
+    "Word": "turkey",
+    "Type": "noun"
+  },
+  {
+    "Word": "peacock",
+    "Type": "noun"
+  },
+  {
+    "Word": "pheasant",
+    "Type": "noun"
+  },
+  {
+    "Word": "quail",
+    "Type": "noun"
+  },
+  {
+    "Word": "grouse",
+    "Type": "noun"
+  },
+  {
+    "Word": "partridge",
+    "Type": "noun"
+  },
+  {
+    "Word": "rooster",
+    "Type": "noun"
+  },
+  {
+    "Word": "hen",
+    "Type": "noun"
+  },
+  {
+    "Word": "chick",
+    "Type": "noun"
+  },
+  {
+    "Word": "frog",
+    "Type": "noun"
+  },
+  {
+    "Word": "toad",
+    "Type": "noun"
+  },
+  {
+    "Word": "salamander",
+    "Type": "noun"
+  },
+  {
+    "Word": "newt",
+    "Type": "noun"
+  },
+  {
+    "Word": "lizard",
+    "Type": "noun"
+  },
+  {
+    "Word": "gecko",
+    "Type": "noun"
+  },
+  {
+    "Word": "iguana",
+    "Type": "noun"
+  },
+  {
+    "Word": "chameleon",
+    "Type": "noun"
+  },
+  {
+    "Word": "snake",
+    "Type": "noun"
+  },
+  {
+    "Word": "python",
+    "Type": "noun"
+  },
+  {
+    "Word": "boa",
+    "Type": "noun"
+  },
+  {
+    "Word": "cobra",
+    "Type": "noun"
+  },
+  {
+    "Word": "viper",
+    "Type": "noun"
+  },
+  {
+    "Word": "rattlesnake",
+    "Type": "noun"
+  },
+  {
+    "Word": "turtle",
+    "Type": "noun"
+  },
+  {
+    "Word": "tortoise",
+    "Type": "noun"
+  },
+  {
+    "Word": "terrapin",
+    "Type": "noun"
+  },
+  {
+    "Word": "crocodile",
+    "Type": "noun"
+  },
+  {
+    "Word": "alligator",
+    "Type": "noun"
+  },
+  {
+    "Word": "caiman",
+    "Type": "noun"
+  },
+  {
+    "Word": "dinosaur",
+    "Type": "noun"
+  },
+  {
+    "Word": "dragon",
+    "Type": "noun"
+  },
+  {
+    "Word": "phoenix",
+    "Type": "noun"
+  },
+  {
+    "Word": "unicorn",
+    "Type": "noun"
+  },
+  {
+    "Word": "pegasus",
+    "Type": "noun"
+  },
+  {
+    "Word": "griffin",
+    "Type": "noun"
+  },
+  {
+    "Word": "centaur",
+    "Type": "noun"
+  },
+  {
+    "Word": "mermaid",
+    "Type": "noun"
+  },
+  {
+    "Word": "siren",
+    "Type": "noun"
+  },
+  {
+    "Word": "nymph",
+    "Type": "noun"
+  },
+  {
+    "Word": "fairy",
+    "Type": "noun"
+  },
+  {
+    "Word": "elf",
+    "Type": "noun"
+  },
+  {
+    "Word": "dwarf",
+    "Type": "noun"
+  },
+  {
+    "Word": "giant",
+    "Type": "noun"
+  },
+  {
+    "Word": "troll",
+    "Type": "noun"
+  },
+  {
+    "Word": "ogre",
+    "Type": "noun"
+  },
+  {
+    "Word": "goblin",
+    "Type": "noun"
+  },
+  {
+    "Word": "orc",
+    "Type": "noun"
+  },
+  {
+    "Word": "demon",
+    "Type": "noun"
+  },
+  {
+    "Word": "devil",
+    "Type": "noun"
+  },
+  {
+    "Word": "angel",
+    "Type": "noun"
+  },
+  {
+    "Word": "god",
+    "Type": "noun"
+  },
+  {
+    "Word": "goddess",
+    "Type": "noun"
+  },
+  {
+    "Word": "spirit",
+    "Type": "noun"
+  },
+  {
+    "Word": "ghost",
+    "Type": "noun"
+  },
+  {
+    "Word": "phantom",
+    "Type": "noun"
+  },
+  {
+    "Word": "specter",
+    "Type": "noun"
+  },
+  {
+    "Word": "wraith",
+    "Type": "noun"
+  },
+  {
+    "Word": "zombie",
+    "Type": "noun"
+  },
+  {
+    "Word": "vampire",
+    "Type": "noun"
+  },
+  {
+    "Word": "werewolf",
+    "Type": "noun"
+  },
+  {
+    "Word": "witch",
+    "Type": "noun"
+  },
+  {
+    "Word": "wizard",
+    "Type": "noun"
+  },
+  {
+    "Word": "sorcerer",
+    "Type": "noun"
+  },
+  {
+    "Word": "mage",
+    "Type": "noun"
+  },
+  {
+    "Word": "warlock",
+    "Type": "noun"
+  },
+  {
+    "Word": "druid",
+    "Type": "noun"
+  },
+  {
+    "Word": "priest",
+    "Type": "noun"
+  },
+  {
+    "Word": "monk",
+    "Type": "noun"
+  },
+  {
+    "Word": "nun",
+    "Type": "noun"
+  },
+  {
+    "Word": "bishop",
+    "Type": "noun"
+  },
+  {
+    "Word": "pope",
+    "Type": "noun"
+  },
+  {
+    "Word": "king",
+    "Type": "noun"
+  },
+  {
+    "Word": "queen",
+    "Type": "noun"
+  },
+  {
+    "Word": "prince",
+    "Type": "noun"
+  },
+  {
+    "Word": "princess",
+    "Type": "noun"
+  },
+  {
+    "Word": "duke",
+    "Type": "noun"
+  },
+  {
+    "Word": "duchess",
+    "Type": "noun"
+  },
+  {
+    "Word": "earl",
+    "Type": "noun"
+  },
+  {
+    "Word": "count",
+    "Type": "noun"
+  },
+  {
+    "Word": "baron",
+    "Type": "noun"
+  },
+  {
+    "Word": "lord",
+    "Type": "noun"
+  },
+  {
+    "Word": "lady",
+    "Type": "noun"
+  },
+  {
+    "Word": "knight",
+    "Type": "noun"
+  },
+  {
+    "Word": "squire",
+    "Type": "noun"
+  },
+  {
+    "Word": "page",
+    "Type": "noun"
+  },
+  {
+    "Word": "servant",
+    "Type": "noun"
+  },
+  {
+    "Word": "slave",
+    "Type": "noun"
+  },
+  {
+    "Word": "peasant",
+    "Type": "noun"
+  },
+  {
+    "Word": "farmer",
+    "Type": "noun"
+  },
+  {
+    "Word": "merchant",
+    "Type": "noun"
+  },
+  {
+    "Word": "trader",
+    "Type": "noun"
+  },
+  {
+    "Word": "seller",
+    "Type": "noun"
+  },
+  {
+    "Word": "buyer",
+    "Type": "noun"
+  },
+  {
+    "Word": "customer",
+    "Type": "noun"
+  },
+  {
+    "Word": "client",
+    "Type": "noun"
+  },
+  {
+    "Word": "patient",
+    "Type": "noun"
+  },
+  {
+    "Word": "guest",
+    "Type": "noun"
+  },
+  {
+    "Word": "host",
+    "Type": "noun"
+  },
+  {
+    "Word": "owner",
+    "Type": "noun"
+  },
+  {
+    "Word": "tenant",
+    "Type": "noun"
+  },
+  {
+    "Word": "landlord",
+    "Type": "noun"
+  },
+  {
+    "Word": "neighbor",
+    "Type": "noun"
+  },
+  {
+    "Word": "stranger",
+    "Type": "noun"
+  },
+  {
+    "Word": "alien",
+    "Type": "noun"
+  },
+  {
+    "Word": "foreigner",
+    "Type": "noun"
+  },
+  {
+    "Word": "immigrant",
+    "Type": "noun"
+  },
+  {
+    "Word": "emigrant",
+    "Type": "noun"
+  },
+  {
+    "Word": "refugee",
+    "Type": "noun"
+  },
+  {
+    "Word": "exile",
+    "Type": "noun"
+  },
+  {
+    "Word": "outcast",
+    "Type": "noun"
+  },
+  {
+    "Word": "rebel",
+    "Type": "noun"
+  },
+  {
+    "Word": "revolutionary",
+    "Type": "noun"
+  },
+  {
+    "Word": "activist",
+    "Type": "noun"
+  },
+  {
+    "Word": "protester",
+    "Type": "noun"
+  },
+  {
+    "Word": "demonstrator",
+    "Type": "noun"
+  },
+  {
+    "Word": "marcher",
+    "Type": "noun"
+  },
+  {
+    "Word": "striker",
+    "Type": "noun"
+  },
+  {
+    "Word": "worker",
+    "Type": "noun"
+  },
+  {
+    "Word": "laborer",
+    "Type": "noun"
+  },
+  {
+    "Word": "employee",
+    "Type": "noun"
+  },
+  {
+    "Word": "employer",
+    "Type": "noun"
+  },
+  {
+    "Word": "manager",
+    "Type": "noun"
+  },
+  {
+    "Word": "boss",
+    "Type": "noun"
+  },
+  {
+    "Word": "supervisor",
+    "Type": "noun"
+  },
+  {
+    "Word": "director",
+    "Type": "noun"
+  },
+  {
+    "Word": "executive",
+    "Type": "noun"
+  },
+  {
+    "Word": "chairman",
+    "Type": "noun"
+  },
+  {
+    "Word": "founder",
+    "Type": "noun"
+  },
+  {
+    "Word": "partner",
+    "Type": "noun"
+  },
+  {
+    "Word": "shareholder",
+    "Type": "noun"
+  },
+  {
+    "Word": "investor",
+    "Type": "noun"
+  },
+  {
+    "Word": "banker",
+    "Type": "noun"
+  },
+  {
+    "Word": "broker",
+    "Type": "noun"
+  },
+  {
+    "Word": "agent",
+    "Type": "noun"
+  },
+  {
+    "Word": "dealer",
+    "Type": "noun"
+  },
+  {
+    "Word": "representative",
+    "Type": "noun"
+  },
+  {
+    "Word": "salesman",
+    "Type": "noun"
+  },
+  {
+    "Word": "clerk",
+    "Type": "noun"
+  },
+  {
+    "Word": "cashier",
+    "Type": "noun"
+  },
+  {
+    "Word": "teller",
+    "Type": "noun"
+  },
+  {
+    "Word": "accountant",
+    "Type": "noun"
+  },
+  {
+    "Word": "auditor",
+    "Type": "noun"
+  },
+  {
+    "Word": "analyst",
+    "Type": "noun"
+  },
+  {
+    "Word": "consultant",
+    "Type": "noun"
+  },
+  {
+    "Word": "advisor",
+    "Type": "noun"
+  },
+  {
+    "Word": "counselor",
+    "Type": "noun"
+  },
+  {
+    "Word": "therapist",
+    "Type": "noun"
+  },
+  {
+    "Word": "psychologist",
+    "Type": "noun"
+  },
+  {
+    "Word": "psychiatrist",
+    "Type": "noun"
+  },
+  {
+    "Word": "doctor",
+    "Type": "noun"
+  },
+  {
+    "Word": "physician",
+    "Type": "noun"
+  },
+  {
+    "Word": "surgeon",
+    "Type": "noun"
+  },
+  {
+    "Word": "nurse",
+    "Type": "noun"
+  },
+  {
+    "Word": "dentist",
+    "Type": "noun"
+  },
+  {
+    "Word": "veterinarian",
+    "Type": "noun"
+  },
+  {
+    "Word": "pharmacist",
+    "Type": "noun"
+  },
+  {
+    "Word": "scientist",
+    "Type": "noun"
+  },
+  {
+    "Word": "researcher",
+    "Type": "noun"
+  },
+  {
+    "Word": "scholar",
+    "Type": "noun"
+  },
+  {
+    "Word": "professor",
+    "Type": "noun"
+  },
+  {
+    "Word": "instructor",
+    "Type": "noun"
+  },
+  {
+    "Word": "tutor",
+    "Type": "noun"
+  },
+  {
+    "Word": "coach",
+    "Type": "noun"
+  },
+  {
+    "Word": "trainer",
+    "Type": "noun"
+  },
+  {
+    "Word": "mentor",
+    "Type": "noun"
+  },
+  {
+    "Word": "guide",
+    "Type": "noun"
+  },
+  {
+    "Word": "leader",
+    "Type": "noun"
+  },
+  {
+    "Word": "chief",
+    "Type": "noun"
+  },
+  {
+    "Word": "captain",
+    "Type": "noun"
+  },
+  {
+    "Word": "commander",
+    "Type": "noun"
+  },
+  {
+    "Word": "general",
+    "Type": "noun"
+  },
+  {
+    "Word": "admiral",
+    "Type": "noun"
+  },
+  {
+    "Word": "colonel",
+    "Type": "noun"
+  },
+  {
+    "Word": "major",
+    "Type": "noun"
+  },
+  {
+    "Word": "lieutenant",
+    "Type": "noun"
+  },
+  {
+    "Word": "sergeant",
+    "Type": "noun"
+  },
+  {
+    "Word": "corporal",
+    "Type": "noun"
+  },
+  {
+    "Word": "private",
+    "Type": "noun"
+  },
+  {
+    "Word": "soldier",
+    "Type": "noun"
+  },
+  {
+    "Word": "warrior",
+    "Type": "noun"
+  },
+  {
+    "Word": "fighter",
+    "Type": "noun"
+  },
+  {
+    "Word": "pilot",
+    "Type": "noun"
+  },
+  {
+    "Word": "sailor",
+    "Type": "noun"
+  },
+  {
+    "Word": "marine",
+    "Type": "noun"
+  },
+  {
+    "Word": "guard",
+    "Type": "noun"
+  },
+  {
+    "Word": "police",
+    "Type": "noun"
+  },
+  {
+    "Word": "officer",
+    "Type": "noun"
+  },
+  {
+    "Word": "detective",
+    "Type": "noun"
+  },
+  {
+    "Word": "investigator",
+    "Type": "noun"
+  },
+  {
+    "Word": "inspector",
+    "Type": "noun"
+  },
+  {
+    "Word": "sheriff",
+    "Type": "noun"
+  },
+  {
+    "Word": "marshal",
+    "Type": "noun"
+  },
+  {
+    "Word": "judge",
+    "Type": "noun"
+  },
+  {
+    "Word": "lawyer",
+    "Type": "noun"
+  },
+  {
+    "Word": "attorney",
+    "Type": "noun"
+  },
+  {
+    "Word": "advocate",
+    "Type": "noun"
+  },
+  {
+    "Word": "prosecutor",
+    "Type": "noun"
+  },
+  {
+    "Word": "defender",
+    "Type": "noun"
+  },
+  {
+    "Word": "jury",
+    "Type": "noun"
+  },
+  {
+    "Word": "witness",
+    "Type": "noun"
+  },
+  {
+    "Word": "victim",
+    "Type": "noun"
+  },
+  {
+    "Word": "suspect",
+    "Type": "noun"
+  },
+  {
+    "Word": "criminal",
+    "Type": "noun"
+  },
+  {
+    "Word": "thief",
+    "Type": "noun"
+  },
+  {
+    "Word": "robber",
+    "Type": "noun"
+  },
+  {
+    "Word": "burglar",
+    "Type": "noun"
+  },
+  {
+    "Word": "mugger",
+    "Type": "noun"
+  },
+  {
+    "Word": "pickpocket",
+    "Type": "noun"
+  },
+  {
+    "Word": "shoplifter",
+    "Type": "noun"
+  },
+  {
+    "Word": "fraud",
+    "Type": "noun"
+  },
+  {
+    "Word": "swindler",
+    "Type": "noun"
+  },
+  {
+    "Word": "hacker",
+    "Type": "noun"
+  },
+  {
+    "Word": "spy",
+    "Type": "noun"
+  },
+  {
+    "Word": "operative",
+    "Type": "noun"
+  },
+  {
+    "Word": "mercenary",
+    "Type": "noun"
+  },
+  {
+    "Word": "assassin",
+    "Type": "noun"
+  },
+  {
+    "Word": "hitman",
+    "Type": "noun"
+  },
+  {
+    "Word": "killer",
+    "Type": "noun"
+  },
+  {
+    "Word": "murderer",
+    "Type": "noun"
+  },
+  {
+    "Word": "slayer",
+    "Type": "noun"
+  },
+  {
+    "Word": "executioner",
+    "Type": "noun"
+  },
+  {
+    "Word": "butcher",
+    "Type": "noun"
+  },
+  {
+    "Word": "cook",
+    "Type": "noun"
+  },
+  {
+    "Word": "chef",
+    "Type": "noun"
+  },
+  {
+    "Word": "baker",
+    "Type": "noun"
+  },
+  {
+    "Word": "brewer",
+    "Type": "noun"
+  },
+  {
+    "Word": "barber",
+    "Type": "noun"
+  },
+  {
+    "Word": "hairdresser",
+    "Type": "noun"
+  },
+  {
+    "Word": "stylist",
+    "Type": "noun"
+  },
+  {
+    "Word": "model",
+    "Type": "noun"
+  },
+  {
+    "Word": "actor",
+    "Type": "noun"
+  },
+  {
+    "Word": "actress",
+    "Type": "noun"
+  },
+  {
+    "Word": "performer",
+    "Type": "noun"
+  },
+  {
+    "Word": "entertainer",
+    "Type": "noun"
+  },
+  {
+    "Word": "comedian",
+    "Type": "noun"
+  },
+  {
+    "Word": "musician",
+    "Type": "noun"
+  },
+  {
+    "Word": "singer",
+    "Type": "noun"
+  },
+  {
+    "Word": "dancer",
+    "Type": "noun"
+  },
+  {
+    "Word": "artist",
+    "Type": "noun"
+  },
+  {
+    "Word": "painter",
+    "Type": "noun"
+  },
+  {
+    "Word": "sculptor",
+    "Type": "noun"
+  },
+  {
+    "Word": "photographer",
+    "Type": "noun"
+  },
+  {
+    "Word": "writer",
+    "Type": "noun"
+  },
+  {
+    "Word": "author",
+    "Type": "noun"
+  },
+  {
+    "Word": "poet",
+    "Type": "noun"
+  },
+  {
+    "Word": "novelist",
+    "Type": "noun"
+  },
+  {
+    "Word": "journalist",
+    "Type": "noun"
+  },
+  {
+    "Word": "reporter",
+    "Type": "noun"
+  },
+  {
+    "Word": "editor",
+    "Type": "noun"
+  },
+  {
+    "Word": "publisher",
+    "Type": "noun"
+  },
+  {
+    "Word": "printer",
+    "Type": "noun"
+  },
+  {
+    "Word": "typist",
+    "Type": "noun"
+  },
+  {
+    "Word": "secretary",
+    "Type": "noun"
+  },
+  {
+    "Word": "assistant",
+    "Type": "noun"
+  },
+  {
+    "Word": "receptionist",
+    "Type": "noun"
+  },
+  {
+    "Word": "operator",
+    "Type": "noun"
+  },
+  {
+    "Word": "technician",
+    "Type": "noun"
+  },
+  {
+    "Word": "engineer",
+    "Type": "noun"
+  },
+  {
+    "Word": "mechanic",
+    "Type": "noun"
+  },
+  {
+    "Word": "electrician",
+    "Type": "noun"
+  },
+  {
+    "Word": "plumber",
+    "Type": "noun"
+  },
+  {
+    "Word": "carpenter",
+    "Type": "noun"
+  },
+  {
+    "Word": "mason",
+    "Type": "noun"
+  },
+  {
+    "Word": "bricklayer",
+    "Type": "noun"
+  },
+  {
+    "Word": "welder",
+    "Type": "noun"
+  },
+  {
+    "Word": "machinist",
+    "Type": "noun"
+  },
+  {
+    "Word": "toolmaker",
+    "Type": "noun"
+  },
+  {
+    "Word": "fitter",
+    "Type": "noun"
+  },
+  {
+    "Word": "assembler",
+    "Type": "noun"
+  },
+  {
+    "Word": "packer",
+    "Type": "noun"
+  },
+  {
+    "Word": "loader",
+    "Type": "noun"
+  },
+  {
+    "Word": "driver",
+    "Type": "noun"
+  },
+  {
+    "Word": "navigator",
+    "Type": "noun"
+  },
+  {
+    "Word": "conductor",
+    "Type": "noun"
+  },
+  {
+    "Word": "fireman",
+    "Type": "noun"
+  },
+  {
+    "Word": "firefighter",
+    "Type": "noun"
+  },
+  {
+    "Word": "paramedic",
+    "Type": "noun"
+  },
+  {
+    "Word": "rescuer",
+    "Type": "noun"
+  },
+  {
+    "Word": "lifeguard",
+    "Type": "noun"
+  },
+  {
+    "Word": "watchman",
+    "Type": "noun"
+  },
+  {
+    "Word": "sentry",
+    "Type": "noun"
+  },
+  {
+    "Word": "patrol",
+    "Type": "noun"
+  },
+  {
+    "Word": "scout",
+    "Type": "noun"
+  },
+  {
+    "Word": "ranger",
+    "Type": "noun"
+  },
+  {
+    "Word": "warden",
+    "Type": "noun"
+  },
+  {
+    "Word": "keeper",
+    "Type": "noun"
+  },
+  {
+    "Word": "custodian",
+    "Type": "noun"
+  },
+  {
+    "Word": "janitor",
+    "Type": "noun"
+  },
+  {
+    "Word": "cleaner",
+    "Type": "noun"
+  },
+  {
+    "Word": "maid",
+    "Type": "noun"
+  },
+  {
+    "Word": "housekeeper",
+    "Type": "noun"
+  },
+  {
+    "Word": "butler",
+    "Type": "noun"
+  },
+  {
+    "Word": "valet",
+    "Type": "noun"
+  },
+  {
+    "Word": "porter",
+    "Type": "noun"
+  },
+  {
+    "Word": "bellhop",
+    "Type": "noun"
+  },
+  {
+    "Word": "concierge",
+    "Type": "noun"
+  },
+  {
+    "Word": "waiter",
+    "Type": "noun"
+  },
+  {
+    "Word": "waitress",
+    "Type": "noun"
+  },
+  {
+    "Word": "server",
+    "Type": "noun"
+  },
+  {
+    "Word": "bartender",
+    "Type": "noun"
+  },
+  {
+    "Word": "barista",
+    "Type": "noun"
+  },
+  {
+    "Word": "hostess",
+    "Type": "noun"
+  },
+  {
+    "Word": "usher",
+    "Type": "noun"
+  },
+  {
+    "Word": "ticket",
+    "Type": "noun"
+  },
+  {
+    "Word": "vendor",
+    "Type": "noun"
+  },
+  {
+    "Word": "hawker",
+    "Type": "noun"
+  },
+  {
+    "Word": "peddler",
+    "Type": "noun"
+  },
+  {
+    "Word": "middleman",
+    "Type": "noun"
+  },
+  {
+    "Word": "wholesaler",
+    "Type": "noun"
+  },
+  {
+    "Word": "retailer",
+    "Type": "noun"
+  },
+  {
+    "Word": "distributor",
+    "Type": "noun"
+  },
+  {
+    "Word": "supplier",
+    "Type": "noun"
+  },
+  {
+    "Word": "provider",
+    "Type": "noun"
+  },
+  {
+    "Word": "contractor",
+    "Type": "noun"
+  },
+  {
+    "Word": "subcontractor",
+    "Type": "noun"
+  },
+  {
+    "Word": "builder",
+    "Type": "noun"
+  },
+  {
+    "Word": "developer",
+    "Type": "noun"
+  },
+  {
+    "Word": "architect",
+    "Type": "noun"
+  },
+  {
+    "Word": "designer",
+    "Type": "noun"
+  },
+  {
+    "Word": "planner",
+    "Type": "noun"
+  },
+  {
+    "Word": "surveyor",
+    "Type": "noun"
+  },
+  {
+    "Word": "estimator",
+    "Type": "noun"
+  },
+  {
+    "Word": "appraiser",
+    "Type": "noun"
+  },
+  {
+    "Word": "assessor",
+    "Type": "noun"
+  },
+  {
+    "Word": "valuer",
+    "Type": "noun"
+  },
+  {
+    "Word": "realtor",
+    "Type": "noun"
+  },
+  {
+    "Word": "attendant",
+    "Type": "noun"
+  },
+  {
+    "Word": "policeman",
+    "Type": "noun"
+  },
+  {
+    "Word": "examiner",
+    "Type": "noun"
+  },
+  {
+    "Word": "tester",
+    "Type": "noun"
+  },
+  {
+    "Word": "checker",
+    "Type": "noun"
+  },
+  {
+    "Word": "monitor",
+    "Type": "noun"
+  },
+  {
+    "Word": "observer",
+    "Type": "noun"
+  },
+  {
+    "Word": "watcher",
+    "Type": "noun"
+  },
+  {
+    "Word": "viewer",
+    "Type": "noun"
+  },
+  {
+    "Word": "spectator",
+    "Type": "noun"
+  },
+  {
+    "Word": "audience",
+    "Type": "noun"
+  },
+  {
+    "Word": "crowd",
+    "Type": "noun"
+  },
+  {
+    "Word": "mob",
+    "Type": "noun"
+  },
+  {
+    "Word": "personnel",
+    "Type": "noun"
+  },
+  {
+    "Word": "workforce",
+    "Type": "noun"
+  },
+  {
+    "Word": "labor",
+    "Type": "noun"
+  },
+  {
+    "Word": "hand",
+    "Type": "noun"
+  },
+  {
+    "Word": "helper",
+    "Type": "noun"
+  },
+  {
+    "Word": "aide",
+    "Type": "noun"
+  },
+  {
+    "Word": "deputy",
+    "Type": "noun"
+  },
+  {
+    "Word": "substitute",
+    "Type": "noun"
+  },
+  {
+    "Word": "replacement",
+    "Type": "noun"
+  },
+  {
+    "Word": "backup",
+    "Type": "noun"
+  },
+  {
+    "Word": "reserve",
+    "Type": "noun"
+  },
+  {
+    "Word": "alternate",
+    "Type": "noun"
+  },
+  {
+    "Word": "relief",
+    "Type": "noun"
+  },
+  {
+    "Word": "standby",
+    "Type": "noun"
+  },
+  {
+    "Word": "candidate",
+    "Type": "noun"
+  },
+  {
+    "Word": "applicant",
+    "Type": "noun"
+  },
+  {
+    "Word": "nominee",
+    "Type": "noun"
+  },
+  {
+    "Word": "contestant",
+    "Type": "noun"
+  },
+  {
+    "Word": "competitor",
+    "Type": "noun"
+  },
+  {
+    "Word": "rival",
+    "Type": "noun"
+  },
+  {
+    "Word": "opponent",
+    "Type": "noun"
+  },
+  {
+    "Word": "adversary",
+    "Type": "noun"
+  },
+  {
+    "Word": "enemy",
+    "Type": "noun"
+  },
+  {
+    "Word": "foe",
+    "Type": "noun"
+  },
+  {
+    "Word": "antagonist",
+    "Type": "noun"
+  },
+  {
+    "Word": "villain",
+    "Type": "noun"
+  },
+  {
+    "Word": "hero",
+    "Type": "noun"
+  },
+  {
+    "Word": "protagonist",
+    "Type": "noun"
+  },
+  {
+    "Word": "champion",
+    "Type": "noun"
+  },
+  {
+    "Word": "winner",
+    "Type": "noun"
+  },
+  {
+    "Word": "loser",
+    "Type": "noun"
+  },
+  {
+    "Word": "victor",
+    "Type": "noun"
+  },
+  {
+    "Word": "survivor",
+    "Type": "noun"
+  },
+  {
+    "Word": "casualty",
+    "Type": "noun"
+  },
+  {
+    "Word": "consumer",
+    "Type": "noun"
+  },
+  {
+    "Word": "user",
+    "Type": "noun"
+  },
+  {
+    "Word": "purchaser",
+    "Type": "noun"
+  },
+  {
+    "Word": "shopper",
+    "Type": "noun"
+  },
+  {
+    "Word": "browser",
+    "Type": "noun"
+  },
+  {
+    "Word": "reader",
+    "Type": "noun"
+  },
+  {
+    "Word": "listener",
+    "Type": "noun"
+  },
+  {
+    "Word": "subscriber",
+    "Type": "noun"
+  },
+  {
+    "Word": "follower",
+    "Type": "noun"
+  },
+  {
+    "Word": "fan",
+    "Type": "noun"
+  },
+  {
+    "Word": "supporter",
+    "Type": "noun"
+  },
+  {
+    "Word": "backer",
+    "Type": "noun"
+  },
+  {
+    "Word": "sponsor",
+    "Type": "noun"
+  },
+  {
+    "Word": "patron",
+    "Type": "noun"
+  },
+  {
+    "Word": "benefactor",
+    "Type": "noun"
+  },
+  {
+    "Word": "donor",
+    "Type": "noun"
+  },
+  {
+    "Word": "contributor",
+    "Type": "noun"
+  },
+  {
+    "Word": "giver",
+    "Type": "noun"
+  },
+  {
+    "Word": "source",
+    "Type": "noun"
+  },
+  {
+    "Word": "origin",
+    "Type": "noun"
+  },
+  {
+    "Word": "motive",
+    "Type": "noun"
+  },
+  {
+    "Word": "goal",
+    "Type": "noun"
+  },
+  {
+    "Word": "aim",
+    "Type": "noun"
+  },
+  {
+    "Word": "objective",
+    "Type": "noun"
+  },
+  {
+    "Word": "target",
+    "Type": "noun"
+  },
+  {
+    "Word": "intention",
+    "Type": "noun"
+  },
+  {
+    "Word": "scheme",
+    "Type": "noun"
+  },
+  {
+    "Word": "tactic",
+    "Type": "noun"
+  },
+  {
+    "Word": "method",
+    "Type": "noun"
+  },
+  {
+    "Word": "approach",
+    "Type": "noun"
+  },
+  {
+    "Word": "technique",
+    "Type": "noun"
+  },
+  {
+    "Word": "procedure",
+    "Type": "noun"
+  },
+  {
+    "Word": "routine",
+    "Type": "noun"
+  },
+  {
+    "Word": "practice",
+    "Type": "noun"
+  },
+  {
+    "Word": "habit",
+    "Type": "noun"
+  },
+  {
+    "Word": "custom",
+    "Type": "noun"
+  },
+  {
+    "Word": "tradition",
+    "Type": "noun"
+  },
+  {
+    "Word": "convention",
+    "Type": "noun"
+  },
+  {
+    "Word": "norm",
+    "Type": "noun"
+  },
+  {
+    "Word": "rule",
+    "Type": "noun"
+  },
+  {
+    "Word": "regulation",
+    "Type": "noun"
+  },
+  {
+    "Word": "statute",
+    "Type": "noun"
+  },
+  {
+    "Word": "ordinance",
+    "Type": "noun"
+  },
+  {
+    "Word": "decree",
+    "Type": "noun"
+  },
+  {
+    "Word": "order",
+    "Type": "noun"
+  },
+  {
+    "Word": "command",
+    "Type": "noun"
+  },
+  {
+    "Word": "directive",
+    "Type": "noun"
+  },
+  {
+    "Word": "instruction",
+    "Type": "noun"
+  },
+  {
+    "Word": "direction",
+    "Type": "noun"
+  },
+  {
+    "Word": "guideline",
+    "Type": "noun"
+  },
+  {
+    "Word": "principle",
+    "Type": "noun"
+  },
+  {
+    "Word": "doctrine",
+    "Type": "noun"
+  },
+  {
+    "Word": "creed",
+    "Type": "noun"
+  },
+  {
+    "Word": "belief",
+    "Type": "noun"
+  },
+  {
+    "Word": "faith",
+    "Type": "noun"
+  },
+  {
+    "Word": "religion",
+    "Type": "noun"
+  },
+  {
+    "Word": "philosophy",
+    "Type": "noun"
+  },
+  {
+    "Word": "ideology",
+    "Type": "noun"
+  },
+  {
+    "Word": "hypothesis",
+    "Type": "noun"
+  },
+  {
+    "Word": "thesis",
+    "Type": "noun"
+  },
+  {
+    "Word": "premise",
+    "Type": "noun"
+  },
+  {
+    "Word": "assumption",
+    "Type": "noun"
+  },
+  {
+    "Word": "presumption",
+    "Type": "noun"
+  },
+  {
+    "Word": "supposition",
+    "Type": "noun"
+  },
+  {
+    "Word": "conjecture",
+    "Type": "noun"
+  },
+  {
+    "Word": "speculation",
+    "Type": "noun"
+  },
+  {
+    "Word": "guess",
+    "Type": "noun"
+  },
+  {
+    "Word": "estimate",
+    "Type": "noun"
+  },
+  {
+    "Word": "calculation",
+    "Type": "noun"
+  },
+  {
+    "Word": "computation",
+    "Type": "noun"
+  },
+  {
+    "Word": "measurement",
+    "Type": "noun"
+  },
+  {
+    "Word": "assessment",
+    "Type": "noun"
+  },
+  {
+    "Word": "evaluation",
+    "Type": "noun"
+  },
+  {
+    "Word": "analysis",
+    "Type": "noun"
+  },
+  {
+    "Word": "examination",
+    "Type": "noun"
+  },
+  {
+    "Word": "inspection",
+    "Type": "noun"
+  },
+  {
+    "Word": "investigation",
+    "Type": "noun"
+  },
+  {
+    "Word": "survey",
+    "Type": "noun"
+  },
+  {
+    "Word": "poll",
+    "Type": "noun"
+  },
+  {
+    "Word": "census",
+    "Type": "noun"
+  },
+  {
+    "Word": "count",
+    "Type": "noun"
+  },
+  {
+    "Word": "tally",
+    "Type": "noun"
+  },
+  {
+    "Word": "score",
+    "Type": "noun"
+  },
+  {
+    "Word": "outcome",
+    "Type": "noun"
+  },
+  {
+    "Word": "consequence",
+    "Type": "noun"
+  },
+  {
+    "Word": "effect",
+    "Type": "noun"
+  },
+  {
+    "Word": "impact",
+    "Type": "noun"
+  },
+  {
+    "Word": "influence",
+    "Type": "noun"
+  },
+  {
+    "Word": "impression",
+    "Type": "noun"
+  },
+  {
+    "Word": "mark",
+    "Type": "noun"
+  },
+  {
+    "Word": "sign",
+    "Type": "noun"
+  },
+  {
+    "Word": "trace",
+    "Type": "noun"
+  },
+  {
+    "Word": "track",
+    "Type": "noun"
+  },
+  {
+    "Word": "course",
+    "Type": "noun"
+  },
+  {
+    "Word": "drive",
+    "Type": "noun"
+  },
+  {
+    "Word": "boulevard",
+    "Type": "noun"
+  },
+  {
+    "Word": "expressway",
+    "Type": "noun"
+  },
+  {
+    "Word": "turnpike",
+    "Type": "noun"
+  },
+  {
+    "Word": "parkway",
+    "Type": "noun"
+  },
+  {
+    "Word": "causeway",
+    "Type": "noun"
+  },
+  {
+    "Word": "overpass",
+    "Type": "noun"
+  },
+  {
+    "Word": "underpass",
+    "Type": "noun"
+  },
+  {
+    "Word": "passage",
+    "Type": "noun"
+  },
+  {
+    "Word": "hallway",
+    "Type": "noun"
+  },
+  {
+    "Word": "entry",
+    "Type": "noun"
+  },
+  {
+    "Word": "gateway",
+    "Type": "noun"
+  },
+  {
+    "Word": "arch",
+    "Type": "noun"
+  },
+  {
+    "Word": "archway",
+    "Type": "noun"
+  },
+  {
+    "Word": "portal",
+    "Type": "noun"
+  },
+  {
+    "Word": "opening",
+    "Type": "noun"
+  },
+  {
+    "Word": "gap",
+    "Type": "noun"
+  },
+  {
+    "Word": "hole",
+    "Type": "noun"
+  },
+  {
+    "Word": "cavity",
+    "Type": "noun"
+  },
+  {
+    "Word": "pit",
+    "Type": "noun"
+  },
+  {
+    "Word": "well",
+    "Type": "noun"
+  },
+  {
+    "Word": "shaft",
+    "Type": "noun"
+  },
+  {
+    "Word": "canal",
+    "Type": "noun"
+  },
+  {
+    "Word": "ditch",
+    "Type": "noun"
+  },
+  {
+    "Word": "trench",
+    "Type": "noun"
+  },
+  {
+    "Word": "furrow",
+    "Type": "noun"
+  },
+  {
+    "Word": "groove",
+    "Type": "noun"
+  },
+  {
+    "Word": "slot",
+    "Type": "noun"
+  },
+  {
+    "Word": "slit",
+    "Type": "noun"
+  },
+  {
+    "Word": "crack",
+    "Type": "noun"
+  },
+  {
+    "Word": "crevice",
+    "Type": "noun"
+  },
+  {
+    "Word": "fissure",
+    "Type": "noun"
+  },
+  {
+    "Word": "split",
+    "Type": "noun"
+  },
+  {
+    "Word": "fracture",
+    "Type": "noun"
+  },
+  {
+    "Word": "rupture",
+    "Type": "noun"
+  },
+  {
+    "Word": "gash",
+    "Type": "noun"
+  },
+  {
+    "Word": "wound",
+    "Type": "noun"
+  },
+  {
+    "Word": "injury",
+    "Type": "noun"
+  },
+  {
+    "Word": "hurt",
+    "Type": "noun"
+  },
+  {
+    "Word": "pain",
+    "Type": "noun"
+  },
+  {
+    "Word": "ache",
+    "Type": "noun"
+  },
+  {
+    "Word": "sore",
+    "Type": "noun"
+  },
+  {
+    "Word": "bruise",
+    "Type": "noun"
+  },
+  {
+    "Word": "scratch",
+    "Type": "noun"
+  },
+  {
+    "Word": "scrape",
+    "Type": "noun"
+  },
+  {
+    "Word": "burn",
+    "Type": "noun"
+  },
+  {
+    "Word": "blister",
+    "Type": "noun"
+  },
+  {
+    "Word": "rash",
+    "Type": "noun"
+  },
+  {
+    "Word": "pimple",
+    "Type": "noun"
+  },
+  {
+    "Word": "zit",
+    "Type": "noun"
+  },
+  {
+    "Word": "acne",
+    "Type": "noun"
+  },
+  {
+    "Word": "scar",
+    "Type": "noun"
+  },
+  {
+    "Word": "stain",
+    "Type": "noun"
+  },
+  {
+    "Word": "spot",
+    "Type": "noun"
+  },
+  {
+    "Word": "blotch",
+    "Type": "noun"
+  },
+  {
+    "Word": "patch",
+    "Type": "noun"
+  },
+  {
+    "Word": "smudge",
+    "Type": "noun"
+  },
+  {
+    "Word": "smear",
+    "Type": "noun"
+  },
+  {
+    "Word": "streak",
+    "Type": "noun"
+  },
+  {
+    "Word": "stripe",
+    "Type": "noun"
+  },
+  {
+    "Word": "band",
+    "Type": "noun"
+  },
+  {
+    "Word": "strip",
+    "Type": "noun"
+  },
+  {
+    "Word": "ribbon",
+    "Type": "noun"
+  },
+  {
+    "Word": "strap",
+    "Type": "noun"
+  },
+  {
+    "Word": "link",
+    "Type": "noun"
+  },
+  {
+    "Word": "connection",
+    "Type": "noun"
+  },
+  {
+    "Word": "joint",
+    "Type": "noun"
+  },
+  {
+    "Word": "hinge",
+    "Type": "noun"
+  },
+  {
+    "Word": "pivot",
+    "Type": "noun"
+  },
+  {
+    "Word": "axle",
+    "Type": "noun"
+  },
+  {
+    "Word": "rod",
+    "Type": "noun"
+  },
+  {
+    "Word": "bar",
+    "Type": "noun"
+  },
+  {
+    "Word": "pole",
+    "Type": "noun"
+  },
+  {
+    "Word": "post",
+    "Type": "noun"
+  },
+  {
+    "Word": "stake",
+    "Type": "noun"
+  },
+  {
+    "Word": "stick",
+    "Type": "noun"
+  },
+  {
+    "Word": "limb",
+    "Type": "noun"
+  },
+  {
+    "Word": "arm",
+    "Type": "noun"
+  },
+  {
+    "Word": "leg",
+    "Type": "noun"
+  },
+  {
+    "Word": "finger",
+    "Type": "noun"
+  },
+  {
+    "Word": "thumb",
+    "Type": "noun"
+  },
+  {
+    "Word": "toe",
+    "Type": "noun"
+  },
+  {
+    "Word": "nail",
+    "Type": "noun"
+  },
+  {
+    "Word": "claw",
+    "Type": "noun"
+  },
+  {
+    "Word": "hoof",
+    "Type": "noun"
+  },
+  {
+    "Word": "paw",
+    "Type": "noun"
+  },
+  {
+    "Word": "wing",
+    "Type": "noun"
+  },
+  {
+    "Word": "fin",
+    "Type": "noun"
+  },
+  {
+    "Word": "tail",
+    "Type": "noun"
+  },
+  {
+    "Word": "beak",
+    "Type": "noun"
+  },
+  {
+    "Word": "bill",
+    "Type": "noun"
+  },
+  {
+    "Word": "snout",
+    "Type": "noun"
+  },
+  {
+    "Word": "nose",
+    "Type": "noun"
+  },
+  {
+    "Word": "mouth",
+    "Type": "noun"
+  },
+  {
+    "Word": "lip",
+    "Type": "noun"
+  },
+  {
+    "Word": "tooth",
+    "Type": "noun"
+  },
+  {
+    "Word": "tongue",
+    "Type": "noun"
+  },
+  {
+    "Word": "jaw",
+    "Type": "noun"
+  },
+  {
+    "Word": "chin",
+    "Type": "noun"
+  },
+  {
+    "Word": "cheek",
+    "Type": "noun"
+  },
+  {
+    "Word": "forehead",
+    "Type": "noun"
+  },
+  {
+    "Word": "brow",
+    "Type": "noun"
+  },
+  {
+    "Word": "eyebrow",
+    "Type": "noun"
+  },
+  {
+    "Word": "eyelash",
+    "Type": "noun"
+  },
+  {
+    "Word": "pupil",
+    "Type": "noun"
+  },
+  {
+    "Word": "iris",
+    "Type": "noun"
+  },
+  {
+    "Word": "lens",
+    "Type": "noun"
+  },
+  {
+    "Word": "cornea",
+    "Type": "noun"
+  },
+  {
+    "Word": "retina",
+    "Type": "noun"
+  },
+  {
+    "Word": "ear",
+    "Type": "noun"
+  },
+  {
+    "Word": "lobe",
+    "Type": "noun"
+  },
+  {
+    "Word": "canal",
+    "Type": "noun"
+  },
+  {
+    "Word": "drum",
+    "Type": "noun"
+  },
+  {
+    "Word": "cochlea",
+    "Type": "noun"
+  },
+  {
+    "Word": "nerve",
+    "Type": "noun"
+  },
+  {
+    "Word": "brain",
+    "Type": "noun"
+  },
+  {
+    "Word": "skull",
+    "Type": "noun"
+  },
+  {
+    "Word": "neck",
+    "Type": "noun"
+  },
+  {
+    "Word": "throat",
+    "Type": "noun"
+  },
+  {
+    "Word": "voice",
+    "Type": "noun"
+  },
+  {
+    "Word": "larynx",
+    "Type": "noun"
+  },
+  {
+    "Word": "trachea",
+    "Type": "noun"
+  },
+  {
+    "Word": "windpipe",
+    "Type": "noun"
+  },
+  {
+    "Word": "lung",
+    "Type": "noun"
+  },
+  {
+    "Word": "bronchus",
+    "Type": "noun"
+  },
+  {
+    "Word": "alveolus",
+    "Type": "noun"
+  },
+  {
+    "Word": "diaphragm",
+    "Type": "noun"
+  },
+  {
+    "Word": "chest",
+    "Type": "noun"
+  },
+  {
+    "Word": "rib",
+    "Type": "noun"
+  },
+  {
+    "Word": "breast",
+    "Type": "noun"
+  },
+  {
+    "Word": "aorta",
+    "Type": "noun"
+  },
+  {
+    "Word": "artery",
+    "Type": "noun"
+  },
+  {
+    "Word": "vein",
+    "Type": "noun"
+  },
+  {
+    "Word": "capillary",
+    "Type": "noun"
+  },
+  {
+    "Word": "plasma",
+    "Type": "noun"
+  },
+  {
+    "Word": "platelet",
+    "Type": "noun"
+  },
+  {
+    "Word": "hemoglobin",
+    "Type": "noun"
+  },
+  {
+    "Word": "oxygen",
+    "Type": "noun"
+  },
+  {
+    "Word": "carbon",
+    "Type": "noun"
+  },
+  {
+    "Word": "dioxide",
+    "Type": "noun"
+  },
+  {
+    "Word": "stomach",
+    "Type": "noun"
+  },
+  {
+    "Word": "intestine",
+    "Type": "noun"
+  },
+  {
+    "Word": "colon",
+    "Type": "noun"
+  },
+  {
+    "Word": "rectum",
+    "Type": "noun"
+  },
+  {
+    "Word": "anus",
+    "Type": "noun"
+  },
+  {
+    "Word": "liver",
+    "Type": "noun"
+  },
+  {
+    "Word": "gallbladder",
+    "Type": "noun"
+  },
+  {
+    "Word": "pancreas",
+    "Type": "noun"
+  },
+  {
+    "Word": "spleen",
+    "Type": "noun"
+  },
+  {
+    "Word": "kidney",
+    "Type": "noun"
+  },
+  {
+    "Word": "bladder",
+    "Type": "noun"
+  },
+  {
+    "Word": "ureter",
+    "Type": "noun"
+  },
+  {
+    "Word": "urethra",
+    "Type": "noun"
+  },
+  {
+    "Word": "spine",
+    "Type": "noun"
+  },
+  {
+    "Word": "vertebra",
+    "Type": "noun"
+  },
+  {
+    "Word": "disc",
+    "Type": "noun"
+  },
+  {
+    "Word": "muscle",
+    "Type": "noun"
+  },
+  {
+    "Word": "tendon",
+    "Type": "noun"
+  },
+  {
+    "Word": "ligament",
+    "Type": "noun"
+  },
+  {
+    "Word": "cartilage",
+    "Type": "noun"
+  },
+  {
+    "Word": "bone",
+    "Type": "noun"
+  },
+  {
+    "Word": "marrow",
+    "Type": "noun"
+  },
+  {
+    "Word": "epidermis",
+    "Type": "noun"
+  },
+  {
+    "Word": "dermis",
+    "Type": "noun"
+  },
+  {
+    "Word": "hair",
+    "Type": "noun"
+  },
+  {
+    "Word": "follicle",
+    "Type": "noun"
+  },
+  {
+    "Word": "gland",
+    "Type": "noun"
+  },
+  {
+    "Word": "pore",
+    "Type": "noun"
+  },
+  {
+    "Word": "sweat",
+    "Type": "noun"
+  },
+  {
+    "Word": "sebum",
+    "Type": "noun"
+  },
+  {
+    "Word": "hormone",
+    "Type": "noun"
+  },
+  {
+    "Word": "enzyme",
+    "Type": "noun"
+  },
+  {
+    "Word": "protein",
+    "Type": "noun"
+  },
+  {
+    "Word": "amino",
+    "Type": "noun"
+  },
+  {
+    "Word": "acid",
+    "Type": "noun"
+  },
+  {
+    "Word": "vitamin",
+    "Type": "noun"
+  },
+  {
+    "Word": "mineral",
+    "Type": "noun"
+  },
+  {
+    "Word": "nutrient",
+    "Type": "noun"
+  },
+  {
+    "Word": "calorie",
+    "Type": "noun"
+  },
+  {
+    "Word": "carbohydrate",
+    "Type": "noun"
+  },
+  {
+    "Word": "sugar",
+    "Type": "noun"
+  },
+  {
+    "Word": "glucose",
+    "Type": "noun"
+  },
+  {
+    "Word": "fructose",
+    "Type": "noun"
+  },
+  {
+    "Word": "sucrose",
+    "Type": "noun"
+  },
+  {
+    "Word": "starch",
+    "Type": "noun"
+  },
+  {
+    "Word": "fiber",
+    "Type": "noun"
+  },
+  {
+    "Word": "cellulose",
+    "Type": "noun"
+  },
+  {
+    "Word": "lignin",
+    "Type": "noun"
+  },
+  {
+    "Word": "pectin",
+    "Type": "noun"
+  },
+  {
+    "Word": "lipid",
+    "Type": "noun"
+  },
+  {
+    "Word": "sterol",
+    "Type": "noun"
+  },
+  {
+    "Word": "cholesterol",
+    "Type": "noun"
+  },
+  {
+    "Word": "base",
+    "Type": "noun"
+  },
+  {
+    "Word": "salt",
+    "Type": "noun"
+  },
+  {
+    "Word": "buffer",
+    "Type": "noun"
+  },
+  {
+    "Word": "solvent",
+    "Type": "noun"
+  },
+  {
+    "Word": "solute",
+    "Type": "noun"
+  },
+  {
+    "Word": "crystal",
+    "Type": "noun"
+  },
+  {
+    "Word": "amorphous",
+    "Type": "noun"
+  },
+  {
+    "Word": "glass",
+    "Type": "noun"
+  },
+  {
+    "Word": "metal",
+    "Type": "noun"
+  },
+  {
+    "Word": "alloy",
+    "Type": "noun"
+  },
+  {
+    "Word": "steel",
+    "Type": "noun"
+  },
+  {
+    "Word": "iron",
+    "Type": "noun"
+  },
+  {
+    "Word": "copper",
+    "Type": "noun"
+  },
+  {
+    "Word": "brass",
+    "Type": "noun"
+  },
+  {
+    "Word": "bronze",
+    "Type": "noun"
+  },
+  {
+    "Word": "aluminum",
+    "Type": "noun"
+  },
+  {
+    "Word": "tin",
+    "Type": "noun"
+  },
+  {
+    "Word": "lead",
+    "Type": "noun"
+  },
+  {
+    "Word": "zinc",
+    "Type": "noun"
+  },
+  {
+    "Word": "nickel",
+    "Type": "noun"
+  },
+  {
+    "Word": "chromium",
+    "Type": "noun"
+  },
+  {
+    "Word": "titanium",
+    "Type": "noun"
+  },
+  {
+    "Word": "vanadium",
+    "Type": "noun"
+  },
+  {
+    "Word": "manganese",
+    "Type": "noun"
+  },
+  {
+    "Word": "cobalt",
+    "Type": "noun"
+  },
+  {
+    "Word": "tungsten",
+    "Type": "noun"
+  },
+  {
+    "Word": "molybdenum",
+    "Type": "noun"
+  },
+  {
+    "Word": "platinum",
+    "Type": "noun"
+  },
+  {
+    "Word": "gold",
+    "Type": "noun"
+  },
+  {
+    "Word": "silver",
+    "Type": "noun"
+  },
+  {
+    "Word": "palladium",
+    "Type": "noun"
+  },
+  {
+    "Word": "rhodium",
+    "Type": "noun"
+  },
+  {
+    "Word": "iridium",
+    "Type": "noun"
+  },
+  {
+    "Word": "osmium",
+    "Type": "noun"
+  },
+  {
+    "Word": "ruthenium",
+    "Type": "noun"
+  },
+  {
+    "Word": "mercury",
+    "Type": "noun"
+  },
+  {
+    "Word": "cadmium",
+    "Type": "noun"
+  },
+  {
+    "Word": "indium",
+    "Type": "noun"
+  },
+  {
+    "Word": "gallium",
+    "Type": "noun"
+  },
+  {
+    "Word": "germanium",
+    "Type": "noun"
+  },
+  {
+    "Word": "silicon",
+    "Type": "noun"
+  },
+  {
+    "Word": "arsenic",
+    "Type": "noun"
+  },
+  {
+    "Word": "antimony",
+    "Type": "noun"
+  },
+  {
+    "Word": "bismuth",
+    "Type": "noun"
+  },
+  {
+    "Word": "polonium",
+    "Type": "noun"
+  },
+  {
+    "Word": "astatine",
+    "Type": "noun"
+  },
+  {
+    "Word": "radon",
+    "Type": "noun"
+  },
+  {
+    "Word": "francium",
+    "Type": "noun"
+  },
+  {
+    "Word": "radium",
+    "Type": "noun"
+  },
+  {
+    "Word": "actinium",
+    "Type": "noun"
+  },
+  {
+    "Word": "thorium",
+    "Type": "noun"
+  },
+  {
+    "Word": "protactinium",
+    "Type": "noun"
+  },
+  {
+    "Word": "uranium",
+    "Type": "noun"
+  },
+  {
+    "Word": "neptunium",
+    "Type": "noun"
+  },
+  {
+    "Word": "plutonium",
+    "Type": "noun"
+  },
+  {
+    "Word": "americium",
+    "Type": "noun"
+  },
+  {
+    "Word": "curium",
+    "Type": "noun"
+  },
+  {
+    "Word": "berkelium",
+    "Type": "noun"
+  },
+  {
+    "Word": "californium",
+    "Type": "noun"
+  },
+  {
+    "Word": "einsteinium",
+    "Type": "noun"
+  },
+  {
+    "Word": "fermium",
+    "Type": "noun"
+  },
+  {
+    "Word": "mendelevium",
+    "Type": "noun"
+  },
+  {
+    "Word": "nobelium",
+    "Type": "noun"
+  },
+  {
+    "Word": "lawrencium",
+    "Type": "noun"
+  },
+  {
+    "Word": "rutherfordium",
+    "Type": "noun"
+  },
+  {
+    "Word": "dubnium",
+    "Type": "noun"
+  },
+  {
+    "Word": "seaborgium",
+    "Type": "noun"
+  },
+  {
+    "Word": "bohrium",
+    "Type": "noun"
+  },
+  {
+    "Word": "hassium",
+    "Type": "noun"
+  },
+  {
+    "Word": "meitnerium",
+    "Type": "noun"
+  },
+  {
+    "Word": "darmstadtium",
+    "Type": "noun"
+  },
+  {
+    "Word": "roentgenium",
+    "Type": "noun"
+  },
+  {
+    "Word": "copernicium",
+    "Type": "noun"
+  },
+  {
+    "Word": "nihonium",
+    "Type": "noun"
+  },
+  {
+    "Word": "flerovium",
+    "Type": "noun"
+  },
+  {
+    "Word": "moscovium",
+    "Type": "noun"
+  },
+  {
+    "Word": "livermorium",
+    "Type": "noun"
+  },
+  {
+    "Word": "tennessine",
+    "Type": "noun"
+  },
+  {
+    "Word": "oganesson",
+    "Type": "noun"
+  },
+  {
+    "Word": "hydrogen",
+    "Type": "noun"
+  },
+  {
+    "Word": "helium",
+    "Type": "noun"
+  },
+  {
+    "Word": "lithium",
+    "Type": "noun"
+  },
+  {
+    "Word": "beryllium",
+    "Type": "noun"
+  },
+  {
+    "Word": "boron",
+    "Type": "noun"
+  },
+  {
+    "Word": "nitrogen",
+    "Type": "noun"
+  },
+  {
+    "Word": "fluorine",
+    "Type": "noun"
+  },
+  {
+    "Word": "neon",
+    "Type": "noun"
+  },
+  {
+    "Word": "sodium",
+    "Type": "noun"
+  },
+  {
+    "Word": "magnesium",
+    "Type": "noun"
+  },
+  {
+    "Word": "potassium",
+    "Type": "noun"
+  },
+  {
+    "Word": "calcium",
+    "Type": "noun"
+  },
+  {
+    "Word": "scandium",
+    "Type": "noun"
+  },
+  {
+    "Word": "selenium",
+    "Type": "noun"
+  },
+  {
+    "Word": "bromine",
+    "Type": "noun"
+  },
+  {
+    "Word": "krypton",
+    "Type": "noun"
+  },
+  {
+    "Word": "rubidium",
+    "Type": "noun"
+  },
+  {
+    "Word": "strontium",
+    "Type": "noun"
+  },
+  {
+    "Word": "yttrium",
+    "Type": "noun"
+  },
+  {
+    "Word": "zirconium",
+    "Type": "noun"
+  },
+  {
+    "Word": "niobium",
+    "Type": "noun"
+  },
+  {
+    "Word": "technetium",
+    "Type": "noun"
+  },
+  {
+    "Word": "tellurium",
+    "Type": "noun"
+  },
+  {
+    "Word": "iodine",
+    "Type": "noun"
+  },
+  {
+    "Word": "xenon",
+    "Type": "noun"
+  },
+  {
+    "Word": "cesium",
+    "Type": "noun"
+  },
+  {
+    "Word": "barium",
+    "Type": "noun"
+  },
+  {
+    "Word": "lanthanum",
+    "Type": "noun"
+  },
+  {
+    "Word": "cerium",
+    "Type": "noun"
+  },
+  {
+    "Word": "praseodymium",
+    "Type": "noun"
+  },
+  {
+    "Word": "neodymium",
+    "Type": "noun"
+  },
+  {
+    "Word": "promethium",
+    "Type": "noun"
+  },
+  {
+    "Word": "samarium",
+    "Type": "noun"
+  },
+  {
+    "Word": "europium",
+    "Type": "noun"
+  },
+  {
+    "Word": "gadolinium",
+    "Type": "noun"
+  },
+  {
+    "Word": "terbium",
+    "Type": "noun"
+  },
+  {
+    "Word": "dysprosium",
+    "Type": "noun"
+  },
+  {
+    "Word": "holmium",
+    "Type": "noun"
+  },
+  {
+    "Word": "erbium",
+    "Type": "noun"
+  },
+  {
+    "Word": "thulium",
+    "Type": "noun"
+  },
+  {
+    "Word": "ytterbium",
+    "Type": "noun"
+  },
+  {
+    "Word": "lutetium",
+    "Type": "noun"
+  },
+  {
+    "Word": "hafnium",
+    "Type": "noun"
+  },
+  {
+    "Word": "tantalum",
+    "Type": "noun"
+  },
+  {
+    "Word": "rhenium",
+    "Type": "noun"
+  },
+  {
+    "Word": "thallium",
+    "Type": "noun"
+  }
+]

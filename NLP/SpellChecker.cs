@@ -124,6 +124,6 @@ public class SpellChecker
 
     private static bool IsPunctuation(string token)
     {
-        return token is "." or "," or "!" or "?" or ";" or ":" or "(" or ")" or "\"" or "'";
+        return PunctuationHelper.IsPunctuation(token);
     }
 }

@@ -19,7 +19,6 @@ public class KnowledgeStore(PokeChatDbContext context)
         };
 
         context.Facts.Add(entity);
-        context.SaveChanges();
     }
 
     public List<Fact> GetFactsBySubject(string subject)
@@ -41,8 +40,9 @@ public class KnowledgeStore(PokeChatDbContext context)
     public Fact? GetFact(string subject, string verb, string obj)
     {
         var entity = context.Facts
+            .Where(f => f.Subject == subject && f.Verb == verb && f.Object == obj)
             .SelectFacet<Fact>()
-            .FirstOrDefault(f => f.Subject == subject && f.Verb == verb && f.Object == obj);
+            .FirstOrDefault();
 
         return entity;
     }
@@ -87,7 +87,6 @@ public class KnowledgeStore(PokeChatDbContext context)
         };
 
         context.Conversations.Add(conversation);
-        context.SaveChanges();
     }
 
     public List<Greeting> GetGreetings()
@@ -105,7 +104,6 @@ public class KnowledgeStore(PokeChatDbContext context)
         };
 
         context.Greetings.Add(greeting);
-        context.SaveChanges();
     }
 
     public List<GreetingWord> GetGreetingWords()
@@ -128,7 +126,6 @@ public class KnowledgeStore(PokeChatDbContext context)
         };
 
         context.GreetingWords.Add(greetingWord);
-        context.SaveChanges();
     }
 
     public List<ResponseRule> GetResponseRules()
@@ -177,7 +174,6 @@ public class KnowledgeStore(PokeChatDbContext context)
         };
 
         context.Misspellings.Add(entry);
-        context.SaveChanges();
     }
 
     public string? GetCorrection(string misspelling)
@@ -193,6 +189,18 @@ public class KnowledgeStore(PokeChatDbContext context)
         return context.PosDictionary.Any(p => p.Word == word.ToLowerInvariant());
     }
 
+    public void Save()
+    {
+        context.SaveChanges();
+    }
+
+    public Dictionary<string, List<string>> GetBotResponses()
+    {
+        return context.BotResponses
+            .GroupBy(r => r.Category)
+            .ToDictionary(g => g.Key, g => g.Select(r => r.ResponseText).ToList());
+    }
+
     public void AddLearnedWord(string word)
     {
         var entry = new PosDictionaryEntry
@@ -203,6 +211,5 @@ public class KnowledgeStore(PokeChatDbContext context)
         };
 
         context.PosDictionary.Add(entry);
-        context.SaveChanges();
     }
 }

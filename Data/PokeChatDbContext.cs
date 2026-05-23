@@ -46,6 +46,7 @@ public sealed class PokeChatDbContext : DbContext
     public DbSet<NamePattern> NamePatterns => Set<NamePattern>();
     public DbSet<BotCommand> BotCommands => Set<BotCommand>();
     public DbSet<Misspelling> Misspellings => Set<Misspelling>();
+    public DbSet<BotResponse> BotResponses => Set<BotResponse>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -160,6 +161,14 @@ public sealed class PokeChatDbContext : DbContext
             entity.HasIndex(e => e.WrongWord).IsUnique();
             entity.Property(e => e.WrongWord).IsRequired();
             entity.Property(e => e.Correction).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+        });
+
+        modelBuilder.Entity<BotResponse>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Category).IsRequired();
+            entity.Property(e => e.ResponseText).IsRequired();
             entity.Property(e => e.CreatedAt).IsRequired();
         });
     }

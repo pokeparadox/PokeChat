@@ -1,15 +1,44 @@
+using PokeChat.Core;
 using PokeChat.Knowledge;
 using PokeChat.NLP;
 
 namespace PokeChat.Responses;
 
-public class ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker context, SpellChecker spellChecker)
+public class ResponseEngine
 {
-    private readonly Random _random = new();
+    private readonly KnowledgeStore _knowledgeStore;
+    private readonly ContextTracker _context;
+    private readonly SpellChecker _spellChecker;
+    private readonly IPosTagger _posTagger;
+    private readonly ITokenizer _tokenizer;
+    private readonly ISvoExtractor _svoExtractor;
+    private readonly Dictionary<string, List<string>> _botResponses;
+
+    public ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker context, SpellChecker spellChecker, IPosTagger posTagger, ITokenizer tokenizer, ISvoExtractor svoExtractor)
+    {
+        _knowledgeStore = knowledgeStore;
+        _context = context;
+        _spellChecker = spellChecker;
+        _posTagger = posTagger;
+        _tokenizer = tokenizer;
+        _svoExtractor = svoExtractor;
+        _botResponses = knowledgeStore.GetBotResponses();
+    }
+
+    private string GetRandomResponse(string category, params object[] args)
+    {
+        if (_botResponses.TryGetValue(category, out var responses) && responses.Count > 0)
+        {
+            var template = responses[Random.Shared.Next(responses.Count)];
+            return args.Length > 0 ? string.Format(template, args) : template;
+        }
+
+        return string.Empty;
+    }
 
     public string GenerateResponse(string input, int? userId)
     {
-        var unknownWordsRaw = context.GetContext("unknown_words");
+        var unknownWordsRaw = _context.GetContext(ContextKeys.UnknownWords);
         if (!string.IsNullOrEmpty(unknownWordsRaw))
         {
             var unknownWords = unknownWordsRaw
@@ -17,93 +46,69 @@ public class ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker contex
                 .Distinct()
                 .ToList();
 
-            context.SetContext("unknown_words", null);
+            _context.SetContext(ContextKeys.UnknownWords, null);
 
             if (unknownWords.Count > 0)
             {
                 var word = unknownWords[0];
-                if (spellChecker.HasSuggestions(word))
+                if (_spellChecker.HasSuggestions(word))
                 {
-                    var suggestions = spellChecker.SuggestCorrections(word);
+                    var suggestions = _spellChecker.SuggestCorrections(word);
                     var suggestion = suggestions[0];
-                    context.SetContext("pending_clarification_word", word);
-                    context.SetContext("pending_clarification_suggestion", suggestion);
-                    return $"Did you mean '{suggestion}' instead of '{word}'?";
+                    _context.SetContext(ContextKeys.PendingClarificationWord, word);
+                    _context.SetContext(ContextKeys.PendingClarificationSuggestion, suggestion);
+                    return GetRandomResponse("unknown_word_suggestion", suggestion, word);
                 }
                 else
                 {
-                    context.SetContext("pending_clarification_word", word);
-                    context.SetContext("pending_clarification_suggestion", null);
-                    return $"I don't know the word '{word}'. What does it mean?";
+                    _context.SetContext(ContextKeys.PendingClarificationWord, word);
+                    _context.SetContext(ContextKeys.PendingClarificationSuggestion, null);
+                    return GetRandomResponse("unknown_word_no_suggestion", word);
                 }
             }
         }
 
-        var rule = ResponseRules.MatchRule(input, knowledgeStore);
+        var rule = ResponseRules.MatchRule(input, _knowledgeStore);
 
         if (rule != null && rule.Responses.Count > 0)
         {
-            return rule.Responses[_random.Next(rule.Responses.Count)];
+            return rule.Responses[Random.Shared.Next(rule.Responses.Count)];
         }
 
-        var tokens = Tokenizer.Tokenize(input);
-        var correctedTokens = spellChecker.AutoCorrect(tokens);
-        var tags = PosTagger.Tag(correctedTokens);
-        var triples = SvoExtractor.Extract(correctedTokens, tags);
+        var tokens = _tokenizer.Tokenize(input);
+        var correctedTokens = _spellChecker.AutoCorrect(tokens);
+        var tags = _posTagger.Tag(correctedTokens);
+        var triples = _svoExtractor.Extract(correctedTokens, tags);
 
         foreach (var triple in triples)
         {
-            var existingFact = knowledgeStore.GetFact(triple.Subject, triple.Verb, triple.Object);
+            var existingFact = _knowledgeStore.GetFact(triple.Subject, triple.Verb, triple.Object);
             if (existingFact != null)
             {
-                return $"I already know that {triple.Subject} {triple.Verb} {triple.Object}. Did you know something new about it?";
+                return GetRandomResponse("existing_fact", triple.Subject, triple.Verb, triple.Object);
             }
         }
 
-        if (!string.IsNullOrEmpty(context.LastSubject))
+        if (!string.IsNullOrEmpty(_context.LastSubject))
         {
-            var subject = context.LastSubject;
-            var contextFollowUps = new List<string>
-            {
-                $"Tell me more about {subject}.",
-                $"What else do you know about {subject}?",
-                $"You mentioned {subject}. What's on your mind?"
-            };
+            var subject = _context.LastSubject;
 
-            if (!string.IsNullOrEmpty(context.LastObject))
+            if (!string.IsNullOrEmpty(_context.LastObject))
             {
-                var obj = context.LastObject;
-                contextFollowUps.Add($"You said {subject} is related to {obj}. Anything else?");
-                contextFollowUps.Add($"Earlier you mentioned {subject} and {obj}. Go on!");
+                var obj = _context.LastObject;
+                return GetRandomResponse("context_followup_with_object", subject, obj);
             }
 
-            return contextFollowUps[_random.Next(contextFollowUps.Count)];
+            return GetRandomResponse("context_followup", subject);
         }
 
-        var facts = userId.HasValue ? knowledgeStore.GetFactsByUser(userId.Value) : new List<Fact>();
-        if (facts.Count > 0 && _random.Next(3) == 0)
+        var facts = userId.HasValue ? _knowledgeStore.GetFactsByUser(userId.Value) : new List<Fact>();
+        if (facts.Count > 0 && Random.Shared.Next(3) == 0)
         {
-            var randomFact = facts[_random.Next(facts.Count)];
-            var followUps = new List<string>
-            {
-                $"Speaking of {randomFact.Subject}, you mentioned they {randomFact.Verb} {randomFact.Object}. Tell me more!",
-                $"I remember you said something about {randomFact.Subject}. What else?",
-                $"Earlier you mentioned {randomFact.Subject} {randomFact.Verb} {randomFact.Object}. Anything new?"
-            };
-            return followUps[_random.Next(followUps.Count)];
+            var randomFact = facts[Random.Shared.Next(facts.Count)];
+            return GetRandomResponse("random_fact_followup", randomFact.Subject, randomFact.Verb, randomFact.Object);
         }
 
-        var defaults = new List<string>
-        {
-            "Interesting! Tell me more.",
-            "I see. What else is on your mind?",
-            "That's fascinating. Can you elaborate?",
-            "I'm listening. Go on!",
-            "Hmm, that's thought-provoking. What do you think about that?",
-            "I'll keep that in mind. Anything else?",
-            "Thanks for sharing! What would you like to talk about next?"
-        };
-
-        return defaults[_random.Next(defaults.Count)];
+        return GetRandomResponse("default_response");
     }
 }

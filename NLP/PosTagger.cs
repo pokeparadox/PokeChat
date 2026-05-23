@@ -17,15 +17,11 @@ public enum PosTag
     Unknown
 }
 
-public static class PosTagger
+public class PosTagger : IPosTagger
 {
-    private static Dictionary<string, PosTag>? _wordTagMap;
-    public static void Reset()
-    {
-        _wordTagMap = null;
-    }
+    private readonly Dictionary<string, PosTag> _wordTagMap;
 
-    public static void Initialize(IEnumerable<PosDictionaryEntry> entries)
+    public PosTagger(IEnumerable<PosDictionaryEntry> entries)
     {
         _wordTagMap = new Dictionary<string, PosTag>(StringComparer.OrdinalIgnoreCase);
 
@@ -47,26 +43,26 @@ public static class PosTagger
         }
     }
 
-    public static Dictionary<string, PosTag> Tag(List<string> tokens)
+    public List<PosTag> Tag(List<string> tokens)
     {
-        var tags = new Dictionary<string, PosTag>();
+        var tags = new List<PosTag>(tokens.Count);
 
         for (int i = 0; i < tokens.Count; i++)
         {
             var token = tokens[i];
             var tag = GetTag(token, i, tokens);
-            tags[token] = tag;
+            tags.Add(tag);
         }
 
         return tags;
     }
 
-    private static PosTag GetTag(string token, int index, List<string> tokens)
+    private PosTag GetTag(string token, int index, List<string> tokens)
     {
         if (IsPunctuation(token))
             return PosTag.Punctuation;
 
-        if (_wordTagMap != null && _wordTagMap.TryGetValue(token, out var knownTag))
+        if (_wordTagMap.TryGetValue(token, out var knownTag))
         {
             return knownTag;
         }
@@ -79,26 +75,17 @@ public static class PosTagger
         if (token.EndsWith("s") && token.Length > 1)
         {
             var singular = token.Substring(0, token.Length - 1);
-            if (_wordTagMap != null && _wordTagMap.TryGetValue(singular, out var singularTag) && singularTag == PosTag.Verb)
+            if (_wordTagMap.TryGetValue(singular, out var singularTag) && singularTag == PosTag.Verb)
             {
                 return PosTag.Verb;
             }
         }
-
-        if (token.Length > 0 && char.IsUpper(tokens[index][0]) && index > 0 &&
-            tokens[index - 1] != "." && tokens[index - 1] != "!" && tokens[index - 1] != "?")
-        {
-            return PosTag.ProperNoun;
-        }
-
-        if (token.Length > 0 && char.IsUpper(tokens[index][0]))
-            return PosTag.ProperNoun;
 
         return PosTag.Unknown;
     }
 
     private static bool IsPunctuation(string token)
     {
-        return token is "." or "," or "!" or "?" or ";" or ":" or "(" or ")" or "\"" or "'";
+        return PunctuationHelper.IsPunctuation(token);
     }
 }
