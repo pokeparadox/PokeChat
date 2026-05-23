@@ -117,11 +117,19 @@ public class ResponseEngine
         if (!string.IsNullOrEmpty(_context.LastSubject))
         {
             var subject = _context.LastSubject;
+            var subjCat = _context.GetContext(ContextKeys.SubjectCategory);
 
             if (!string.IsNullOrEmpty(_context.LastObject))
             {
                 var obj = _context.LastObject;
                 return GetRandomResponse("context_followup_with_object", subject, obj);
+            }
+
+            if (!string.IsNullOrEmpty(subjCat))
+            {
+                var catResponse = GetRandomResponse($"context_followup_{subjCat}", subject);
+                if (!string.IsNullOrEmpty(catResponse))
+                    return catResponse;
             }
 
             return GetRandomResponse("context_followup", subject);

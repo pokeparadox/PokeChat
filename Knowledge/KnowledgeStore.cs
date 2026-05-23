@@ -276,6 +276,32 @@ public class KnowledgeStore(PokeChatDbContext context)
         return query.Select(l => l.SourceWord).Distinct().ToList();
     }
 
+    public string? CategoriseNoun(string noun)
+    {
+        return context.NounCategories
+            .Where(n => n.Noun == noun.ToLowerInvariant())
+            .Select(n => n.Category)
+            .FirstOrDefault();
+    }
+
+    public void AddNounCategory(string noun, string category, int? userId = null)
+    {
+        var entry = new NounCategory
+        {
+            Noun = noun.ToLowerInvariant(),
+            Category = category.ToLowerInvariant(),
+            LearnedFromUserId = userId,
+            CreatedAt = DateTime.UtcNow.ToString("o")
+        };
+
+        context.NounCategories.Add(entry);
+    }
+
+    public List<NounCategory> GetNounCategories()
+    {
+        return context.NounCategories.ToList();
+    }
+
     public List<string> SearchDictionary(string partial)
     {
         var lower = partial.ToLowerInvariant();

@@ -101,6 +101,15 @@ CREATE TABLE IF NOT EXISTS word_links (
     FOREIGN KEY (created_by_user_id) REFERENCES users(id)
 );
 
+CREATE TABLE IF NOT EXISTS noun_categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    noun TEXT NOT NULL UNIQUE,
+    category TEXT NOT NULL,
+    learned_from_user_id INTEGER,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (learned_from_user_id) REFERENCES users(id)
+);
+
 CREATE TABLE IF NOT EXISTS bot_commands (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     command TEXT NOT NULL UNIQUE,

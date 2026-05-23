@@ -8,4 +8,6 @@ public static class ContextKeys
     public const string LastResponse = "last_response";
     public const string UserName = "user_name";
     public const string PendingDictionaryWord = "pending_dictionary_word";
+    public const string SubjectCategory = "subject_category";
+    public const string ObjectCategory = "object_category";
 }

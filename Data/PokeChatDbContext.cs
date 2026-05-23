@@ -49,6 +49,7 @@ public sealed class PokeChatDbContext : DbContext
     public DbSet<BotResponse> BotResponses => Set<BotResponse>();
     public DbSet<WordDefinition> WordDefinitions => Set<WordDefinition>();
     public DbSet<WordLink> WordLinks => Set<WordLink>();
+    public DbSet<NounCategory> NounCategories => Set<NounCategory>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -195,6 +196,18 @@ public sealed class PokeChatDbContext : DbContext
             entity.HasOne<User>()
                 .WithMany()
                 .HasForeignKey(e => e.CreatedByUserId);
+        });
+
+        modelBuilder.Entity<NounCategory>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Noun).IsUnique();
+            entity.Property(e => e.Noun).IsRequired();
+            entity.Property(e => e.Category).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => e.LearnedFromUserId);
         });
     }
 }

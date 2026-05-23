@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 
 namespace PokeChat.Maths;
 
-public class KevSimpleMath : IMathEngine
+public class SimpleMath : IMathEngine
 {
     private static readonly Regex MathExprRegex = new(
         @"(\d+(?:\.\d+)?)\s*([+\-*/^])\s*(\d+(?:\.\d+)?)",

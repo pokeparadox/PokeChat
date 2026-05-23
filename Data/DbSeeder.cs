@@ -16,6 +16,7 @@ public static class DbSeeder
         SeedNamePatterns(context, now);
         SeedBotCommands(context, now);
         SeedMisspellings(context, now);
+        SeedNounCategories(context, now);
         SeedBotResponses(context, now);
 
         context.SaveChanges();
@@ -321,6 +322,37 @@ public static class DbSeeder
         }));
     }
 
+    private static void SeedNounCategories(PokeChatDbContext context, string now)
+    {
+        if (context.NounCategories.Any()) return;
+
+        var categories = new (string Noun, string Category)[]
+        {
+            ("alice", "person"),
+            ("bob", "person"),
+            ("charlie", "person"),
+            ("david", "person"),
+            ("emma", "person"),
+            ("london", "place"),
+            ("paris", "place"),
+            ("school", "place"),
+            ("park", "place"),
+            ("hospital", "place"),
+            ("table", "thing"),
+            ("book", "thing"),
+            ("car", "thing"),
+            ("pizza", "thing"),
+            ("computer", "thing"),
+        };
+
+        context.NounCategories.AddRange(categories.Select(c => new NounCategory
+        {
+            Noun = c.Noun,
+            Category = c.Category,
+            CreatedAt = now
+        }));
+    }
+
     private static void SeedBotResponses(PokeChatDbContext context, string now)
     {
         if (context.BotResponses.Any()) return;
@@ -366,6 +398,12 @@ public static class DbSeeder
             ("thesaurus_query_none", "I don't know of any words related to {0}."),
             ("thesaurus_query_none", "I haven't learned about words related to {0} yet."),
             ("link_saved", "I've noted that {0} is related to {1}."),
+            ("context_followup_person", "Tell me more about {0}."),
+            ("context_followup_person", "What else can you tell me about {0}?"),
+            ("context_followup_place", "What's {0} like?"),
+            ("context_followup_place", "What else do you know about {0}?"),
+            ("context_followup_thing", "Tell me more about {0}."),
+            ("context_followup_thing", "What else about {0}?"),
         };
 
         context.BotResponses.AddRange(responses.Select(r => new BotResponse

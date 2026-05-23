@@ -185,6 +185,54 @@ SearchDictionary(string partial)         → List<string>
 
 ---
 
+## Phase 8 — Noun Categorisation
+
+Classify nouns encountered in conversation as person, place, or thing for more intelligent, context-aware responses.
+
+### 8.1 New files
+- `Core/INounCategoriser.cs` — interface: `string CategoriseNoun(string noun)`
+- `Core/NounCategoriser.cs` — implementation: DB lookup → heuristics → default "thing"
+- `Data/Entities/NounCategory.cs` — entity POCO (Id, Noun unique, Category, LearnedFromUserId FK→users nullable, CreatedAt)
+
+### 8.2 Modified files
+- `Data/PokeChatDbContext.cs` — add `DbSet<NounCategory>`, fluent config
+- `Data/Schema.sql` — add `noun_categories` table DDL
+- `Knowledge/KnowledgeStore.cs` — add `CategoriseNoun`, `AddNounCategory`, `GetNounCategories`
+- `Core/ContextKeys.cs` — add `SubjectCategory`, `ObjectCategory` constants
+- `Core/ChatSession.cs` — inject `INounCategoriser`, categorise SVO subject/object, detect "X is a [person/place/thing]" patterns
+- `Responses/ResponseEngine.cs` — use noun category context keys for pronoun selection in follow-ups
+- `Data/DbSeeder.cs` — seed ~15 noun categories + noun-category-aware bot responses
+
+### 8.3 NounCategoriser logic
+```
+CategoriseNoun(noun):
+  1. DB lookup → return category if found
+  2. Heuristics:
+     - Common first name set → "person"
+     - Ends with -ville/-town/-burg/-shire/-land/-city → "place"
+     - Default → "thing"
+  3. Auto-learn: store (noun, category) in DB
+  4. Return category
+```
+
+### 8.4 ChatSession flow
+- After SVO extraction, categorise subject and object via `_nounCategoriser.CategoriseNoun()`
+- Store categories in context: `ContextKeys.SubjectCategory`, `ContextKeys.ObjectCategory`
+- Detect "X is a person/place/thing" patterns → learn category
+
+### 8.5 ResponseEngine integration
+- When generating follow-up templates, check subject/object category:
+  - "person" → "them/him/her"
+  - "place" → "there/it"
+  - "thing" → "it/that"
+
+### 8.6 Tests
+- `NounCategoriserTests` — DB lookup, heuristics, default fallback, auto-learn
+- Update `ChatSessionTests` — verify category context keys
+- `dotnet test` on the full suite
+
+---
+
 ## Running the Plan
 
 Before each phase, confirm `dotnet build` and `dotnet test` pass.

@@ -35,21 +35,24 @@ NLP/
 Math/
   IMathEngine.cs              → interface for math expression evaluation
   SimpleMath.cs               → regex-based binary expression engine (+, -, *, /, ^)
-Knowledge/
-  KnowledgeStore.cs           → EF Core repository layer over PokeChatDbContext
-  Fact.cs                     → Facet model mapping to FactEntity
-  ContextTracker.cs           → conversation context, pronoun resolution
+  Core/
+    INounCategoriser.cs         → interface for noun categorisation
+    NounCategoriser.cs          → DB lookup + heuristics (person/place/thing), auto-learns
+  Knowledge/
+    KnowledgeStore.cs           → EF Core repository layer over PokeChatDbContext
+    Fact.cs                     → Facet model mapping to FactEntity
+    ContextTracker.cs           → conversation context, pronoun resolution
 Responses/
   ResponseEngine.cs           → rule-based response generation (math, dictionary/thesaurus, rules, facts, follow-ups)
   ResponseRules.cs            → loads rules from DB (response_rules table), regex matching
-Data/
-  PokeChatDbContext.cs        → EF Core DbContext with DbSets for all entities
-  DbSeeder.cs                 → seeds initial data (greetings, rules, POS dictionary, bot responses, etc.)
-  pos_dictionary.json         → ~2850 POS entries (incl. British English variants) loaded by DbSeeder at seed time
-  Schema.sql                  → all tables
-  Entities/                   → entity classes: User, FactEntity, Conversation, Greeting, GreetingWord,
-                                ResponseRule, ResponseRuleResponse, PosDictionaryEntry, NamePattern,
-                                BotCommand, Misspelling, BotResponse, WordDefinition, WordLink
+  Data/
+    PokeChatDbContext.cs        → EF Core DbContext with DbSets for all entities
+    DbSeeder.cs                 → seeds initial data (greetings, rules, POS dictionary, bot responses, etc.)
+    pos_dictionary.json         → ~2850 POS entries (incl. British English variants) loaded by DbSeeder at seed time
+    Schema.sql                  → all tables
+    Entities/                   → entity classes: User, FactEntity, Conversation, Greeting, GreetingWord,
+                                  ResponseRule, ResponseRuleResponse, PosDictionaryEntry, NamePattern,
+                                  BotCommand, Misspelling, BotResponse, WordDefinition, WordLink, NounCategory
 ```
 
 ## Key Details
@@ -95,11 +98,16 @@ A phased improvement plan is maintained in `.agents/plan.md`, ordered by priorit
 - **Phase 5:** British English ✅ (tokeniser renaming, 91 British word variants in pos_dictionary.json)
 - **Phase 6:** Simple Mathematics ✅ (IMathEngine/SimpleMath with +,-,*,/,^, regex-based, stated-result correction)
 - **Phase 7:** Self-Learning Dictionary ✅ (WordDefinition/WordLink entities, definition query/learn, thesaurus, link creation)
+- **Phase 8:** Noun Categorisation ✅ (NounCategoriser with DB + heuristics, auto-learn, noun-aware follow-ups)
 
 ## Known Fixes
 - **Math operators in tokeniser:** `+`, `-`, `*`, `/`, `^` are extracted as standalone tokens by Tokeniser regex. `GetUnknownWords` in `SpellChecker` must skip math operators to prevent false unknown-word prompts before math evaluation. Fixed via `SpellChecker.MathOperators` HashSet.
 - **Solution file path:** `PokeChat.slnx` must use `tests/PokeChat.Tests/PokeChat.Tests.csproj` (not `../tests/...`) — the `..` resolved to a stale project copy at `/mnt/Storage/RiderProjects/tests/`.
 - **Re-seeding after new categories:** `SeedBotResponses` and all other `Seed*` methods check `if (context.X.Any()) return;`. When new categories or responses are added to the seeder, existing `pokechat.db` must be deleted to get the new seed data.
+- **NounCategoriser:** Instance-based, injected into ChatSession. Lookup chain: DB → common names set → place suffixes → "thing" default. Auto-learns on heuristic match (persists to noun_categories table). Used in ChatSession.ProcessSentence after SVO extraction to set SubjectCategory/ObjectCategory context keys.
+
+## Routines
+- **When creating a new phase plan:** Append to `.agents/plan.md`, file the plan to MemPalace (`wing: pokechat, room: plans`), and update this file's Improvement Plan section.
 
 ## Git
 - `.gitignore` excludes `/bin`, `/obj`, `/graphify-out`

@@ -16,6 +16,7 @@ public class ChatSession
     private readonly ISentenceSplitter _sentenceSplitter;
     private readonly ISvoExtractor _svoExtractor;
     private readonly ContextTracker _context;
+    private readonly INounCategoriser _nounCategoriser;
     private int? _currentUserId;
     private string _currentUserName = string.Empty;
     private readonly List<string> _namePatterns;
@@ -35,6 +36,7 @@ public class ChatSession
         _svoExtractor = new SvoExtractor();
         var posEntries = _knowledgeStore.GetPosDictionary();
         _posTagger = new PosTagger(posEntries);
+        _nounCategoriser = new NounCategoriser(_knowledgeStore);
         _responseEngine = new ResponseEngine(_knowledgeStore, _context, _spellChecker, _posTagger, _tokeniser, _svoExtractor);
 
         var spellDict = new HashSet<string>(posEntries.Select(e => e.Word), StringComparer.OrdinalIgnoreCase);
@@ -56,6 +58,7 @@ public class ChatSession
         ISentenceSplitter sentenceSplitter,
         ISvoExtractor svoExtractor,
         ContextTracker context,
+        INounCategoriser nounCategoriser,
         List<string> namePatterns,
         HashSet<string> botCommands,
         HashSet<string> greetingWords)
@@ -69,6 +72,7 @@ public class ChatSession
         _sentenceSplitter = sentenceSplitter;
         _svoExtractor = svoExtractor;
         _context = context;
+        _nounCategoriser = nounCategoriser;
         _namePatterns = namePatterns;
         _botCommands = botCommands;
         _greetingWords = greetingWords;
@@ -201,8 +205,28 @@ public class ChatSession
                 _knowledgeStore.StoreFact(fact);
             }
 
+            if (predicateType is PredicateType.GeneralFact or PredicateType.PersonalAttribute)
+            {
+                var lowerObj = resolvedObject.ToLowerInvariant();
+                if (lowerObj is "a person" or "person")
+                    _nounCategoriser.CategoriseNoun(resolvedSubject);
+                else if (lowerObj is "a place" or "place")
+                    _nounCategoriser.CategoriseNoun(resolvedSubject);
+                else if (lowerObj is "a thing" or "thing")
+                    _nounCategoriser.CategoriseNoun(resolvedSubject);
+            }
+
             _context.UpdateLastSubject(resolvedSubject);
             _context.UpdateLastObject(resolvedObject);
+        }
+
+        if (triples.Count > 0)
+        {
+            var lastTriple = triples[^1];
+            var subjCat = _nounCategoriser.CategoriseNoun(ResolveSubject(lastTriple.Subject));
+            var objCat = _nounCategoriser.CategoriseNoun(ResolveObject(lastTriple.Object));
+            _context.SetContext(ContextKeys.SubjectCategory, subjCat);
+            _context.SetContext(ContextKeys.ObjectCategory, objCat);
         }
 
     }

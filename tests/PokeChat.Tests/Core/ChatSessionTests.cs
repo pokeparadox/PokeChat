@@ -32,6 +32,7 @@ public class ChatSessionTests
         var sentenceSplitter = new SentenceSplitter();
         var svoExtractor = new SvoExtractor();
 
+        var nounCategoriser = new NounCategoriser(store);
         var responseEngine = new ResponseEngine(store, contextTracker, spellChecker, posTagger, tokeniser, svoExtractor);
 
         var session = new ChatSession(
@@ -44,6 +45,7 @@ public class ChatSessionTests
             sentenceSplitter,
             svoExtractor,
             contextTracker,
+            nounCategoriser,
             namePatterns ?? new List<string> { "my name is", "i am", "i'm", "call me" },
             botCommands ?? new List<string> { "quit", "exit" }.ToHashSet(StringComparer.OrdinalIgnoreCase),
             greetingWords ?? new List<string> { "hi", "hello" }.ToHashSet(StringComparer.OrdinalIgnoreCase)
