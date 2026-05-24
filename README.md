@@ -85,5 +85,6 @@ All conversational data is persisted:
 | 7 | Self-learning dictionary | ✅ |
 | 8 | Noun categorisation | ✅ |
 | 9 | Proactive conversation | ✅ |
+| 10 | Phrasing improvement (ConjugateVerb, template rewrite) | ✅ |
 
 See `.agents/plan.md` for full details. 

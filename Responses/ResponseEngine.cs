@@ -29,6 +29,31 @@ public class ResponseEngine
         _botResponses = knowledgeStore.GetBotResponses();
     }
 
+    internal static string ConjugateVerb(string verb, string subject)
+    {
+        var lowerVerb = verb.ToLowerInvariant();
+        var lowerSubject = subject.ToLowerInvariant();
+
+        if (lowerSubject is "i" or "you" or "we" or "they")
+            return verb;
+
+        if (lowerVerb is "is" or "am" or "are") return "is";
+        if (lowerVerb is "have") return "has";
+        if (lowerVerb is "do") return "does";
+        if (lowerVerb is "go") return "goes";
+        if (lowerVerb is "say") return "says";
+
+        if (lowerVerb.EndsWith("s") || lowerVerb.EndsWith("sh") ||
+            lowerVerb.EndsWith("ch") || lowerVerb.EndsWith("x") ||
+            lowerVerb.EndsWith("z") || lowerVerb.EndsWith("o"))
+            return verb + "es";
+
+        if (lowerVerb.Length > 1 && lowerVerb.EndsWith("y") && !"aeiou".Contains(lowerVerb[lowerVerb.Length - 2]))
+            return verb[..^1] + "ies";
+
+        return verb + "s";
+    }
+
     private string GetRandomResponse(string category, params object[] args)
     {
         if (_botResponses.TryGetValue(category, out var responses) && responses.Count > 0)
@@ -110,7 +135,8 @@ public class ResponseEngine
             var existingFact = _knowledgeStore.GetFact(triple.Subject, triple.Verb, triple.Object);
             if (existingFact != null)
             {
-                return GetRandomResponse("existing_fact", triple.Subject, triple.Verb, triple.Object);
+                var conjVerb = ConjugateVerb(triple.Verb, triple.Subject);
+                return GetRandomResponse("existing_fact", triple.Subject, conjVerb, triple.Object);
             }
         }
 
@@ -147,7 +173,8 @@ public class ResponseEngine
         if (facts.Count > 0 && Random.Shared.Next(3) == 0)
         {
             var randomFact = facts[Random.Shared.Next(facts.Count)];
-            return GetRandomResponse("random_fact_followup", randomFact.Subject, randomFact.Verb, randomFact.Object);
+            var conjVerb = ConjugateVerb(randomFact.Verb, randomFact.Subject);
+            return GetRandomResponse("random_fact_followup", randomFact.Subject, conjVerb, randomFact.Object);
         }
 
         return GenerateProactiveQuestion(userId);
@@ -191,6 +218,7 @@ public class ResponseEngine
     private static (string Category, object[] Args) BuildProactiveQuestion(Fact fact)
     {
         var (subj, verb, obj) = (fact.Subject, fact.Verb, fact.Object);
+        var conjVerb = ConjugateVerb(verb, subj);
 
         return fact.PredicateType switch
         {
@@ -199,7 +227,7 @@ public class ResponseEngine
             nameof(PredicateType.Possession) => ("proactive_possession", new object[] { obj, subj, verb }),
             nameof(PredicateType.Belief) => ("proactive_belief", new object[] { obj, subj, verb }),
             nameof(PredicateType.PersonalAttribute) => ("proactive_personal", new object[] { obj, subj, verb }),
-            nameof(PredicateType.GeneralFact) => ("proactive_general_fact", new object[] { subj, verb, obj }),
+            nameof(PredicateType.GeneralFact) => ("proactive_general_fact", new object[] { subj, conjVerb, obj }),
             _ => ("proactive_general", new object[] { obj, subj, verb })
         };
     }

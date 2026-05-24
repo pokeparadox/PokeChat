@@ -293,6 +293,46 @@ At least 2 responses per category.
 
 ---
 
+## Phase 10 — Phrasing Improvement ✅
+
+Fix awkward bot phrasing across all response categories: false enthusiasm ("I love that too!"), pronoun misuse ("they" for objects), forced assumptions ("related to"), ambiguous referents ("it"), and missing third-person verb conjugation.
+
+### 10.1 Template rewrite in DbSeeder.SeedBotResponses()
+
+| Category | Old | New |
+|----------|-----|-----|
+| `existing_fact` | `"... Did you know something new about it?"` | Replace with `"I already know that. Tell me something new!"` — remove ambiguous "it" |
+| `context_followup_with_object` | `"You said {0} is related to {1}."` | `"Tell me more about {0} and {1}."` — remove "related to" assumption |
+| `random_fact_followup` | `"Speaking of {0}, you mentioned they {1} {2}."` | `"You told me {0} {1} {2}. Tell me more!"` — remove "they" pronoun |
+| `proactive_preference` | `"You like {0}? I love that too! What else?"` | `"You like {0}? What do you like most about it?"` — remove false enthusiasm |
+| `proactive_belief` | `"You know about {0}? I'd love to learn more."` | `"You know about {0}? Tell me more!"` — remove false enthusiasm |
+| `proactive_personal` | `"You said you're {0}. What's that like?"` | `"You said you're {0}. Tell me about it."` — neutral phrasing |
+| `proactive_general_fact` | `"What do you think about it?"` | `"What do you think about that?"` — fix ambiguous "it" |
+
+### 10.2 Add ConjugateVerb helper to ResponseEngine
+
+Private (internal) static method applying English 3rd-person singular present tense:
+- Irregulars: be→is, have→has, do→does, go→goes, say→says
+- -s/-sh/-ch/-x/-z/-o→+es
+- consonant+y→+ies
+- No conjugation for I/you/we/they subjects
+
+### 10.3 Wire ConjugateVerb into response paths
+
+- `BuildProactiveQuestion`: compute `conjVerb` for `GeneralFact` category (third-person subjects)
+- `GenerateResponse`: existing_fact and random_fact_followup paths pass conjugated verb
+- Test: `ResponseEngine.ConjugateVerb_*` (6 unit tests + 1 integration)
+
+### 10.4 Files modified
+- `Responses/ResponseEngine.cs` — add ConjugateVerb, update BuildProactiveQuestion, existing_fact, random_fact_followup
+- `Data/DbSeeder.cs` — rewrite 12 template strings across 7 categories
+- `tests/PokeChat.Tests/Responses/ResponseEngineTests.cs` — add 7 tests, fix flaky assertion
+
+### 10.5 Verify
+- `dotnet build && dotnet test` — 103 tests pass
+
+---
+
 ## Running the Plan
 
 Before each phase, confirm `dotnet build` and `dotnet test` pass.

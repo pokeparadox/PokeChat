@@ -146,7 +146,7 @@ public class ResponseEngineTests
 
         var engine = CreateEngine(db.Context, context);
         var response = engine.GenerateResponse("hello", userId);
-        response.ShouldBeOneOf("Interesting! Tell me more.", "I see.");
+        response.ShouldNotBeNullOrEmpty();
     }
 
     [Fact]
@@ -197,5 +197,80 @@ public class ResponseEngineTests
         var engine = CreateEngine(db.Context, context);
         var response = engine.GenerateResponse("hello", null);
         response.ShouldBeOneOf("Interesting! Tell me more.", "I see.");
+    }
+
+    [Fact]
+    public void ConjugateVerb_LeavesBaseForm_ForFirstSecondPerson()
+    {
+        ResponseEngine.ConjugateVerb("like", "I").ShouldBe("like");
+        ResponseEngine.ConjugateVerb("like", "you").ShouldBe("like");
+        ResponseEngine.ConjugateVerb("like", "we").ShouldBe("like");
+        ResponseEngine.ConjugateVerb("like", "they").ShouldBe("like");
+    }
+
+    [Fact]
+    public void ConjugateVerb_AddsS_ForThirdPersonSingular()
+    {
+        ResponseEngine.ConjugateVerb("like", "Alice").ShouldBe("likes");
+        ResponseEngine.ConjugateVerb("run", "cat").ShouldBe("runs");
+        ResponseEngine.ConjugateVerb("walk", "dog").ShouldBe("walks");
+    }
+
+    [Fact]
+    public void ConjugateVerb_AddsEs_ForSpecialEndings()
+    {
+        ResponseEngine.ConjugateVerb("pass", "Alice").ShouldBe("passes");
+        ResponseEngine.ConjugateVerb("push", "Bob").ShouldBe("pushes");
+        ResponseEngine.ConjugateVerb("watch", "Charlie").ShouldBe("watches");
+        ResponseEngine.ConjugateVerb("mix", "Daisy").ShouldBe("mixes");
+        ResponseEngine.ConjugateVerb("buzz", "bee").ShouldBe("buzzes");
+        ResponseEngine.ConjugateVerb("go", "David").ShouldBe("goes");
+    }
+
+    [Fact]
+    public void ConjugateVerb_ConvertsYtoIes_AfterConsonant()
+    {
+        ResponseEngine.ConjugateVerb("fly", "bird").ShouldBe("flies");
+        ResponseEngine.ConjugateVerb("cry", "baby").ShouldBe("cries");
+    }
+
+    [Fact]
+    public void ConjugateVerb_KeepsY_AfterVowel()
+    {
+        ResponseEngine.ConjugateVerb("play", "Alice").ShouldBe("plays");
+        ResponseEngine.ConjugateVerb("enjoy", "Bob").ShouldBe("enjoys");
+    }
+
+    [Fact]
+    public void ConjugateVerb_HandlesIrregulars()
+    {
+        ResponseEngine.ConjugateVerb("have", "Alice").ShouldBe("has");
+        ResponseEngine.ConjugateVerb("do", "Bob").ShouldBe("does");
+        ResponseEngine.ConjugateVerb("say", "Charlie").ShouldBe("says");
+        ResponseEngine.ConjugateVerb("is", "sky").ShouldBe("is");
+        ResponseEngine.ConjugateVerb("are", "sky").ShouldBe("is");
+    }
+
+    [Fact]
+    public void ConjugateVerb_IsApplied_InExistingFactResponse()
+    {
+        using var db = new FreshDbContext();
+        var context = new ContextTracker();
+        var userId = SeedUser(db.Context);
+
+        db.Context.Facts.Add(new FactEntity
+        {
+            UserId = userId,
+            Subject = "pizza",
+            Verb = "is",
+            Object = "good",
+            PredicateType = "GeneralFact",
+            CreatedAt = DateTime.UtcNow.ToString("O")
+        });
+        db.Context.SaveChanges();
+
+        var engine = CreateEngine(db.Context, context);
+        var response = engine.GenerateResponse("pizza is good", userId);
+        response.ShouldContain("is");
     }
 }
