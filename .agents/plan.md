@@ -233,6 +233,66 @@ CategoriseNoun(noun):
 
 ---
 
+---
+
+## Phase 9 — Proactive Conversation
+
+At conversation dead ends (default response fallback), generate meaningful questions from the user's own facts instead of generic "Interesting! Tell me more." responses.
+
+### 9.1 ResponseEngine: Proactive question generation
+
+Replace the `return GetRandomResponse("default_response")` fallback at the end of `GenerateResponse` with proactive question generation:
+
+1. If `userId == null` → return `GetRandomResponse("default_response")` (no data to work with)
+2. Load user's facts from DB, filter out recently used ones
+3. Pick a random fact
+4. Merge fact ID into `RecentlyUsedFacts` context (rolling window of 5)
+5. Template selection by `PredicateType`:
+   | PredicateType | bot_response category |
+   |---|---|
+   | `Preference` | `proactive_preference` |
+   | `Dislike` | `proactive_dislike` |
+   | `Possession` | `proactive_possession` |
+   | `Belief` | `proactive_belief` |
+   | `PersonalAttribute` | `proactive_personal` |
+   | `GeneralFact` | `proactive_general_fact` |
+   | `General` | `proactive_general` |
+6. Format template with fact subject/verb/object
+7. If no facts available → `default_response`
+
+### 9.2 Avoid repetition
+
+- Add `RecentlyUsedFacts` to `ContextKeys`
+- Store comma-separated fact signatures (`"subject|verb|object"`)
+- Filter these out when selecting a proactive fact
+- Rolling window of 5 entries
+
+### 9.3 Seed bot_responses
+
+Add to `SeedBotResponses` in `DbSeeder`:
+
+| Category | Example templates |
+|---|---|
+| `proactive_preference` | "What else do you like doing? You mentioned {0}." |
+| `proactive_dislike` | "Why don't you like {0}?" |
+| `proactive_possession` | "Tell me more about your {0}." |
+| `proactive_belief` | "How did you learn about {0}?" |
+| `proactive_personal` | "You said you're {0}. What's that like?" |
+| `proactive_general_fact` | "You mentioned {0} is {1}. What do you think about it?" |
+| `proactive_general` | "Tell me more about {0}." |
+| `proactive_statement` | "I remember that {0} {1} {2}." |
+
+At least 2 responses per category.
+
+### 9.4 Tests
+
+- Update `ResponseEngineTests` — default fallback path now produces a proactive question when user has facts
+- Test: user with 0 facts gets `default_response`
+- Test: recently used facts are not selected
+- `dotnet test` on the full suite
+
+---
+
 ## Running the Plan
 
 Before each phase, confirm `dotnet build` and `dotnet test` pass.

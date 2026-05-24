@@ -222,6 +222,8 @@ public class ChatSession
 
         if (triples.Count > 0)
         {
+            _context.SetContext(ContextKeys.ContextFollowUpCount, "0");
+
             var lastTriple = triples[^1];
             var subjCat = _nounCategoriser.CategoriseNoun(ResolveSubject(lastTriple.Subject));
             var objCat = _nounCategoriser.CategoriseNoun(ResolveObject(lastTriple.Object));

@@ -116,23 +116,31 @@ public class ResponseEngine
 
         if (!string.IsNullOrEmpty(_context.LastSubject))
         {
-            var subject = _context.LastSubject;
-            var subjCat = _context.GetContext(ContextKeys.SubjectCategory);
+            var countRaw = _context.GetContext(ContextKeys.ContextFollowUpCount);
+            int.TryParse(countRaw, out var followUpCount);
+            followUpCount++;
+            _context.SetContext(ContextKeys.ContextFollowUpCount, followUpCount.ToString());
 
-            if (!string.IsNullOrEmpty(_context.LastObject))
+            if (followUpCount < 3)
             {
-                var obj = _context.LastObject;
-                return GetRandomResponse("context_followup_with_object", subject, obj);
-            }
+                var subject = _context.LastSubject;
+                var subjCat = _context.GetContext(ContextKeys.SubjectCategory);
 
-            if (!string.IsNullOrEmpty(subjCat))
-            {
-                var catResponse = GetRandomResponse($"context_followup_{subjCat}", subject);
-                if (!string.IsNullOrEmpty(catResponse))
-                    return catResponse;
-            }
+                if (!string.IsNullOrEmpty(_context.LastObject))
+                {
+                    var obj = _context.LastObject;
+                    return GetRandomResponse("context_followup_with_object", subject, obj);
+                }
 
-            return GetRandomResponse("context_followup", subject);
+                if (!string.IsNullOrEmpty(subjCat))
+                {
+                    var catResponse = GetRandomResponse($"context_followup_{subjCat}", subject);
+                    if (!string.IsNullOrEmpty(catResponse))
+                        return catResponse;
+                }
+
+                return GetRandomResponse("context_followup", subject);
+            }
         }
 
         var facts = userId.HasValue ? _knowledgeStore.GetFactsByUser(userId.Value) : new List<Fact>();
@@ -142,7 +150,58 @@ public class ResponseEngine
             return GetRandomResponse("random_fact_followup", randomFact.Subject, randomFact.Verb, randomFact.Object);
         }
 
+        return GenerateProactiveQuestion(userId);
+    }
+
+    private string GenerateProactiveQuestion(int? userId)
+    {
+        if (userId == null)
+            return GetRandomResponse("default_response");
+
+        var allFacts = _knowledgeStore.GetFactsByUser(userId.Value);
+        if (allFacts.Count == 0)
+            return GetRandomResponse("default_response");
+
+        var recentRaw = _context.GetContext(ContextKeys.RecentlyUsedFacts);
+        var recent = string.IsNullOrEmpty(recentRaw)
+            ? new HashSet<string>()
+            : recentRaw.Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+
+        var available = allFacts
+            .Where(f => !recent.Contains($"{f.Subject}|{f.Verb}|{f.Object}"))
+            .ToList();
+
+        if (available.Count == 0)
+            return GetRandomResponse("default_response");
+
+        var fact = available[Random.Shared.Next(available.Count)];
+        var signature = $"{fact.Subject}|{fact.Verb}|{fact.Object}";
+
+        var updated = recent.TakeLast(4).Append(signature).ToList();
+        _context.SetContext(ContextKeys.RecentlyUsedFacts, string.Join(",", updated));
+
+        var (cat, args) = BuildProactiveQuestion(fact);
+        var response = GetRandomResponse(cat, args);
+        if (!string.IsNullOrEmpty(response))
+            return response;
+
         return GetRandomResponse("default_response");
+    }
+
+    private static (string Category, object[] Args) BuildProactiveQuestion(Fact fact)
+    {
+        var (subj, verb, obj) = (fact.Subject, fact.Verb, fact.Object);
+
+        return fact.PredicateType switch
+        {
+            nameof(PredicateType.Preference) => ("proactive_preference", new object[] { obj, subj, verb }),
+            nameof(PredicateType.Dislike) => ("proactive_dislike", new object[] { obj, subj, verb }),
+            nameof(PredicateType.Possession) => ("proactive_possession", new object[] { obj, subj, verb }),
+            nameof(PredicateType.Belief) => ("proactive_belief", new object[] { obj, subj, verb }),
+            nameof(PredicateType.PersonalAttribute) => ("proactive_personal", new object[] { obj, subj, verb }),
+            nameof(PredicateType.GeneralFact) => ("proactive_general_fact", new object[] { subj, verb, obj }),
+            _ => ("proactive_general", new object[] { obj, subj, verb })
+        };
     }
 
     private string? HandleDictionaryQuery(string input)

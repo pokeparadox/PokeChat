@@ -61,7 +61,7 @@ Responses/
 - **Seeder:** `DbSeeder.Seed()` populates greetings, greeting words, response rules, POS dictionary (from `pos_dictionary.json`), name patterns, bot commands, misspellings, and bot responses on first run
 - **Knowledge extraction:** "my name is Alice" → (user, is_named, Alice); "I like pizza" → (user, likes, pizza); "the sky is blue" → (sky, is, blue) [general knowledge]
 - **Pronoun resolution:** ContextTracker resolves "it/this/that" → last object, "he/she/they" → last subject; "him/her/them" → last object
-- **Response flow:** unknown word check → math evaluation → dictionary/thesaurus query → link creation → pattern match from DB rules → check existing facts → context follow-up → random user fact → DB-loaded default responses
+- **Response flow:** unknown word check → math evaluation → dictionary/thesaurus query → link creation → pattern match from DB rules → check existing facts → context follow-up → random user fact → proactive question from user facts (predicate-aware templates, repetition avoidance) → DB-loaded default responses
 - **PosTagger:** Instance-based (implements `IPosTagger`), initialized from `pos_dictionary` table; no hardcoded dictionary in code
 - **Response rules:** Loaded from `response_rules` + `response_rule_responses` tables (regex patterns with responses)
 - **Bot responses:** ResponseEngine templates (defaults, follow-ups, clarification prompts) stored in `bot_responses` table, loaded at construction time
@@ -99,15 +99,18 @@ A phased improvement plan is maintained in `.agents/plan.md`, ordered by priorit
 - **Phase 6:** Simple Mathematics ✅ (IMathEngine/SimpleMath with +,-,*,/,^, regex-based, stated-result correction)
 - **Phase 7:** Self-Learning Dictionary ✅ (WordDefinition/WordLink entities, definition query/learn, thesaurus, link creation)
 - **Phase 8:** Noun Categorisation ✅ (NounCategoriser with DB + heuristics, auto-learn, noun-aware follow-ups)
+- **Phase 9:** Proactive Conversation ✅ (dead-end question generation from user facts, predicate-aware templates, repetition avoidance via RecentlyUsedFacts rolling window)
 
 ## Known Fixes
 - **Math operators in tokeniser:** `+`, `-`, `*`, `/`, `^` are extracted as standalone tokens by Tokeniser regex. `GetUnknownWords` in `SpellChecker` must skip math operators to prevent false unknown-word prompts before math evaluation. Fixed via `SpellChecker.MathOperators` HashSet.
 - **Solution file path:** `PokeChat.slnx` must use `tests/PokeChat.Tests/PokeChat.Tests.csproj` (not `../tests/...`) — the `..` resolved to a stale project copy at `/mnt/Storage/RiderProjects/tests/`.
 - **Re-seeding after new categories:** `SeedBotResponses` and all other `Seed*` methods check `if (context.X.Any()) return;`. When new categories or responses are added to the seeder, existing `pokechat.db` must be deleted to get the new seed data.
 - **NounCategoriser:** Instance-based, injected into ChatSession. Lookup chain: DB → common names set → place suffixes → "thing" default. Auto-learns on heuristic match (persists to noun_categories table). Used in ChatSession.ProcessSentence after SVO extraction to set SubjectCategory/ObjectCategory context keys.
+- **Context follow-up loop:** `LastSubject` is never cleared when user gives minimal responses ("no", "yes"). Context follow-up fires every turn, permanently blocking proactive question generation. Fix: `ContextFollowUpCount` counter (context key) incremented each time follow-up fires, reset on SVO-bearing input. After 3 consecutive follow-ups without SVO, skip to proactive generation.
 
 ## Routines
 - **When creating a new phase plan:** Append to `.agents/plan.md`, file the plan to MemPalace (`wing: pokechat, room: plans`), and update this file's Improvement Plan section.
+- **After each phase or significant milestone:** Update `README.md` to reflect current architecture, completed phases, and any relevant changes.
 
 ## Git
 - `.gitignore` excludes `/bin`, `/obj`, `/graphify-out`
