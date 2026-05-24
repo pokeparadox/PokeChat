@@ -33,7 +33,6 @@ public class NounCategoriser : INounCategoriser
         var category = InferCategory(lower);
 
         _knowledgeStore.AddNounCategory(lower, category);
-        _knowledgeStore.Save();
 
         return category;
     }

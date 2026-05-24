@@ -59,6 +59,7 @@ public class NounCategoriserTests
         var categoriser = new NounCategoriser(store);
 
         categoriser.CategoriseNoun("guitar").ShouldBe("thing");
+        db.Context.SaveChanges();
         store.CategoriseNoun("guitar").ShouldBe("thing");
     }
 

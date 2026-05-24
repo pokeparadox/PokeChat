@@ -57,4 +57,20 @@ public class PosTaggerTests
         var result = tagger.Tag(["running"]);
         result[0].ShouldBe(PosTag.Verb);
     }
+
+    [Fact]
+    public void Tag_PluralNoun_TaggedAsNoun()
+    {
+        var tagger = new PosTagger(_entries);
+        var result = tagger.Tag(["cats"]);
+        result[0].ShouldBe(PosTag.Noun);
+    }
+
+    [Fact]
+    public void Tag_PluralVerb_StillVerb()
+    {
+        var tagger = new PosTagger(_entries);
+        var result = tagger.Tag(["runs"]);
+        result[0].ShouldBe(PosTag.Verb);
+    }
 }

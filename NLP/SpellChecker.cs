@@ -20,6 +20,12 @@ public class SpellChecker
         _misspellings = misspellings;
     }
 
+    public bool IsPluralOfKnownWord(string token)
+    {
+        var singular = Pluraliser.ToSingular(token);
+        return singular != null && _dictionary.Contains(singular);
+    }
+
     public void AddToDictionary(string word)
     {
         _dictionary.Add(word.ToLowerInvariant());
@@ -31,7 +37,7 @@ public class SpellChecker
 
         foreach (var token in tokens)
         {
-            if (IsPunctuation(token))
+            if (PunctuationHelper.IsPunctuation(token))
             {
                 corrected.Add(token);
                 continue;
@@ -56,7 +62,7 @@ public class SpellChecker
 
         foreach (var token in tokens)
         {
-            if (IsPunctuation(token))
+            if (PunctuationHelper.IsPunctuation(token))
                 continue;
 
             if (MathOperators.Contains(token))
@@ -67,6 +73,9 @@ public class SpellChecker
 
             if (!_dictionary.Contains(token))
             {
+                if (IsPluralOfKnownWord(token))
+                    continue;
+
                 unknown.Add(token);
             }
         }
@@ -126,10 +135,5 @@ public class SpellChecker
         }
 
         return matrix[lenA, lenB];
-    }
-
-    private static bool IsPunctuation(string token)
-    {
-        return PunctuationHelper.IsPunctuation(token);
     }
 }

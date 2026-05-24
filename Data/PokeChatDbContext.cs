@@ -10,7 +10,6 @@ public sealed class PokeChatDbContext : DbContext
     public PokeChatDbContext(string? dbPath = null)
     {
         _dbPath = dbPath ?? ResolveDbPath();
-        Database.EnsureCreated();
     }
 
     public PokeChatDbContext(DbContextOptions<PokeChatDbContext> options) : base(options)
@@ -19,20 +18,16 @@ public sealed class PokeChatDbContext : DbContext
 
     private static string ResolveDbPath()
     {
+        var envPath = Environment.GetEnvironmentVariable("POKECHAT_DB_PATH");
+        if (!string.IsNullOrEmpty(envPath))
+            return envPath;
+
         var baseDir = AppContext.BaseDirectory;
-        var path = Path.Combine(baseDir, "pokechat.db");
+        var root = ProjectPathHelper.FindProjectRoot(baseDir);
+        if (root != null)
+            return Path.Combine(root, "pokechat.db");
 
-        var current = baseDir;
-        while (!string.IsNullOrEmpty(current))
-        {
-            if (File.Exists(Path.Combine(current, "PokeChat.csproj")))
-            {
-                return Path.Combine(current, "pokechat.db");
-            }
-            current = Path.GetDirectoryName(current);
-        }
-
-        return path;
+        return Path.Combine(baseDir, "pokechat.db");
     }
 
     public DbSet<User> Users => Set<User>();

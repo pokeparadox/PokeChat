@@ -41,14 +41,14 @@ Phased plan ordered from highest to lowest priority. Each phase must build succe
 
 ---
 
-## Phase 4 — Low Priority (Polish)
+## Phase 4 — Low Priority (Polish) ✅
 Low-priority polish and minor improvements.
 
-- [ ] `Program.cs` → `using var` (replace `try/finally` with `using var session = new ChatSession()`)
-- [ ] Consolidate `Random` usage (use `Random.Shared` instead of instance `new Random()`)
-- [ ] `Database.EnsureCreated()` → lazy/deferred (move out of constructor, call once at startup)
+- [x] `Program.cs` → `using var` (replace `try/finally` with `using var session = new ChatSession()`)
+- [x] Consolidate `Random` usage (use `Random.Shared` instead of instance `new Random()`)
+- [x] `Database.EnsureCreated()` → lazy/deferred (move out of constructor, call once at startup)
 - [ ] Evaluate date storage format (ISO 8601 strings vs `DateTime` with value converters)
-- [ ] `DbPath` resolution robustness (fallback to environment variable, graceful failure)
+- [x] `DbPath` resolution robustness (fallback to environment variable, graceful failure)
 
 ---
 
@@ -330,6 +330,85 @@ Private (internal) static method applying English 3rd-person singular present te
 
 ### 10.5 Verify
 - `dotnet build && dotnet test` — 103 tests pass
+
+---
+---
+
+## Maintenance & Cleanup (Post-Phase 11) ✅
+
+Review-driven fixes applied alongside Phase 11.
+
+- [x] **C1:** `ConjugateVerb` handles `was`/`were` (past tense verbs no longer corrupted to `"wases"`/`"weres"`)
+- [x] **C2:** Exit commands reduced from 6 to 2 (`quit`, `exit` only); `bye`/`goodbye`/`see you`/`good night` now trigger farewell response rules instead of silent exit
+- [x] **C3:** `dictionary_definition_saved` seed data now wired into `ChatSession.HandleDictionaryDefinition` via `KnowledgeStore.GetBotResponses()` (was using hardcoded list)
+- [x] **D1:** Deleted unused `InMemoryDbFixture` (only `FreshDbContext` was referenced by tests)
+- [x] **A2:** `POKECHAT_DB_PATH` environment variable overrides DB location
+Add a `Pluraliser` utility that singularises English plural nouns, integrated into the NLP pipeline to prevent plural words from being treated as unknown or mis-tagged.
+
+### 11.1 Create NLP/Pluraliser.cs
+
+Static utility class, public method `string? ToSingular(string word)`:
+
+1. Irregular plural dictionary (children→child, men→man, women→woman, people→person, teeth→tooth, feet→foot, mice→mouse, geese→goose, sheep→sheep, deer→deer, fish→fish, species→species)
+2. -ies → -y (berries→berry), length guard: word > 4
+3. -ves → -f (knives→knife)
+4. -es after s/sh/ch/x/z/o → strip "es" (boxes→box)
+5. -s → strip "s" (cats→cat), length guard: result ≥ 2 chars
+6. Returns null when no rule applies
+
+### 11.2 Update SpellChecker
+
+- Add `IsPluralOfKnownWord(string token)` public method
+- In `GetUnknownWords`, after `!_dictionary.Contains(token)`, check if plural of known word → skip
+
+### 11.3 Update PosTagger
+
+In `GetTag`, after the existing plural-verb check, add plural-noun check: singularise and look up in word tag map as Noun.
+
+### 11.4 Update ChatSession.ProcessSentence
+
+After `GetUnknownWords`, auto-learn any unknown word that is a plural of a known word: add to POS dictionary (via KnowledgeStore) and to SpellChecker's dictionary.
+
+### 11.5 Tests
+
+- `NLP/PluraliserTests.cs` (new) — regular -s, -es, -ies, -ves, irregular, non-plural returns null, short word, already singular
+- `NLP/SpellCheckerTests.cs` — GetUnknownWords skips plural when singular known, IsPluralOfKnownWord returns true/false
+- `NLP/PosTaggerTests.cs` — plural noun tagged as Noun, plural verb still Verb
+
+### 11.6 Files modified
+
+- `NLP/Pluraliser.cs` — new (~45 lines)
+- `NLP/SpellChecker.cs` — add IsPluralOfKnownWord + plural skip in GetUnknownWords (~8 lines)
+- `NLP/PosTagger.cs` — add noun plural heuristic in GetTag (~5 lines)
+- `Core/ChatSession.cs` — auto-learn plurals in ProcessSentence (~7 lines)
+- `tests/PokeChat.Tests/NLP/PluraliserTests.cs` — new (8 tests)
+- `tests/PokeChat.Tests/NLP/SpellCheckerTests.cs` — 2 tests
+- `tests/PokeChat.Tests/NLP/PosTaggerTests.cs` — 2 tests
+
+### 11.7 Verify
+- `dotnet build && dotnet test` — all pass
+
+---
+
+## Maintenance & Cleanup (Post-Phase 11) ✅
+
+Review-driven fixes applied across multiple sessions.
+
+- [x] **C1:** `ConjugateVerb` handles `was`/`were` (past tense verbs no longer corrupted to `"wases"`/`"weres"`)
+- [x] **C2:** Exit commands reduced from 6 to 2 (`quit`, `exit` only); `bye`/`goodbye`/`see you`/`good night` now trigger farewell response rules instead of silent exit
+- [x] **C3:** `dictionary_definition_saved` seed data now wired into `ChatSession.HandleDictionaryDefinition` via `KnowledgeStore.GetBotResponses()` (was using hardcoded list)
+- [x] **D1:** Deleted unused `InMemoryDbFixture` (only `FreshDbContext` was referenced by tests)
+- [x] **A2:** `POKECHAT_DB_PATH` environment variable overrides DB location
+- [x] **CR1:** NounCategoriser eager `Save()` removed — callers own the save boundary
+- [x] **CR2:** Duplicated path resolution (`ResolveDbPath`/`ResolveDataFilePath`) replaced with single `ResolveProjectRoot()`
+- [x] **CR3:** Dead `ProperNoun` enum value removed from `PosTagger`
+- [x] **CR4:** `GetResponsesForRule` N+1 query fixed with `.Include(r => r.Responses)`
+- [x] **CR5:** `HandleNameInput` hardcoded greeting fallback replaced with DB-driven `greeting_words` lookup
+- [x] **CR6:** `HandleClarification` redundant else-if collapsed into null-coalescing chain
+- [x] **CR7:** Private `IsPunctuation` wrappers in `PosTagger`/`SpellChecker` replaced with direct `PunctuationHelper` calls
+- [x] **CR8:** Test `SeedBotResponses` duplication extracted to shared `TestDataHelper`
+- [x] **CR9:** Unused `Moq` dependency removed from test `.csproj`
+- [x] **CR10:** Double-dispose pattern in `Dispose_DoesNotThrow` fixed
 
 ---
 

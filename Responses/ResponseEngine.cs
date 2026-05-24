@@ -38,6 +38,8 @@ public class ResponseEngine
             return verb;
 
         if (lowerVerb is "is" or "am" or "are") return "is";
+        if (lowerVerb is "was") return "was";
+        if (lowerVerb is "were") return "were";
         if (lowerVerb is "have") return "has";
         if (lowerVerb is "do") return "does";
         if (lowerVerb is "go") return "goes";

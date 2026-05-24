@@ -5,7 +5,7 @@ using PokeChat.Responses;
 
 namespace PokeChat.Core;
 
-public class ChatSession
+public class ChatSession : IDisposable
 {
     private readonly PokeChatDbContext _dbContext;
     private readonly KnowledgeStore _knowledgeStore;
@@ -26,6 +26,7 @@ public class ChatSession
     public ChatSession()
     {
         _dbContext = new PokeChatDbContext();
+        _dbContext.Database.EnsureCreated();
         DbSeeder.Seed(_dbContext);
 
         _knowledgeStore = new KnowledgeStore(_dbContext);
@@ -171,6 +172,16 @@ public class ChatSession
         var correctedTokens = _spellChecker.AutoCorrect(tokens);
 
         var unknownWords = _spellChecker.GetUnknownWords(correctedTokens);
+
+        foreach (var token in correctedTokens)
+        {
+            if (_spellChecker.IsPluralOfKnownWord(token))
+            {
+                _spellChecker.AddToDictionary(token);
+                _knowledgeStore.AddLearnedWord(token);
+            }
+        }
+
         if (unknownWords.Count > 0)
         {
             var existing = _context.GetContext(ContextKeys.UnknownWords) ?? "";
@@ -320,19 +331,13 @@ public class ChatSession
                 _spellChecker.AddToDictionary(pendingSuggestion);
                 return $"Got it! I'll remember that '{pendingWord}' should be '{pendingSuggestion}'.";
             }
-            else
-            {
-                _knowledgeStore.AddLearnedWord(pendingWord);
-                _spellChecker.AddToDictionary(pendingWord);
-                return $"Okay, I've learned the word '{pendingWord}'.";
-            }
         }
-        else
-        {
-            _knowledgeStore.AddLearnedWord(pendingWord);
-            _spellChecker.AddToDictionary(pendingWord);
-            return $"Thanks! I've learned the word '{pendingWord}'.";
-        }
+
+        _knowledgeStore.AddLearnedWord(pendingWord);
+        _spellChecker.AddToDictionary(pendingWord);
+        return string.IsNullOrEmpty(pendingSuggestion)
+            ? $"Thanks! I've learned the word '{pendingWord}'."
+            : $"Okay, I've learned the word '{pendingWord}'.";
     }
 
     internal string HandleDictionaryDefinition(string input, string word)
@@ -367,20 +372,43 @@ public class ChatSession
         _spellChecker.AddToDictionary(word);
         _knowledgeStore.Save();
 
-        return GetRandomDictionaryResponse(word, definition);
+        return GetDictionarySavedResponse(word, definition);
     }
 
-    private string GetRandomDictionaryResponse(string word, string definition)
+    private string GetDictionarySavedResponse(string word, string definition)
     {
-        var responses = new List<string>
+        var botResponses = _knowledgeStore.GetBotResponses();
+        if (botResponses.TryGetValue("dictionary_definition_saved", out var responses) && responses.Count > 0)
+        {
+            var template = responses[Random.Shared.Next(responses.Count)];
+            return string.Format(template, word, definition);
+        }
+
+        var fallbacks = new List<string>
         {
             $"Thanks! I've learned that {word} means {definition}.",
-            $"Got it! {word}: {definition}. I'll remember that.",
-            $"I understand now — {word} means {definition}. Thank you!",
-            $"Great! I've added '{word}' to my vocabulary with the definition: {definition}."
+            $"Got it! {word}: {definition}. I'll remember that."
         };
+        return fallbacks[Random.Shared.Next(fallbacks.Count)];
+    }
 
-        return responses[Random.Shared.Next(responses.Count)];
+    private string GetNameIntroResponse(string userName)
+    {
+        var botResponses = _knowledgeStore.GetBotResponses();
+        if (botResponses.TryGetValue("name_intro", out var responses) && responses.Count > 0)
+        {
+            var template = responses[Random.Shared.Next(responses.Count)];
+            return string.Format(template, userName);
+        }
+
+        var fallbacks = new List<string>
+        {
+            $"Nice to meet you, {userName}! What would you like to talk about?",
+            $"Hello {userName}! Feel free to share anything with me.",
+            $"Great, {userName}! I'm ready to learn from our conversation.",
+            $"Welcome, {userName}! Tell me about yourself or anything on your mind."
+        };
+        return fallbacks[Random.Shared.Next(fallbacks.Count)];
     }
 
     internal string HandleNameInput(string input)
@@ -399,15 +427,7 @@ public class ChatSession
         _context.Clear();
         _context.SetContext(ContextKeys.UserName, _currentUserName);
 
-        var greetings = new List<string>
-        {
-            $"Nice to meet you, {_currentUserName}! What would you like to talk about?",
-            $"Hello {_currentUserName}! Feel free to share anything with me.",
-            $"Great, {_currentUserName}! I'm ready to learn from our conversation.",
-            $"Welcome, {_currentUserName}! Tell me about yourself or anything on your mind."
-        };
-
-        return greetings[Random.Shared.Next(greetings.Count)];
+        return GetNameIntroResponse(_currentUserName);
     }
 
     internal string ExtractName(string input, List<string> tokens)

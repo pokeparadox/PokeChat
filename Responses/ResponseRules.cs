@@ -29,13 +29,11 @@ public static class ResponseRules
         {
             if (Regex.IsMatch(lowerInput, rule.Pattern))
             {
-                var responses = knowledgeStore.GetResponsesForRule(rule.Id);
-
                 return new ResponseRuleRecord
                 {
                     Pattern = rule.Pattern,
                     InputType = ParseInputType(rule.InputType),
-                    Responses = responses
+                    Responses = rule.Responses.Select(r => r.ResponseText).ToList()
                 };
             }
         }

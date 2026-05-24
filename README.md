@@ -39,6 +39,7 @@ NLP/
   SentenceSplitter.cs         → multi-sentence splitting
   PunctuationHelper.cs        → shared IsPunctuation utility
   SpellChecker.cs             → Levenshtein spell correction
+  Pluraliser.cs               → singularise English plural nouns
 Math/
   IMathEngine.cs              → math evaluation interface
   SimpleMath.cs               → binary expression evaluator (+, -, *, /, ^)
@@ -79,12 +80,13 @@ All conversational data is persisted:
 | 1 | Critical bug fixes | ✅ |
 | 2 | High-priority refactoring | ✅ |
 | 3 | Medium-priority improvements | ✅ |
-| 4 | Polish (low-priority) | ⬜ |
+| 4 | Polish (low-priority) | ✅ |
 | 5 | British English adoption | ✅ |
 | 6 | Simple mathematics | ✅ |
 | 7 | Self-learning dictionary | ✅ |
 | 8 | Noun categorisation | ✅ |
 | 9 | Proactive conversation | ✅ |
 | 10 | Phrasing improvement (ConjugateVerb, template rewrite) | ✅ |
+| 11 | Plural handling (Pluraliser, auto-learn plurals) | ✅ |
 
 See `.agents/plan.md` for full details. 

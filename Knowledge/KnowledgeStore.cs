@@ -1,4 +1,5 @@
 using Facet.Extensions;
+using Microsoft.EntityFrameworkCore;
 using PokeChat.Data;
 using PokeChat.Data.Entities;
 
@@ -131,6 +132,7 @@ public class KnowledgeStore(PokeChatDbContext context)
     public List<ResponseRule> GetResponseRules()
     {
         return context.ResponseRules
+            .Include(r => r.Responses)
             .Where(r => r.IsActive)
             .ToList();
     }

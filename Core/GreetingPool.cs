@@ -4,8 +4,6 @@ namespace PokeChat.Core;
 
 public static class GreetingPool
 {
-    private static readonly Random Random = new();
-
     public static string GetRandomGreeting(KnowledgeStore knowledgeStore)
     {
         var greetings = knowledgeStore.GetGreetings();
@@ -14,6 +12,6 @@ public static class GreetingPool
             return "Hello! I'm PokeChat. What's your name?";
         }
 
-        return greetings[Random.Next(greetings.Count)].Text;
+        return greetings[Random.Shared.Next(greetings.Count)].Text;
     }
 }

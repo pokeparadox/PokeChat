@@ -1,11 +1,4 @@
 ﻿using PokeChat.Core;
 
-var session = new ChatSession();
-try
-{
-    session.Start();
-}
-finally
-{
-    session.Dispose();
-}
+using var session = new ChatSession();
+session.Start();

@@ -91,4 +91,35 @@ public class SpellCheckerTests
         var suggestions = checker.SuggestCorrections("abcdefghijklmnop");
         suggestions.ShouldBeEmpty();
     }
+
+    [Fact]
+    public void GetUnknownWords_SkipsPluralOfKnownWord()
+    {
+        var checker = CreateChecker();
+        var result = checker.GetUnknownWords(["hello", "cats", "dog"]);
+        result.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void GetUnknownWords_FlagsPluralOfUnknownWord()
+    {
+        var checker = CreateChecker();
+        var result = checker.GetUnknownWords(["hello", "flurglebargs"]);
+        result.ShouldBe(["flurglebargs"]);
+    }
+
+    [Fact]
+    public void IsPluralOfKnownWord_ReturnsTrue()
+    {
+        var checker = CreateChecker();
+        checker.IsPluralOfKnownWord("cats").ShouldBeTrue();
+    }
+
+    [Fact]
+    public void IsPluralOfKnownWord_ReturnsFalse()
+    {
+        var checker = CreateChecker();
+        checker.IsPluralOfKnownWord("hello").ShouldBeFalse();
+        checker.IsPluralOfKnownWord("flurglebargs").ShouldBeFalse();
+    }
 }

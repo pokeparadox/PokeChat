@@ -5,7 +5,6 @@ namespace PokeChat.NLP;
 public enum PosTag
 {
     Noun,
-    ProperNoun,
     Verb,
     Adjective,
     Pronoun,
@@ -59,7 +58,7 @@ public class PosTagger : IPosTagger
 
     private PosTag GetTag(string token, int index, List<string> tokens)
     {
-        if (IsPunctuation(token))
+        if (PunctuationHelper.IsPunctuation(token))
             return PosTag.Punctuation;
 
         if (_wordTagMap.TryGetValue(token, out var knownTag))
@@ -81,11 +80,12 @@ public class PosTagger : IPosTagger
             }
         }
 
-        return PosTag.Unknown;
-    }
+        var pluralSingular = Pluraliser.ToSingular(token);
+        if (pluralSingular != null && _wordTagMap.TryGetValue(pluralSingular, out var pluralTag) && pluralTag == PosTag.Noun)
+        {
+            return PosTag.Noun;
+        }
 
-    private static bool IsPunctuation(string token)
-    {
-        return PunctuationHelper.IsPunctuation(token);
+        return PosTag.Unknown;
     }
 }

@@ -173,15 +173,9 @@ public static class DbSeeder
         if (File.Exists(outputPath))
             return outputPath;
 
-        var current = AppContext.BaseDirectory;
-        while (!string.IsNullOrEmpty(current))
-        {
-            if (File.Exists(Path.Combine(current, "PokeChat.csproj")))
-            {
-                return Path.Combine(current, "Data", fileName);
-            }
-            current = Path.GetDirectoryName(current);
-        }
+        var root = ProjectPathHelper.FindProjectRoot(AppContext.BaseDirectory);
+        if (root != null)
+            return Path.Combine(root, "Data", fileName);
 
         return outputPath;
     }
@@ -209,7 +203,7 @@ public static class DbSeeder
     {
         if (context.BotCommands.Any()) return;
 
-        var commands = new[] { "quit", "exit", "bye", "goodbye", "see you", "good night" };
+        var commands = new[] { "quit", "exit" };
 
         context.BotCommands.AddRange(commands.Select(c => new BotCommand
         {
@@ -430,6 +424,10 @@ public static class DbSeeder
             ("proactive_statement", "I remember that {0} {1} {2}."),
             ("proactive_statement", "I recall you said {0} {1} {2}."),
             ("proactive_statement", "Just so you know, I remember {0} {1} {2}."),
+            ("name_intro", "Nice to meet you, {0}! What would you like to talk about?"),
+            ("name_intro", "Hello {0}! Feel free to share anything with me."),
+            ("name_intro", "Great, {0}! I'm ready to learn from our conversation."),
+            ("name_intro", "Welcome, {0}! Tell me about yourself or anything on your mind."),
         };
 
         context.BotResponses.AddRange(responses.Select(r => new BotResponse

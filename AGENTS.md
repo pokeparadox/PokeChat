@@ -31,6 +31,7 @@ NLP/
   SentenceSplitter.cs         → multi-sentence splitting on `.`, `!`, `?` (implements ISentenceSplitter)
   PunctuationHelper.cs        → shared IsPunctuation utility
   SpellChecker.cs             → Levenshtein-based spell correction with misspellings table
+  Pluraliser.cs               → singularise English plural nouns
   Interfaces (IPosTagger, ITokeniser, ISentenceSplitter, ISvoExtractor)
 Math/
   IMathEngine.cs              → interface for math expression evaluation
@@ -56,8 +57,8 @@ Responses/
 ```
 
 ## Key Details
-- **DB location:** `pokechat.db` in project root (resolved by walking up from `BaseDirectory` to find `PokeChat.csproj`)
-- **DB init:** `Database.EnsureCreated()` in `PokeChatDbContext` constructor (no embedded resource or file walking needed for schema)
+- **DB location:** `pokechat.db` in project root (resolved by walking up from `BaseDirectory` to find `PokeChat.csproj`); override via `POKECHAT_DB_PATH` environment variable
+- **DB init:** `Database.EnsureCreated()` called lazily in `ChatSession()` constructor (not in `PokeChatDbContext` constructor)
 - **Seeder:** `DbSeeder.Seed()` populates greetings, greeting words, response rules, POS dictionary (from `pos_dictionary.json`), name patterns, bot commands, misspellings, and bot responses on first run
 - **Knowledge extraction:** "my name is Alice" → (user, is_named, Alice); "I like pizza" → (user, likes, pizza); "the sky is blue" → (sky, is, blue) [general knowledge]
 - **Pronoun resolution:** ContextTracker resolves "it/this/that" → last object, "he/she/they" → last subject; "him/her/them" → last object
@@ -94,13 +95,15 @@ A phased improvement plan is maintained in `.agents/plan.md`, ordered by priorit
 - **Phase 1:** Critical bug fixes ✅ (GetFact client-side filtering, proper noun dead code, abbreviation detection, pronoun resolution, empty bot responses)
 - **Phase 2:** High priority ✅ (batch SaveChanges, PosTagger static state, schema-entity mismatch, duplicate POS entries, predicate enum, context key constants)
 - **Phase 3:** Medium priority ✅ (tag duplicate handling, IsPunctuation dedup, test helper consolidation, NLP interfaces, test coverage, POS data file extraction, ResponseEngine strings to DB)
-- **Phase 4:** Low priority (using var, Random consolidation, lazy EnsureCreated, date format evaluation, DbPath robustness)
+- **Phase 4:** Low priority ✅ (using var, Random consolidation, lazy EnsureCreated, DbPath env var, InMemoryDbFixture cleanup, ConjugateVerb was/were, bye exit cleanup, dictionary_definition_saved wiring)
 - **Phase 5:** British English ✅ (tokeniser renaming, 91 British word variants in pos_dictionary.json)
 - **Phase 6:** Simple Mathematics ✅ (IMathEngine/SimpleMath with +,-,*,/,^, regex-based, stated-result correction)
 - **Phase 7:** Self-Learning Dictionary ✅ (WordDefinition/WordLink entities, definition query/learn, thesaurus, link creation)
 - **Phase 8:** Noun Categorisation ✅ (NounCategoriser with DB + heuristics, auto-learn, noun-aware follow-ups)
 - **Phase 9:** Proactive Conversation ✅ (dead-end question generation from user facts, predicate-aware templates, repetition avoidance via RecentlyUsedFacts rolling window)
 - **Phase 10:** Phrasing Improvement ✅ (ConjugateVerb helper for 3rd-person present tense, template rewrite removing false enthusiasm/"related to" assumption/"they" pronoun across all bot response categories)
+- **Phase 11:** Plural Handling (Pluraliser utility, auto-learn plurals, plural-aware POS tagging)
+- **Maintenance & Cleanup (Post-Phase 11):** Code review batch fix — 10 issues resolved (NounCategoriser eager Save, duplicated path resolution, dead ProperNoun enum, N+1 query in GetResponsesForRule, HandleNameInput hardcoded greetings, HandleClarification code collapse, private IsPunctuation wrappers removed, shared TestDataHelper for seed data, Moq dependency removed, double-dispose test pattern fixed)
 
 ## Known Fixes
 - **Math operators in tokeniser:** `+`, `-`, `*`, `/`, `^` are extracted as standalone tokens by Tokeniser regex. `GetUnknownWords` in `SpellChecker` must skip math operators to prevent false unknown-word prompts before math evaluation. Fixed via `SpellChecker.MathOperators` HashSet.
@@ -110,8 +113,26 @@ A phased improvement plan is maintained in `.agents/plan.md`, ordered by priorit
 - **Context follow-up loop:** `LastSubject` is never cleared when user gives minimal responses ("no", "yes"). Context follow-up fires every turn, permanently blocking proactive question generation. Fix: `ContextFollowUpCount` counter (context key) incremented each time follow-up fires, reset on SVO-bearing input. After 3 consecutive follow-ups without SVO, skip to proactive generation.
 - **ConjugateVerb:** `ResponseEngine.ConjugateVerb()` applies English 3rd-person singular present tense rules (like→likes, have→has, go→goes, -y→-ies, -s/-sh/-ch/-x/-z/-o→+es). Used in `BuildProactiveQuestion`, `existing_fact`, and `random_fact_followup` paths. Only applies for third-person subjects (not I/you/we/they).
 - **Template rewrites (Phase 10):** All `context_followup_with_object` templates removed "related to" assumption. All `random_fact_followup` and `proactive_general_fact` templates removed "they" pronoun misuse. `proactive_preference` and `proactive_belief` removed false enthusiasm. `existing_fact` replaced ambiguous "it" reference.
+- **Pluraliser:** `NLP/Pluraliser.ToSingular()` returns candidate singular or null. Used in SpellChecker.GetUnknownWords (skip plurals of known words), PosTagger.GetTag (plural noun detection), ChatSession.ProcessSentence (auto-learn plural forms). Only validates against dictionary — "james"→"jame" rejected since "jame" isn't known.
+- **Bye no longer exits:** `bye`, `goodbye`, `see you`, `good night` were removed from `bot_commands` exit commands — they now trigger farewell response rules. Only `quit` and `exit` exit the program.
+- **Exit commands:** Only `quit` and `exit` are exit commands (reduced from 6).
+- **POKECHAT_DB_PATH:** Environment variable overrides the SQLite database path.
+- **ConjugateVerb was/were:** `was` → `was`, `were` → `were` added to irregular forms to prevent "wases" or "weres" corruption.
+- **ChatSession implements IDisposable:** Required for `using var` in Program.cs.
+- **InMemoryDbFixture deleted:** Was unused; all tests use FreshDbContext.
+- **NounCategoriser eager Save removed:** `NounCategoriser.CategoriseNoun` no longer calls `Save()` after auto-learn. Callers own the save boundary via `KnowledgeStore.Save()`.
+- **ResolveDbPath/ResolveDataFilePath dedup:** `Program.cs` now has a single `ResolveProjectRoot()` method used by both path resolvers.
+- **ProperNoun enum removed:** `NLP/PosTagger.cs` had a dead `ProperNoun` value — removed.
+- **GetResponsesForRule N+1 fix:** Includes `ResponseRuleResponses` in the query via `.Include(r => r.Responses)`.
+- **HandleNameInput DB-driven greetings:** Now loads greeting words from `greeting_words` table — no more hardcoded `"hi"`/`"hello"` fallback.
+- **HandleClarification collapsed:** Redundant else-if for `word == null` folded into preceding null-coalescing check.
+- **IsPunctuation wrappers removed:** `PosTagger` and `SpellChecker` now call `PunctuationHelper.IsPunctuation` directly.
+- **TestDataHelper shared seed data:** BotResponse and POS seed data extracted to `tests/PokeChat.Tests/Helpers/TestDataHelper.cs`, used by both `ChatSessionTests` and `ResponseEngineTests`.
+- **Moq dependency removed:** `tests/PokeChat.Tests/PokeChat.Tests.csproj` no longer lists `Moq` (was unused).
+- **Dispose test pattern fixed:** `Dispose_DoesNotThrow` no longer wraps `db` in `using` that would double-dispose the shared `PokeChatDbContext`.
 
 ## Routines
+- **Code review after every change:** After each modification, review the changed code for bugs and duplicate code — refactor any duplication found.
 - **When creating a new phase plan:** Append to `.agents/plan.md`, file the plan to MemPalace (`wing: pokechat, room: plans`), and update this file's Improvement Plan section.
 - **After each phase or significant milestone:** Update `README.md` to reflect current architecture, completed phases, and any relevant changes.
 
