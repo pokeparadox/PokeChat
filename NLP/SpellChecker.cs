@@ -22,8 +22,7 @@ public class SpellChecker
 
     public bool IsPluralOfKnownWord(string token)
     {
-        var singular = Pluraliser.ToSingular(token);
-        return singular != null && _dictionary.Contains(singular);
+        return Pluraliser.GetCandidates(token).Any(c => _dictionary.Contains(c));
     }
 
     public void AddToDictionary(string word)
@@ -128,8 +127,8 @@ public class SpellChecker
             {
                 var cost = a[i - 1] == b[j - 1] ? 0 : 1;
 
-                matrix[i, j] = Math.Min(
-                    Math.Min(matrix[i - 1, j] + 1, matrix[i, j - 1] + 1),
+                matrix[i, j] = System.Math.Min(
+                    System.Math.Min(matrix[i - 1, j] + 1, matrix[i, j - 1] + 1),
                     matrix[i - 1, j - 1] + cost);
             }
         }

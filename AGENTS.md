@@ -85,6 +85,8 @@ Responses/
 - `pos_dictionary` — id, word, word_type, created_at
 - `name_patterns` — id, pattern, created_at
 - `bot_commands` — id, command (unique), created_at
+- `user_bot_names` — id, user_id (unique FK→users), bot_name, created_at
+- `bot_rename_patterns` — id, pattern, created_at
 - `misspellings` — id, wrong_word (unique), correction, created_at
 - `bot_responses` — id, category, response_text, created_at
 - `word_definitions` — id, word, definition, defined_by_user_id (nullable FK→users), created_at
@@ -102,8 +104,9 @@ A phased improvement plan is maintained in `.agents/plan.md`, ordered by priorit
 - **Phase 8:** Noun Categorisation ✅ (NounCategoriser with DB + heuristics, auto-learn, noun-aware follow-ups)
 - **Phase 9:** Proactive Conversation ✅ (dead-end question generation from user facts, predicate-aware templates, repetition avoidance via RecentlyUsedFacts rolling window)
 - **Phase 10:** Phrasing Improvement ✅ (ConjugateVerb helper for 3rd-person present tense, template rewrite removing false enthusiasm/"related to" assumption/"they" pronoun across all bot response categories)
-- **Phase 11:** Plural Handling (Pluraliser utility, auto-learn plurals, plural-aware POS tagging)
+- **Phase 11:** Plural Handling ✅ (Pluraliser utility, auto-learn plurals, plural-aware POS tagging)
 - **Maintenance & Cleanup (Post-Phase 11):** Code review batch fix — 10 issues resolved (NounCategoriser eager Save, duplicated path resolution, dead ProperNoun enum, N+1 query in GetResponsesForRule, HandleNameInput hardcoded greetings, HandleClarification code collapse, private IsPunctuation wrappers removed, shared TestDataHelper for seed data, Moq dependency removed, double-dispose test pattern fixed)
+- **Phase 12:** Bot Renaming ✅ (per-user bot name stored in `user_bot_names` table, rename intent detected via `bot_rename_patterns`, 85% acceptance with 15% rejection/suggestion)
 
 ## Known Fixes
 - **Math operators in tokeniser:** `+`, `-`, `*`, `/`, `^` are extracted as standalone tokens by Tokeniser regex. `GetUnknownWords` in `SpellChecker` must skip math operators to prevent false unknown-word prompts before math evaluation. Fixed via `SpellChecker.MathOperators` HashSet.
@@ -130,6 +133,7 @@ A phased improvement plan is maintained in `.agents/plan.md`, ordered by priorit
 - **TestDataHelper shared seed data:** BotResponse and POS seed data extracted to `tests/PokeChat.Tests/Helpers/TestDataHelper.cs`, used by both `ChatSessionTests` and `ResponseEngineTests`.
 - **Moq dependency removed:** `tests/PokeChat.Tests/PokeChat.Tests.csproj` no longer lists `Moq` (was unused).
 - **Dispose test pattern fixed:** `Dispose_DoesNotThrow` no longer wraps `db` in `using` that would double-dispose the shared `PokeChatDbContext`.
+- **Bot Renaming (Phase 12):** Per-user bot names stored in `user_bot_names` table. Rename patterns in `bot_rename_patterns` table (seeded: "can i call you", "i'll call you", "i will call you", "your name is"). Detection in `ChatSession.TryHandleBotRename` runs after user identity established. 85% acceptance rate; rejection triggers either a suggestion (from {Zara, Nova, Echo, Pixel, Azure, Kai, Rex}) or asks for another. `GreetingPool.GetRandomGreeting` now takes a `botName` parameter and replaces `{BOTNAME}` / `"PokeChat"` with the current name. Console output labels use `_botName`. Response categories: `bot_rename_accepted` (3 templates), `bot_rename_rejected` (2), `bot_rename_suggestion` (3).
 
 ## Routines
 - **Code review after every change:** After each modification, review the changed code for bugs and duplicate code — refactor any duplication found.

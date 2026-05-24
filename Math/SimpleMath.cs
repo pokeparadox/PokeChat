@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace PokeChat.Maths;
+namespace PokeChat.Math;
 
 public class SimpleMath : IMathEngine
 {
@@ -61,7 +61,7 @@ public class SimpleMath : IMathEngine
             "-" => left - right,
             "*" => left * right,
             "/" => right != 0 ? left / right : double.NaN,
-            "^" => Math.Pow(left, right),
+            "^" => System.Math.Pow(left, right),
             _ => double.NaN
         };
     }

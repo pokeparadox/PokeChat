@@ -12,7 +12,8 @@ public class ChatSessionTests
     private (ChatSession Session, FreshDbContext Db) CreateSessionAndDb(
         List<string>? namePatterns = null,
         HashSet<string>? botCommands = null,
-        HashSet<string>? greetingWords = null)
+        HashSet<string>? greetingWords = null,
+        List<string>? renamePatterns = null)
     {
         var db = new FreshDbContext();
         TestDataHelper.SeedBotResponses(db.Context);
@@ -48,7 +49,8 @@ public class ChatSessionTests
             nounCategoriser,
             namePatterns ?? new List<string> { "my name is", "i am", "i'm", "call me" },
             botCommands ?? new List<string> { "quit", "exit" }.ToHashSet(StringComparer.OrdinalIgnoreCase),
-            greetingWords ?? new List<string> { "hi", "hello" }.ToHashSet(StringComparer.OrdinalIgnoreCase)
+            greetingWords ?? new List<string> { "hi", "hello" }.ToHashSet(StringComparer.OrdinalIgnoreCase),
+            renamePatterns: renamePatterns
         );
 
         return (session, db);
@@ -256,4 +258,31 @@ public class ChatSessionTests
             response.ShouldNotBeNullOrEmpty();
         }
     }
+
+    [Fact]
+    public void TryHandleBotRename_DetectsPattern_ReturnsName()
+    {
+        var (session, db) = CreateSessionAndDb(renamePatterns: new List<string> { "can i call you", "i'll call you" });
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            var result = session.TryHandleBotRename("can I call you Jeff", out var response);
+            result.ShouldBeTrue();
+            response.ShouldContain("Jeff", Case.Insensitive);
+        }
+    }
+
+    [Fact]
+    public void TryHandleBotRename_NoMatch_ReturnsFalse()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            var result = session.TryHandleBotRename("I like pizza", out var response);
+            result.ShouldBeFalse();
+            response.ShouldBeEmpty();
+        }
+    }
+
 }

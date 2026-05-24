@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using PokeChat.Core;
 using PokeChat.Knowledge;
-using PokeChat.Maths;
+using PokeChat.Math;
 using PokeChat.NLP;
 
 namespace PokeChat.Responses;
@@ -77,11 +77,14 @@ public class ResponseEngine
                 .Distinct()
                 .ToList();
 
-            _context.SetContext(ContextKeys.UnknownWords, null);
-
             if (unknownWords.Count > 0)
             {
                 var word = unknownWords[0];
+
+                if (unknownWords.Count > 1)
+                    _context.SetContext(ContextKeys.UnknownWords, string.Join(",", unknownWords.Skip(1)));
+                else
+                    _context.SetContext(ContextKeys.UnknownWords, null);
                 if (_spellChecker.HasSuggestions(word))
                 {
                     var suggestions = _spellChecker.SuggestCorrections(word);
@@ -104,7 +107,7 @@ public class ResponseEngine
         {
             if (mathResult.StatedResult.HasValue)
             {
-                if (Math.Abs(mathResult.Value - mathResult.StatedResult.Value) > 0.0001)
+                if (System.Math.Abs(mathResult.Value - mathResult.StatedResult.Value) > 0.0001)
                     return GetRandomResponse("math_correction", mathResult.Expression, mathResult.Value, mathResult.StatedResult);
                 return GetRandomResponse("math_confirmation", mathResult.Expression, mathResult.Value);
             }
@@ -240,11 +243,11 @@ public class ResponseEngine
 
         var patterns = new (Regex Regex, int WordGroup)[]
         {
-            (new Regex(@"^what (?:is|are|was|were) (?:a|an|the\s+)?(\w+)"), 1),
+            (new Regex(@"^what is the (?:definition|meaning) of (?:a|an|the\s+)?(\w+)"), 1),
+            (new Regex(@"^what (?:is|are|was|were) (?:a|an|the\s+)?(\w+)$"), 1),
             (new Regex(@"^what does (\w+) mean"), 1),
             (new Regex(@"^what do (\w+) mean"), 1),
             (new Regex(@"^define (\w+)"), 1),
-            (new Regex(@"^what is the (?:definition|meaning) of (?:a|an|the\s+)?(\w+)"), 1),
             (new Regex(@"^tell me about (\w+)"), 1),
         };
 

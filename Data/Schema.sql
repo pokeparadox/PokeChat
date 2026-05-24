@@ -115,3 +115,17 @@ CREATE TABLE IF NOT EXISTS bot_commands (
     command TEXT NOT NULL UNIQUE,
     created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS user_bot_names (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL UNIQUE,
+    bot_name TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS bot_rename_patterns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pattern TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);

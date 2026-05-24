@@ -21,7 +21,7 @@ public class GreetingPoolTests
         db.Context.SaveChanges();
 
         var store = new KnowledgeStore(db.Context);
-        var greeting = GreetingPool.GetRandomGreeting(store);
+        var greeting = GreetingPool.GetRandomGreeting(store, "PokeChat");
         greeting.ShouldBe("Hello!");
     }
 
@@ -30,7 +30,41 @@ public class GreetingPoolTests
     {
         using var db = new FreshDbContext();
         var store = new KnowledgeStore(db.Context);
-        var greeting = GreetingPool.GetRandomGreeting(store);
+        var greeting = GreetingPool.GetRandomGreeting(store, "PokeChat");
         greeting.ShouldBe("Hello! I'm PokeChat. What's your name?");
+    }
+
+    [Fact]
+    public void GetRandomGreeting_UsesBotName()
+    {
+        using var db = new FreshDbContext();
+        db.Context.Greetings.Add(new Greeting
+        {
+            Text = "Hello! I'm {BOTNAME}. What's your name?",
+            IsSystem = true,
+            CreatedAt = DateTime.UtcNow.ToString("O")
+        });
+        db.Context.SaveChanges();
+
+        var store = new KnowledgeStore(db.Context);
+        var greeting = GreetingPool.GetRandomGreeting(store, "Jeff");
+        greeting.ShouldBe("Hello! I'm Jeff. What's your name?");
+    }
+
+    [Fact]
+    public void GetRandomGreeting_ReplacesPokeChatLiteral()
+    {
+        using var db = new FreshDbContext();
+        db.Context.Greetings.Add(new Greeting
+        {
+            Text = "Hello! I'm PokeChat. What's your name?",
+            IsSystem = true,
+            CreatedAt = DateTime.UtcNow.ToString("O")
+        });
+        db.Context.SaveChanges();
+
+        var store = new KnowledgeStore(db.Context);
+        var greeting = GreetingPool.GetRandomGreeting(store, "Nova");
+        greeting.ShouldBe("Hello! I'm Nova. What's your name?");
     }
 }

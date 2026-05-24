@@ -69,6 +69,13 @@ public class SvoExtractor : ISvoExtractor
             objectTokens.Add(tokens[i]);
         }
 
-        return string.Join(" ", objectTokens);
+        var result = string.Join(" ", objectTokens);
+
+        if (result.EndsWith(" and", StringComparison.Ordinal))
+            result = result[..^4].TrimEnd();
+        if (result.EndsWith(" or", StringComparison.Ordinal))
+            result = result[..^3].TrimEnd();
+
+        return result;
     }
 }

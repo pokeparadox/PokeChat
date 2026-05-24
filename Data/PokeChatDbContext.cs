@@ -45,6 +45,8 @@ public sealed class PokeChatDbContext : DbContext
     public DbSet<WordDefinition> WordDefinitions => Set<WordDefinition>();
     public DbSet<WordLink> WordLinks => Set<WordLink>();
     public DbSet<NounCategory> NounCategories => Set<NounCategory>();
+    public DbSet<UserBotName> UserBotNames => Set<UserBotName>();
+    public DbSet<BotRenamePattern> BotRenamePatterns => Set<BotRenamePattern>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -203,6 +205,24 @@ public sealed class PokeChatDbContext : DbContext
             entity.HasOne<User>()
                 .WithMany()
                 .HasForeignKey(e => e.LearnedFromUserId);
+        });
+
+        modelBuilder.Entity<UserBotName>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.UserId).IsUnique();
+            entity.Property(e => e.BotName).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => e.UserId);
+        });
+
+        modelBuilder.Entity<BotRenamePattern>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Pattern).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
         });
     }
 }

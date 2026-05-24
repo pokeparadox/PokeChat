@@ -1,4 +1,4 @@
-namespace PokeChat.Maths;
+namespace PokeChat.Math;
 
 public record MathResult(string Expression, double Value, double? StatedResult);
 

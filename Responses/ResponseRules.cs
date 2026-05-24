@@ -27,7 +27,7 @@ public static class ResponseRules
 
         foreach (var rule in rules)
         {
-            if (Regex.IsMatch(lowerInput, rule.Pattern))
+            if (rule.Pattern.Length > 0 && Regex.IsMatch(lowerInput, rule.Pattern))
             {
                 return new ResponseRuleRecord
                 {

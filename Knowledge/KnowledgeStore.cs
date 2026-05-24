@@ -304,6 +304,37 @@ public class KnowledgeStore(PokeChatDbContext context)
         return context.NounCategories.ToList();
     }
 
+    public string? GetUserBotName(int userId)
+    {
+        return context.UserBotNames
+            .Where(u => u.UserId == userId)
+            .Select(u => u.BotName)
+            .FirstOrDefault();
+    }
+
+    public void SetUserBotName(int userId, string name)
+    {
+        var existing = context.UserBotNames.FirstOrDefault(u => u.UserId == userId);
+        if (existing != null)
+        {
+            existing.BotName = name;
+        }
+        else
+        {
+            context.UserBotNames.Add(new UserBotName
+            {
+                UserId = userId,
+                BotName = name,
+                CreatedAt = DateTime.UtcNow.ToString("O")
+            });
+        }
+    }
+
+    public List<string> GetBotRenamePatterns()
+    {
+        return context.BotRenamePatterns.Select(p => p.Pattern.ToLowerInvariant()).ToList();
+    }
+
     public List<string> SearchDictionary(string partial)
     {
         var lower = partial.ToLowerInvariant();

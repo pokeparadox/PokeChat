@@ -44,7 +44,7 @@ public class SvoExtractorTests
         result.Count.ShouldBe(2);
         result[0].Subject.ShouldBe("i");
         result[0].Verb.ShouldBe("like");
-        result[0].Object.ShouldBe("pizza and");
+        result[0].Object.ShouldBe("pizza");
 
         result[1].Subject.ShouldBe("pizza and");
         result[1].Verb.ShouldBe("hate");

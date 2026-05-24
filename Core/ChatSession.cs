@@ -22,6 +22,14 @@ public class ChatSession : IDisposable
     private readonly List<string> _namePatterns;
     private readonly HashSet<string> _botCommands;
     private readonly HashSet<string> _greetingWords;
+    private string _botName = "PokeChat";
+    private readonly List<string> _renamePatterns;
+    private string _currentUserNameLower = string.Empty;
+    private Dictionary<string, List<string>>? _cachedBotResponses;
+    private static readonly string[] AlternativeNames = { "Zara", "Nova", "Echo", "Pixel", "Azure", "Kai", "Rex" };
+    private static readonly HashSet<string> Affirmations = new(StringComparer.OrdinalIgnoreCase)
+        { "yes", "yep", "yeah", "yup", "sure", "correct", "right",
+          "that's right", "that is right", "yes please", "ok", "okay" };
 
     public ChatSession()
     {
@@ -45,8 +53,10 @@ public class ChatSession : IDisposable
         _spellChecker.Initialise(spellDict, misspellings);
 
         _namePatterns = _knowledgeStore.GetNamePatterns().Select(p => p.Pattern.ToLowerInvariant()).ToList();
-        _botCommands = _knowledgeStore.GetBotCommands().Select(c => c.Command.ToLowerInvariant()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        _botCommands = _knowledgeStore.GetBotCommands().Select(c => c.Command).ToHashSet(StringComparer.OrdinalIgnoreCase);
         _greetingWords = _knowledgeStore.GetGreetingWords().Select(gw => gw.Word.ToLowerInvariant()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        _renamePatterns = _knowledgeStore.GetBotRenamePatterns();
+        _currentUserNameLower = _currentUserName.ToLowerInvariant();
     }
 
     internal ChatSession(
@@ -62,7 +72,9 @@ public class ChatSession : IDisposable
         INounCategoriser nounCategoriser,
         List<string> namePatterns,
         HashSet<string> botCommands,
-        HashSet<string> greetingWords)
+        HashSet<string> greetingWords,
+        string botName = "PokeChat",
+        List<string>? renamePatterns = null)
     {
         _dbContext = dbContext;
         _knowledgeStore = knowledgeStore;
@@ -77,34 +89,38 @@ public class ChatSession : IDisposable
         _namePatterns = namePatterns;
         _botCommands = botCommands;
         _greetingWords = greetingWords;
+        _botName = botName;
+        _renamePatterns = renamePatterns ?? new List<string>();
+        _currentUserNameLower = _currentUserName.ToLowerInvariant();
     }
 
     public void Start()
     {
-        Console.WriteLine("Welcome to PokeChat!");
+        Console.WriteLine($"Welcome to {_botName}!");
         Console.WriteLine("A chat bot that learns from you!");
         Console.WriteLine("Type 'quit' or 'exit' to leave.");
         Console.WriteLine();
 
-        Console.WriteLine(GreetingPool.GetRandomGreeting(_knowledgeStore));
+        Console.WriteLine(GreetingPool.GetRandomGreeting(_knowledgeStore, _botName));
 
         while (true)
         {
             Console.Write("\nYou: ");
             var input = Console.ReadLine();
 
+            if (input == null) break;
             if (string.IsNullOrWhiteSpace(input))
                 continue;
 
             if (ShouldExit(input))
             {
-                Console.WriteLine("PokeChat: Goodbye! It was great chatting with you.");
+                Console.WriteLine($"{_botName}: Goodbye! It was great chatting with you.");
                 break;
             }
 
             var response = ProcessInput(input);
             _context.SetContext(ContextKeys.LastResponse, response);
-            Console.WriteLine($"PokeChat: {response}");
+            Console.WriteLine($"{_botName}: {response}");
         }
     }
 
@@ -128,6 +144,9 @@ public class ChatSession : IDisposable
         }
 
         _context.SetContext(ContextKeys.UnknownWords, null);
+
+        if (TryHandleBotRename(input, out var renameResponse))
+            return renameResponse;
 
         LearnGreetingWords(input);
 
@@ -273,14 +292,14 @@ public class ChatSession : IDisposable
         var lowerVerb = verb.ToLowerInvariant();
         var lowerSubject = subject.ToLowerInvariant();
 
-        if (lowerVerb is "is" or "am" or "are" or "was" or "were")
-        {
-            if (lowerSubject == _currentUserName.ToLowerInvariant())
+            if (lowerVerb is "is" or "am" or "are" or "was" or "were")
             {
-                return PredicateType.PersonalAttribute;
+                if (lowerSubject == _currentUserNameLower)
+                {
+                    return PredicateType.PersonalAttribute;
+                }
+                return PredicateType.GeneralFact;
             }
-            return PredicateType.GeneralFact;
-        }
 
         if (lowerVerb is "like" or "love" or "enjoy" or "prefer")
         {
@@ -315,17 +334,12 @@ public class ChatSession : IDisposable
 
         if (!string.IsNullOrEmpty(pendingSuggestion))
         {
-            var affirmations = new HashSet<string>
-            {
-                "yes", "yep", "yeah", "yup", "sure", "correct", "right",
-                "that's right", "that is right", "yes please", "ok", "okay"
-            };
-
-            if (affirmations.Contains(lower) ||
-                lower.StartsWith("yes") ||
+            if (lower.StartsWith("yes") ||
                 lower.StartsWith("yeah") ||
                 lower.StartsWith("yep") ||
                 lower.StartsWith("yup"))
+
+            if (Affirmations.Contains(lower))
             {
                 _knowledgeStore.AddMisspelling(pendingWord, pendingSuggestion);
                 _spellChecker.AddToDictionary(pendingSuggestion);
@@ -375,9 +389,15 @@ public class ChatSession : IDisposable
         return GetDictionarySavedResponse(word, definition);
     }
 
+    private Dictionary<string, List<string>> GetCachedBotResponses()
+    {
+        _cachedBotResponses ??= _knowledgeStore.GetBotResponses();
+        return _cachedBotResponses;
+    }
+
     private string GetDictionarySavedResponse(string word, string definition)
     {
-        var botResponses = _knowledgeStore.GetBotResponses();
+        var botResponses = GetCachedBotResponses();
         if (botResponses.TryGetValue("dictionary_definition_saved", out var responses) && responses.Count > 0)
         {
             var template = responses[Random.Shared.Next(responses.Count)];
@@ -394,7 +414,7 @@ public class ChatSession : IDisposable
 
     private string GetNameIntroResponse(string userName)
     {
-        var botResponses = _knowledgeStore.GetBotResponses();
+        var botResponses = GetCachedBotResponses();
         if (botResponses.TryGetValue("name_intro", out var responses) && responses.Count > 0)
         {
             var template = responses[Random.Shared.Next(responses.Count)];
@@ -422,7 +442,12 @@ public class ChatSession : IDisposable
         }
 
         _currentUserName = char.ToUpper(name[0]) + name.Substring(1).ToLowerInvariant();
+        _currentUserNameLower = _currentUserName.ToLowerInvariant();
         _currentUserId = _knowledgeStore.GetOrCreateUser(_currentUserName);
+
+        var storedName = _knowledgeStore.GetUserBotName(_currentUserId!.Value);
+        if (storedName != null)
+            _botName = char.ToUpper(storedName[0]) + storedName.Substring(1).ToLowerInvariant();
 
         _context.Clear();
         _context.SetContext(ContextKeys.UserName, _currentUserName);
@@ -468,6 +493,76 @@ public class ChatSession : IDisposable
     {
         var lower = input.ToLowerInvariant().Trim();
         return _botCommands.Contains(lower);
+    }
+
+    internal bool TryHandleBotRename(string input, out string response)
+    {
+        var lowerInput = input.ToLowerInvariant();
+
+        foreach (var pattern in _renamePatterns)
+        {
+            var idx = lowerInput.IndexOf(pattern, StringComparison.Ordinal);
+            if (idx < 0) continue;
+
+            var namePart = input.Substring(idx + pattern.Length).Trim();
+            var nameTokens = _tokeniser.Tokenise(namePart);
+            var candidate = nameTokens[0];
+            if (nameTokens.Count == 0 || IsStopWord(candidate) || PunctuationHelper.IsPunctuation(candidate) ||
+                candidate.Length < 2 || !candidate.All(char.IsLetter))
+                continue;
+
+            response = HandleBotRenameProposal(nameTokens[0]);
+            return true;
+        }
+
+        response = string.Empty;
+        return false;
+    }
+
+    private string HandleBotRenameProposal(string proposedName)
+    {
+        var displayName = char.ToUpper(proposedName[0]) + proposedName.Substring(1).ToLowerInvariant();
+
+        if (Random.Shared.NextDouble() < 0.85)
+        {
+            _knowledgeStore.SetUserBotName(_currentUserId!.Value, displayName);
+            _knowledgeStore.Save();
+            _botName = displayName;
+            return GetBotRenameResponse("bot_rename_accepted", displayName);
+        }
+
+        if (Random.Shared.Next(2) == 0)
+        {
+            var altName = AlternativeNames[Random.Shared.Next(AlternativeNames.Length)];
+            return GetBotRenameResponse("bot_rename_suggestion", altName);
+        }
+
+        return GetBotRenameResponse("bot_rename_rejected", displayName);
+    }
+
+    private string GetBotRenameResponse(string category, params object[] args)
+    {
+        var botResponses = GetCachedBotResponses();
+        if (botResponses.TryGetValue(category, out var responses) && responses.Count > 0)
+        {
+            var template = responses[Random.Shared.Next(responses.Count)];
+            return args.Length > 0 ? string.Format(template, args) : template;
+        }
+
+        var fallbacks = new Dictionary<string, List<string>>
+        {
+            ["bot_rename_accepted"] = new() { $"Okay, from now on you can call me {args[0]}!" },
+            ["bot_rename_rejected"] = new() { $"Hmm, I'm not sure {args[0]} suits me. Can you think of something else?" },
+            ["bot_rename_suggestion"] = new() { $"How about the name {args[0]}?" }
+        };
+
+        if (fallbacks.TryGetValue(category, out var fb) && fb.Count > 0)
+        {
+            var template = fb[Random.Shared.Next(fb.Count)];
+            return args.Length > 0 ? string.Format(template, args) : template;
+        }
+
+        return string.Empty;
     }
 
     public void Dispose()

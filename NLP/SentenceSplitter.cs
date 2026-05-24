@@ -23,7 +23,12 @@ public class SentenceSplitter : ISentenceSplitter
                 if (c == '.' && i + 1 < input.Length)
                 {
                     char next = input[i + 1];
-                    if (char.IsLower(next))
+                    if (char.IsLower(next) || char.IsDigit(next))
+                    {
+                        isEndOfSentence = false;
+                    }
+
+                    if (i > 0 && char.IsDigit(input[i - 1]))
                     {
                         isEndOfSentence = false;
                     }
@@ -37,6 +42,12 @@ public class SentenceSplitter : ISentenceSplitter
 
                 if (isEndOfSentence)
                 {
+                    while (i + 1 < input.Length && SentenceEndings.Contains(input[i + 1]))
+                    {
+                        i++;
+                        current.Append(input[i]);
+                    }
+
                     var sentence = current.ToString().Trim();
                     if (!string.IsNullOrEmpty(sentence))
                     {

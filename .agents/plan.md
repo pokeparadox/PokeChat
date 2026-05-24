@@ -412,6 +412,27 @@ Review-driven fixes applied across multiple sessions.
 
 ---
 
+## Phase 12 — Bot Renaming ✅
+
+Per-user bot naming: the bot can be renamed by the user and remembers the name per user.
+
+- [x] **B1:** New `user_bot_names` table (user_id unique FK, bot_name, created_at)
+- [x] **B2:** New `bot_rename_patterns` table (pattern, created_at)
+- [x] **B3:** `UserBotName` and `BotRenamePattern` entity classes
+- [x] **B4:** `KnowledgeStore.GetUserBotName(userId)`, `SetUserBotName(userId, name)`, `GetBotRenamePatterns()`
+- [x] **B5:** `DbSeeder.SeedBotRenamePatterns()` seeds `"can i call you"`, `"i'll call you"`, `"i will call you"`, `"your name is"`
+- [x] **B6:** Three new BotResponse categories seeded: `bot_rename_accepted` (3), `bot_rename_rejected` (2), `bot_rename_suggestion` (3)
+- [x] **B7:** `GreetingPool.GetRandomGreeting` takes `botName` param, replaces `{BOTNAME}`/`"PokeChat"` with current name
+- [x] **B8:** `ChatSession.TryHandleBotRename` detects rename intent from patterns, extracts proposed name
+- [x] **B9:** `ChatSession.HandleBotRenameProposal`: 85% accept → saves to DB, sets `_botName`; 15% reject → suggest or ask for another
+- [x] **B10:** `ChatSession.GetBotRenameResponse` follows DB-first → hardcoded fallback pattern (like `GetNameIntroResponse`)
+- [x] **B11:** Console output labels use `_botName` instead of hardcoded `"PokeChat"`
+- [x] **B12:** `HandleNameInput` loads stored bot name from DB after user identity established
+- [x] **B13:** Tests for `TryHandleBotRename`, GreetingPool bot name formatting, backwards compatibility
+- [x] **B14:** 121/121 tests pass (117 existing + 4 new)
+
+---
+
 ## Running the Plan
 
 Before each phase, confirm `dotnet build` and `dotnet test` pass.

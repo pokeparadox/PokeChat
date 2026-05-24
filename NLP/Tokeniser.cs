@@ -4,7 +4,7 @@ namespace PokeChat.NLP;
 
 public class Tokeniser : ITokeniser
 {
-    private static readonly Regex TokenRegex = new(@"\b[\w'-+\$%&]+\b|[.,!?;:()\""]", RegexOptions.Compiled);
+    private static readonly Regex TokenRegex = new(@"\b[\w'\-+$%&]+\b|[.,!?;:()\""]", RegexOptions.Compiled);
 
     public List<string> Tokenise(string input)
     {

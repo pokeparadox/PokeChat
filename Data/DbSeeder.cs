@@ -17,6 +17,7 @@ public static class DbSeeder
         SeedBotCommands(context, now);
         SeedMisspellings(context, now);
         SeedNounCategories(context, now);
+        SeedBotRenamePatterns(context, now);
         SeedBotResponses(context, now);
 
         context.SaveChanges();
@@ -347,6 +348,19 @@ public static class DbSeeder
         }));
     }
 
+    private static void SeedBotRenamePatterns(PokeChatDbContext context, string now)
+    {
+        if (context.BotRenamePatterns.Any()) return;
+
+        var patterns = new[] { "can i call you", "i'll call you", "i will call you", "your name is" };
+
+        context.BotRenamePatterns.AddRange(patterns.Select(p => new BotRenamePattern
+        {
+            Pattern = p,
+            CreatedAt = now
+        }));
+    }
+
     private static void SeedBotResponses(PokeChatDbContext context, string now)
     {
         if (context.BotResponses.Any()) return;
@@ -428,6 +442,14 @@ public static class DbSeeder
             ("name_intro", "Hello {0}! Feel free to share anything with me."),
             ("name_intro", "Great, {0}! I'm ready to learn from our conversation."),
             ("name_intro", "Welcome, {0}! Tell me about yourself or anything on your mind."),
+            ("bot_rename_accepted", "Okay, from now on you can call me {0}!"),
+            ("bot_rename_accepted", "I like {0}! You can call me that."),
+            ("bot_rename_accepted", "{0} it is! Let's keep chatting."),
+            ("bot_rename_rejected", "Hmm, I'm not sure {0} suits me. Can you think of something else?"),
+            ("bot_rename_rejected", "I don't really like {0}. How about a different name?"),
+            ("bot_rename_suggestion", "How about the name {0}?"),
+            ("bot_rename_suggestion", "What do you think of {0} instead?"),
+            ("bot_rename_suggestion", "Would {0} work for you?"),
         };
 
         context.BotResponses.AddRange(responses.Select(r => new BotResponse

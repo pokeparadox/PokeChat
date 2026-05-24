@@ -4,16 +4,30 @@ public static class Pluraliser
 {
     public static string? ToSingular(string word)
     {
+        return GetCandidates(word).FirstOrDefault();
+    }
+
+    public static IEnumerable<string> GetCandidates(string word)
+    {
         var lower = word.ToLowerInvariant();
 
         if (IrregularPlurals.TryGetValue(lower, out var singular))
-            return singular;
+        {
+            yield return singular;
+            yield break;
+        }
 
         if (lower.EndsWith("ies") && lower.Length > 4)
-            return lower[..^3] + "y";
+        {
+            yield return lower[..^3] + "y";
+            yield return lower[..^3] + "ie";
+        }
 
         if (lower.EndsWith("ves") && lower.Length > 4)
-            return lower[..^3] + "f";
+        {
+            yield return lower[..^3] + "f";
+            yield return lower[..^3] + "fe";
+        }
 
         if (lower.EndsWith("es") && lower.Length > 3)
         {
@@ -21,17 +35,15 @@ public static class Pluraliser
             if (stem.EndsWith("s") || stem.EndsWith("sh") ||
                 stem.EndsWith("ch") || stem.EndsWith("x") ||
                 stem.EndsWith("z") || stem.EndsWith("o"))
-                return stem;
+                yield return stem;
         }
 
         if (lower.EndsWith("s") && lower.Length > 2)
         {
             var candidate = lower[..^1];
             if (candidate.Length >= 2)
-                return candidate;
+                yield return candidate;
         }
-
-        return null;
     }
 
     private static readonly Dictionary<string, string> IrregularPlurals = new()
