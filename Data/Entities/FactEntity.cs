@@ -8,5 +8,7 @@ public class FactEntity
     public string Verb { get; set; } = string.Empty;
     public string Object { get; set; } = string.Empty;
     public string PredicateType { get; set; } = string.Empty;
+    public string? Sentiment { get; set; }
+    public int EmotionIntensity { get; set; }
     public string CreatedAt { get; set; } = string.Empty;
 }

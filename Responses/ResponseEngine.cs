@@ -102,6 +102,9 @@ public class ResponseEngine
             }
         }
 
+        var sentimentResult = HandleSentiment();
+        if (sentimentResult != null) return sentimentResult;
+
         var mathResult = _mathEngine.Evaluate(input);
         if (mathResult != null)
         {
@@ -235,6 +238,41 @@ public class ResponseEngine
             nameof(PredicateType.GeneralFact) => ("proactive_general_fact", new object[] { subj, conjVerb, obj }),
             _ => ("proactive_general", new object[] { obj, subj, verb })
         };
+    }
+
+    private string? HandleSentiment()
+    {
+        var currentSentiment = _context.GetContext(ContextKeys.CurrentSentiment);
+        if (string.IsNullOrEmpty(currentSentiment) || currentSentiment == "neutral")
+            return null;
+
+        var intensityRaw = _context.GetContext(ContextKeys.LastSentimentIntensity);
+        int.TryParse(intensityRaw, out var intensity);
+        if (intensity < 2)
+            return null;
+
+        var previousSentiment = _context.GetContext(ContextKeys.PreviousSentiment);
+
+        if (previousSentiment != null && previousSentiment != currentSentiment)
+        {
+            return GetRandomResponse("emotion_followup", previousSentiment);
+        }
+
+        var category = currentSentiment switch
+        {
+            "positive" => "empathy_happy",
+            "negative" => "empathy_sad",
+            "anger" => "empathy_angry",
+            "fear" => "empathy_afraid",
+            "surprise" => "empathy_surprised",
+            _ => "emotion_unknown"
+        };
+
+        var response = GetRandomResponse(category);
+        if (!string.IsNullOrEmpty(response))
+            return response;
+
+        return null;
     }
 
     private string? HandleDictionaryQuery(string input)

@@ -39,7 +39,44 @@ internal static class TestDataHelper
             new BotResponse { Category = "bot_reset_confirmed", ResponseText = "Done! I've forgotten everything. Let's start fresh!", CreatedAt = now },
             new BotResponse { Category = "bot_reset_confirmed", ResponseText = "All memories cleared. It's like we're meeting for the first time!", CreatedAt = now },
             new BotResponse { Category = "bot_reset_cancelled", ResponseText = "Okay, nothing was deleted. Let's continue!", CreatedAt = now },
-            new BotResponse { Category = "bot_reset_cancelled", ResponseText = "No problem, I'll keep our memories safe!", CreatedAt = now }
+            new BotResponse { Category = "bot_reset_cancelled", ResponseText = "No problem, I'll keep our memories safe!", CreatedAt = now },
+            new BotResponse { Category = "empathy_sad", ResponseText = "I'm sorry you're feeling that way. Do you want to talk about it?", CreatedAt = now },
+            new BotResponse { Category = "empathy_sad", ResponseText = "That sounds difficult. I'm here if you need someone to listen.", CreatedAt = now },
+            new BotResponse { Category = "empathy_happy", ResponseText = "That's great to hear! What's making you happy?", CreatedAt = now },
+            new BotResponse { Category = "empathy_happy", ResponseText = "I'm glad you're feeling good! Tell me more.", CreatedAt = now },
+            new BotResponse { Category = "empathy_angry", ResponseText = "That sounds frustrating. Do you want to tell me more?", CreatedAt = now },
+            new BotResponse { Category = "empathy_angry", ResponseText = "I can understand why you'd feel that way. What happened?", CreatedAt = now },
+            new BotResponse { Category = "empathy_afraid", ResponseText = "That sounds worrying. I'm here if you want to talk.", CreatedAt = now },
+            new BotResponse { Category = "empathy_afraid", ResponseText = "I understand feeling anxious about things. What's on your mind?", CreatedAt = now },
+            new BotResponse { Category = "empathy_surprised", ResponseText = "That is surprising! Tell me more about it.", CreatedAt = now },
+            new BotResponse { Category = "empathy_surprised", ResponseText = "Wow, I bet that caught you off guard! What happened?", CreatedAt = now },
+            new BotResponse { Category = "emotion_followup", ResponseText = "You seemed {0} earlier. Are you feeling better now?", CreatedAt = now },
+            new BotResponse { Category = "emotion_followup", ResponseText = "Last time you were feeling {0}. Has anything changed?", CreatedAt = now }
+        );
+        db.SaveChanges();
+    }
+
+    public static void SeedEmotionKeywords(PokeChatDbContext db)
+    {
+        var now = DateTime.UtcNow.ToString("O");
+        db.EmotionKeywords.AddRange(
+            new EmotionKeyword { Word = "happy", Sentiment = "positive", Intensity = 2, CreatedAt = now },
+            new EmotionKeyword { Word = "great", Sentiment = "positive", Intensity = 2, CreatedAt = now },
+            new EmotionKeyword { Word = "wonderful", Sentiment = "positive", Intensity = 3, CreatedAt = now },
+            new EmotionKeyword { Word = "love", Sentiment = "positive", Intensity = 3, CreatedAt = now },
+            new EmotionKeyword { Word = "sad", Sentiment = "negative", Intensity = 2, CreatedAt = now },
+            new EmotionKeyword { Word = "unhappy", Sentiment = "negative", Intensity = 2, CreatedAt = now },
+            new EmotionKeyword { Word = "terrible", Sentiment = "negative", Intensity = 3, CreatedAt = now },
+            new EmotionKeyword { Word = "awful", Sentiment = "negative", Intensity = 3, CreatedAt = now },
+            new EmotionKeyword { Word = "angry", Sentiment = "anger", Intensity = 3, CreatedAt = now },
+            new EmotionKeyword { Word = "furious", Sentiment = "anger", Intensity = 5, CreatedAt = now },
+            new EmotionKeyword { Word = "annoyed", Sentiment = "anger", Intensity = 2, CreatedAt = now },
+            new EmotionKeyword { Word = "scared", Sentiment = "fear", Intensity = 3, CreatedAt = now },
+            new EmotionKeyword { Word = "afraid", Sentiment = "fear", Intensity = 3, CreatedAt = now },
+            new EmotionKeyword { Word = "worried", Sentiment = "fear", Intensity = 2, CreatedAt = now },
+            new EmotionKeyword { Word = "surprised", Sentiment = "surprise", Intensity = 2, CreatedAt = now },
+            new EmotionKeyword { Word = "shocked", Sentiment = "surprise", Intensity = 3, CreatedAt = now },
+            new EmotionKeyword { Word = "amazed", Sentiment = "surprise", Intensity = 3, CreatedAt = now }
         );
         db.SaveChanges();
     }
@@ -59,7 +96,9 @@ internal static class TestDataHelper
             new PosDictionaryEntry { Word = "sky", WordType = "noun", CreatedAt = now },
             new PosDictionaryEntry { Word = "blue", WordType = "adjective", CreatedAt = now },
             new PosDictionaryEntry { Word = "hate", WordType = "verb", CreatedAt = now },
-            new PosDictionaryEntry { Word = "broccoli", WordType = "noun", CreatedAt = now }
+            new PosDictionaryEntry { Word = "broccoli", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "love", WordType = "verb", CreatedAt = now },
+            new PosDictionaryEntry { Word = "happy", WordType = "adjective", CreatedAt = now }
         );
         db.SaveChanges();
     }

@@ -16,6 +16,8 @@ public class KnowledgeStore(PokeChatDbContext context)
             Verb = fact.Verb,
             Object = fact.Object,
             PredicateType = fact.PredicateType,
+            Sentiment = fact.Sentiment,
+            EmotionIntensity = fact.EmotionIntensity,
             CreatedAt = fact.CreatedAt
         };
 
@@ -189,6 +191,55 @@ public class KnowledgeStore(PokeChatDbContext context)
     public bool IsWordKnown(string word)
     {
         return context.PosDictionary.Any(p => p.Word == word.ToLowerInvariant());
+    }
+
+    public List<EmotionKeyword> GetEmotionKeywords()
+    {
+        return context.EmotionKeywords.ToList();
+    }
+
+    public (string? Sentiment, int Intensity) AnalyseSentiment(string input)
+    {
+        var keywords = GetEmotionKeywords();
+        if (keywords.Count == 0)
+            return (null, 0);
+
+        var lowerInput = input.ToLowerInvariant();
+        var words = lowerInput.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        var scores = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var intensities = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var keyword in keywords)
+        {
+            if (lowerInput.Contains(keyword.Word))
+            {
+                if (!scores.ContainsKey(keyword.Sentiment))
+                {
+                    scores[keyword.Sentiment] = 0;
+                    intensities[keyword.Sentiment] = 0;
+                }
+                scores[keyword.Sentiment]++;
+                if (keyword.Intensity > intensities[keyword.Sentiment])
+                    intensities[keyword.Sentiment] = keyword.Intensity;
+            }
+        }
+
+        if (scores.Count == 0)
+            return ("neutral", 0);
+
+        var dominant = scores.MaxBy(kv => kv.Value);
+        return (dominant.Key, intensities[dominant.Key]);
+    }
+
+    public void UpdateFactSentiment(int factId, string sentiment, int intensity)
+    {
+        var fact = context.Facts.Find(factId);
+        if (fact != null)
+        {
+            fact.Sentiment = sentiment;
+            fact.EmotionIntensity = intensity;
+        }
     }
 
     public void ResetAllUserData()

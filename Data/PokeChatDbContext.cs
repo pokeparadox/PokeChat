@@ -47,6 +47,7 @@ public sealed class PokeChatDbContext : DbContext
     public DbSet<NounCategory> NounCategories => Set<NounCategory>();
     public DbSet<UserBotName> UserBotNames => Set<UserBotName>();
     public DbSet<BotRenamePattern> BotRenamePatterns => Set<BotRenamePattern>();
+    public DbSet<EmotionKeyword> EmotionKeywords => Set<EmotionKeyword>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -74,6 +75,8 @@ public sealed class PokeChatDbContext : DbContext
             entity.Property(e => e.Verb).IsRequired();
             entity.Property(e => e.Object).IsRequired();
             entity.Property(e => e.PredicateType).IsRequired();
+            entity.Property(e => e.Sentiment);
+            entity.Property(e => e.EmotionIntensity);
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.HasOne<User>()
                 .WithMany()
@@ -222,6 +225,16 @@ public sealed class PokeChatDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Pattern).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+        });
+
+        modelBuilder.Entity<EmotionKeyword>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Word).IsUnique();
+            entity.Property(e => e.Word).IsRequired();
+            entity.Property(e => e.Sentiment).IsRequired();
+            entity.Property(e => e.Intensity);
             entity.Property(e => e.CreatedAt).IsRequired();
         });
     }

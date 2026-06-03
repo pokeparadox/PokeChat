@@ -13,4 +13,8 @@ public static class ContextKeys
     public const string RecentlyUsedFacts = "recently_used_facts";
     public const string ContextFollowUpCount = "context_follow_up_count";
     public const string PendingReset = "pending_reset";
+    public const string CurrentSentiment = "current_sentiment";
+    public const string LastSentimentIntensity = "last_sentiment_intensity";
+    public const string PreviousSentiment = "previous_sentiment";
+    public const string SentimentTurnCount = "sentiment_turn_count";
 }

@@ -1,3 +1,4 @@
+using PokeChat.Data.Entities;
 using PokeChat.Knowledge;
 using PokeChat.Tests.Helpers;
 using Shouldly;
@@ -153,5 +154,81 @@ public class KnowledgeStoreTests
         using var db = new FreshDbContext();
         var store = new KnowledgeStore(db.Context);
         store.GetAllFacts().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void AnalyseSentiment_ReturnsPositive_ForHappyInput()
+    {
+        using var db = new FreshDbContext();
+        TestDataHelper.SeedEmotionKeywords(db.Context);
+        var store = new KnowledgeStore(db.Context);
+        var (sentiment, intensity) = store.AnalyseSentiment("I'm so happy and wonderful today!");
+        sentiment.ShouldBe("positive");
+        intensity.ShouldBeGreaterThanOrEqualTo(2);
+    }
+
+    [Fact]
+    public void AnalyseSentiment_ReturnsNegative_ForSadInput()
+    {
+        using var db = new FreshDbContext();
+        TestDataHelper.SeedEmotionKeywords(db.Context);
+        var store = new KnowledgeStore(db.Context);
+        var (sentiment, intensity) = store.AnalyseSentiment("I feel so sad and unhappy");
+        sentiment.ShouldBe("negative");
+        intensity.ShouldBeGreaterThanOrEqualTo(2);
+    }
+
+    [Fact]
+    public void AnalyseSentiment_ReturnsNeutral_WhenNoKeywordsMatch()
+    {
+        using var db = new FreshDbContext();
+        TestDataHelper.SeedEmotionKeywords(db.Context);
+        var store = new KnowledgeStore(db.Context);
+        var (sentiment, intensity) = store.AnalyseSentiment("the sky is blue");
+        sentiment.ShouldBe("neutral");
+        intensity.ShouldBe(0);
+    }
+
+    [Fact]
+    public void AnalyseSentiment_ReturnsDominant_ForMixedInput()
+    {
+        using var db = new FreshDbContext();
+        TestDataHelper.SeedEmotionKeywords(db.Context);
+        var store = new KnowledgeStore(db.Context);
+        var (sentiment, intensity) = store.AnalyseSentiment("I love this! But I'm also sad about the news");
+        sentiment.ShouldBe("positive");
+        intensity.ShouldBeGreaterThanOrEqualTo(3);
+    }
+
+    [Fact]
+    public void AnalyseSentiment_ReturnsNeutral_WhenNoKeywordsSeeded()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var (sentiment, intensity) = store.AnalyseSentiment("I'm so happy!");
+        sentiment.ShouldBeNull();
+        intensity.ShouldBe(0);
+    }
+
+    [Fact]
+    public void UpdateFactSentiment_UpdatesExistingFact()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var fact = new FactEntity
+        {
+            Subject = "test", Verb = "is", Object = "test",
+            PredicateType = "GeneralFact", CreatedAt = DateTime.UtcNow.ToString("O")
+        };
+        db.Context.Facts.Add(fact);
+        db.Context.SaveChanges();
+
+        store.UpdateFactSentiment(fact.Id, "positive", 3);
+        store.Save();
+
+        var updated = db.Context.Facts.Find(fact.Id);
+        updated.ShouldNotBeNull();
+        updated.Sentiment.ShouldBe("positive");
+        updated.EmotionIntensity.ShouldBe(3);
     }
 }

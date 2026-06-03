@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS facts (
     verb TEXT NOT NULL,
     object TEXT NOT NULL,
     predicate_type TEXT NOT NULL,
+    sentiment TEXT,
+    emotion_intensity INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
@@ -127,5 +129,13 @@ CREATE TABLE IF NOT EXISTS user_bot_names (
 CREATE TABLE IF NOT EXISTS bot_rename_patterns (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     pattern TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS emotion_keywords (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    word TEXT NOT NULL UNIQUE,
+    sentiment TEXT NOT NULL,
+    intensity INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL
 );

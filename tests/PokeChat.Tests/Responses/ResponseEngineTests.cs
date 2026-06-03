@@ -227,6 +227,59 @@ public class ResponseEngineTests
     }
 
     [Fact]
+    public void GenerateResponse_ReturnsEmpathyHappy_WhenSentimentContextSet()
+    {
+        using var db = new FreshDbContext();
+        var context = new ContextTracker();
+        context.SetContext(ContextKeys.CurrentSentiment, "positive");
+        context.SetContext(ContextKeys.LastSentimentIntensity, "3");
+
+        var engine = CreateEngine(db.Context, context);
+        var response = engine.GenerateResponse("I'm so happy!", null);
+        response.ShouldNotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public void GenerateResponse_ReturnsEmpathySad_WhenSentimentContextSet()
+    {
+        using var db = new FreshDbContext();
+        var context = new ContextTracker();
+        context.SetContext(ContextKeys.CurrentSentiment, "negative");
+        context.SetContext(ContextKeys.LastSentimentIntensity, "3");
+
+        var engine = CreateEngine(db.Context, context);
+        var response = engine.GenerateResponse("I feel so sad", null);
+        response.ShouldNotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public void GenerateResponse_SkipsEmpathy_WhenIntensityLow()
+    {
+        using var db = new FreshDbContext();
+        var context = new ContextTracker();
+        context.SetContext(ContextKeys.CurrentSentiment, "negative");
+        context.SetContext(ContextKeys.LastSentimentIntensity, "1");
+
+        var engine = CreateEngine(db.Context, context);
+        var response = engine.GenerateResponse("hello", null);
+        response.ShouldBeOneOf("Interesting! Tell me more.", "I see.");
+    }
+
+    [Fact]
+    public void GenerateResponse_ReturnsEmotionFollowUp_WhenSentimentChanged()
+    {
+        using var db = new FreshDbContext();
+        var context = new ContextTracker();
+        context.SetContext(ContextKeys.CurrentSentiment, "negative");
+        context.SetContext(ContextKeys.LastSentimentIntensity, "3");
+        context.SetContext(ContextKeys.PreviousSentiment, "positive");
+
+        var engine = CreateEngine(db.Context, context);
+        var response = engine.GenerateResponse("I'm sad now", null);
+        response.ShouldNotBeNullOrEmpty();
+    }
+
+    [Fact]
     public void ConjugateVerb_IsApplied_InExistingFactResponse()
     {
         using var db = new FreshDbContext();

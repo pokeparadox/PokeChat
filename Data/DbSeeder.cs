@@ -18,6 +18,7 @@ public static class DbSeeder
         SeedMisspellings(context, now);
         SeedNounCategories(context, now);
         SeedBotRenamePatterns(context, now);
+        SeedEmotionKeywords(context, now);
         SeedBotResponses(context, now);
 
         context.SaveChanges();
@@ -361,6 +362,118 @@ public static class DbSeeder
         }));
     }
 
+    private static void SeedEmotionKeywords(PokeChatDbContext context, string now)
+    {
+        if (context.EmotionKeywords.Any()) return;
+
+        var keywords = new (string Word, string Sentiment, int Intensity)[]
+        {
+            ("happy", "positive", 2),
+            ("great", "positive", 2),
+            ("wonderful", "positive", 3),
+            ("love", "positive", 3),
+            ("awesome", "positive", 3),
+            ("fantastic", "positive", 3),
+            ("brilliant", "positive", 3),
+            ("amazing", "positive", 3),
+            ("delightful", "positive", 2),
+            ("excellent", "positive", 3),
+            ("glad", "positive", 2),
+            ("pleased", "positive", 2),
+            ("cheerful", "positive", 2),
+            ("excited", "positive", 3),
+            ("joy", "positive", 3),
+            ("lovely", "positive", 2),
+            ("nice", "positive", 1),
+            ("beautiful", "positive", 2),
+            ("perfect", "positive", 3),
+            ("fabulous", "positive", 3),
+            ("splendid", "positive", 3),
+            ("terrific", "positive", 3),
+            ("marvellous", "positive", 3),
+            ("magnificent", "positive", 3),
+            ("superb", "positive", 3),
+            ("grand", "positive", 2),
+            ("fine", "positive", 1),
+            ("good", "positive", 1),
+            ("joyful", "positive", 3),
+            ("thrilled", "positive", 4),
+            ("elated", "positive", 4),
+            ("ecstatic", "positive", 5),
+            ("overjoyed", "positive", 5),
+            ("sad", "negative", 2),
+            ("unhappy", "negative", 2),
+            ("terrible", "negative", 3),
+            ("awful", "negative", 3),
+            ("horrible", "negative", 3),
+            ("miserable", "negative", 4),
+            ("upset", "negative", 2),
+            ("disappointed", "negative", 2),
+            ("gloomy", "negative", 2),
+            ("depressed", "negative", 4),
+            ("lonely", "negative", 3),
+            ("sorry", "negative", 1),
+            ("bad", "negative", 1),
+            ("worst", "negative", 3),
+            ("dreadful", "negative", 3),
+            ("grim", "negative", 2),
+            ("dismal", "negative", 2),
+            ("sorrowful", "negative", 3),
+            ("heartbroken", "negative", 5),
+            ("devastated", "negative", 5),
+            ("angry", "anger", 3),
+            ("furious", "anger", 5),
+            ("annoyed", "anger", 2),
+            ("frustrated", "anger", 3),
+            ("irritated", "anger", 2),
+            ("mad", "anger", 3),
+            ("outraged", "anger", 5),
+            ("livid", "anger", 4),
+            ("cross", "anger", 2),
+            ("fuming", "anger", 4),
+            ("rage", "anger", 5),
+            ("infuriated", "anger", 5),
+            ("enraged", "anger", 5),
+            ("irate", "anger", 4),
+            ("incensed", "anger", 4),
+            ("scared", "fear", 3),
+            ("afraid", "fear", 3),
+            ("worried", "fear", 2),
+            ("anxious", "fear", 2),
+            ("nervous", "fear", 2),
+            ("terrified", "fear", 5),
+            ("frightened", "fear", 4),
+            ("panicked", "fear", 4),
+            ("fearful", "fear", 3),
+            ("concerned", "fear", 1),
+            ("alarmed", "fear", 3),
+            ("uneasy", "fear", 2),
+            ("apprehensive", "fear", 2),
+            ("tense", "fear", 2),
+            ("surprised", "surprise", 2),
+            ("shocked", "surprise", 3),
+            ("amazed", "surprise", 3),
+            ("astonished", "surprise", 3),
+            ("stunned", "surprise", 3),
+            ("unexpected", "surprise", 1),
+            ("incredible", "surprise", 3),
+            ("unbelievable", "surprise", 3),
+            ("wow", "surprise", 2),
+            ("startled", "surprise", 2),
+            ("dumbfounded", "surprise", 4),
+            ("astounded", "surprise", 3),
+            ("flabbergasted", "surprise", 4),
+        };
+
+        context.EmotionKeywords.AddRange(keywords.Select(k => new EmotionKeyword
+        {
+            Word = k.Word,
+            Sentiment = k.Sentiment,
+            Intensity = k.Intensity,
+            CreatedAt = now
+        }));
+    }
+
     private static void SeedBotResponses(PokeChatDbContext context, string now)
     {
         if (context.BotResponses.Any()) return;
@@ -456,6 +569,24 @@ public static class DbSeeder
             ("bot_reset_confirmed", "All memories cleared. It's like we're meeting for the first time!"),
             ("bot_reset_cancelled", "Okay, nothing was deleted. Let's continue!"),
             ("bot_reset_cancelled", "No problem, I'll keep our memories safe!"),
+            ("empathy_sad", "I'm sorry you're feeling that way. Do you want to talk about it?"),
+            ("empathy_sad", "That sounds difficult. I'm here if you need someone to listen."),
+            ("empathy_sad", "It's okay to feel sad sometimes. What's on your mind?"),
+            ("empathy_happy", "That's great to hear! What's making you happy?"),
+            ("empathy_happy", "I'm glad you're feeling good! Tell me more."),
+            ("empathy_happy", "Wonderful! Share the good news with me."),
+            ("empathy_angry", "That sounds frustrating. Do you want to tell me more?"),
+            ("empathy_angry", "I can understand why you'd feel that way. What happened?"),
+            ("empathy_angry", "It's okay to be angry. Want to talk about what's bothering you?"),
+            ("empathy_afraid", "That sounds worrying. I'm here if you want to talk."),
+            ("empathy_afraid", "I understand feeling anxious about things. What's on your mind?"),
+            ("empathy_afraid", "It's natural to feel concerned. Would you like to share more?"),
+            ("empathy_surprised", "That is surprising! Tell me more about it."),
+            ("empathy_surprised", "Wow, I bet that caught you off guard! What happened?"),
+            ("empathy_surprised", "What a surprise! I'd love to hear more."),
+            ("emotion_followup", "You seemed {0} earlier. Are you feeling better now?"),
+            ("emotion_followup", "Last time you were feeling {0}. Has anything changed?"),
+            ("emotion_followup", "You were {0} before. How are you feeling now about it?"),
         };
 
         context.BotResponses.AddRange(responses.Select(r => new BotResponse

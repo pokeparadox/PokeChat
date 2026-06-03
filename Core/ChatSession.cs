@@ -168,11 +168,24 @@ public class ChatSession : IDisposable
 
         LearnGreetingWords(input);
 
+        var (sentiment, intensity) = _knowledgeStore.AnalyseSentiment(input);
+        var currentSentiment = _context.GetContext(ContextKeys.CurrentSentiment);
+        if (currentSentiment != null && currentSentiment != sentiment)
+        {
+            _context.SetContext(ContextKeys.PreviousSentiment, currentSentiment);
+        }
+        else
+        {
+            _context.SetContext(ContextKeys.PreviousSentiment, null);
+        }
+        _context.SetContext(ContextKeys.CurrentSentiment, sentiment ?? "neutral");
+        _context.SetContext(ContextKeys.LastSentimentIntensity, intensity.ToString());
+
         var sentences = _sentenceSplitter.Split(input);
 
         foreach (var sentence in sentences)
         {
-            ProcessSentence(sentence);
+            ProcessSentence(sentence, sentiment, intensity);
         }
 
         var response = _responseEngine.GenerateResponse(input, _currentUserId);
@@ -203,7 +216,7 @@ public class ChatSession : IDisposable
         }
     }
 
-    internal void ProcessSentence(string sentence)
+    internal void ProcessSentence(string sentence, string? sentiment = null, int intensity = 0)
     {
         var tokens = _tokeniser.Tokenise(sentence);
         var correctedTokens = _spellChecker.AutoCorrect(tokens);
@@ -244,6 +257,8 @@ public class ChatSession : IDisposable
                 Verb = triple.Verb,
                 Object = resolvedObject,
                 PredicateType = predicateType.ToString(),
+                Sentiment = sentiment ?? _context.GetContext(ContextKeys.CurrentSentiment),
+                EmotionIntensity = intensity > 0 ? intensity : int.TryParse(_context.GetContext(ContextKeys.LastSentimentIntensity) ?? "0", out var si) ? si : 0,
                 CreatedAt = DateTime.UtcNow.ToString("O")
             };
 

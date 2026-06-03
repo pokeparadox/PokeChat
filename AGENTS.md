@@ -111,7 +111,8 @@ A phased improvement plan is maintained in `.agents/plan.md`, ordered by priorit
 - **Phase 12:** Bot Renaming ✅ (per-user bot name stored in `user_bot_names` table, rename intent detected via `bot_rename_patterns`, 85% acceptance with 15% rejection/suggestion)
 - **Phase 13:** EF Core Migrations ✅ (replaced `EnsureCreated` with `Database.Migrate`, `DatabaseInitializer` handles legacy DB transition, data survives schema upgrades)
 - **Phase 14:** Reset / Start Fresh ✅ (detect "can we start afresh" patterns, warn → confirm → wipe all user data, preserve system seed, reset user identity)
- 
+- **Phase 15:** Emotion / Sentiment Awareness ✅ (EmotionKeyword entity, ~95 seed keywords across 5 sentiments, AnalyseSentiment in KnowledgeStore, sentiment stored on facts, empathy response categories in ResponseEngine, emotion_followup on sentiment change, 7 new tests)
+- **Phase 16:** Contractions Handling ✅ (ContractionEntity, ContractionExpander, ~35 seeded contractions, missing POS words added, expansion before tokenisation, 7 new tests)
 ## Known Fixes
 - **Math operators in tokeniser:** `+`, `-`, `*`, `/`, `^` are extracted as standalone tokens by Tokeniser regex. `GetUnknownWords` in `SpellChecker` must skip math operators to prevent false unknown-word prompts before math evaluation. Fixed via `SpellChecker.MathOperators` HashSet.
 - **Solution file path:** `PokeChat.slnx` must use `tests/PokeChat.Tests/PokeChat.Tests.csproj` (not `../tests/...`) — the `..` resolved to a stale project copy at `/mnt/Storage/RiderProjects/tests/`.

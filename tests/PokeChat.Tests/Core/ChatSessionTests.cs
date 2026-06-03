@@ -389,6 +389,48 @@ public class ChatSessionTests
     }
 
     [Fact]
+    public void ProcessInput_StoresSentimentInContext_ForEmotionalInput()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedEmotionKeywords(db.Context);
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("I'm so happy today!");
+        }
+    }
+
+    [Fact]
+    public void ProcessInput_StoresSentimentOnFact()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedEmotionKeywords(db.Context);
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("I love pizza");
+
+            var facts = db.Context.Facts.ToList();
+            facts.Count.ShouldBe(1);
+            facts[0].Sentiment.ShouldBe("positive");
+            facts[0].EmotionIntensity.ShouldBeGreaterThanOrEqualTo(2);
+        }
+    }
+
+    [Fact]
+    public void ProcessInput_ReturnsEmpathyResponse_ForEmotionalInput()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedEmotionKeywords(db.Context);
+            session.HandleNameInput("my name is Alice");
+            var response = session.ProcessInput("I'm so happy today!");
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
     public void TryHandleReset_WorksThroughProcessInput()
     {
         var (session, db) = CreateSessionAndDb();
