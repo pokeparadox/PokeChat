@@ -433,6 +433,81 @@ Per-user bot naming: the bot can be renamed by the user and remembers the name p
 
 ---
 
+## Phase 13 — EF Core Migrations ✅
+
+Replace `Database.EnsureCreated()` with EF Core Migrations so database schema changes never require deleting `pokechat.db`.
+
+### 13.1 Create initial migration
+- `dotnet ef migrations add InitialCreate` captures all 17 tables from current `OnModelCreating`
+- Generates `Migrations/InitialCreate.cs`, `Migrations/2026..._InitialCreate.Designer.cs`, `Migrations/PokeChatDbContextModelSnapshot.cs`
+
+### 13.2 Create `Data/DatabaseInitializer.cs`
+- New class wrapping the migration + seed flow
+- On fresh DB: `Migrate()` creates schema from scratch
+- On legacy DB (from `EnsureCreated`): catches `SqliteException` from missing `__EFMigrationsHistory`, detects tables via raw SQL, seeds history for all compiled migrations, then `Migrate()` applies any remaining new migrations
+- Always calls `DbSeeder.Seed()` (idempotent — checks `Any()`)
+
+### 13.3 Update `ChatSession` constructor
+- Replace `_dbContext.Database.EnsureCreated(); DbSeeder.Seed(_dbContext);` with `new DatabaseInitializer(_dbContext).Initialize();`
+
+### 13.4 Add migration commands to `AGENTS.md`
+- `dotnet ef migrations add <Name>` and `dotnet ef migrations remove`
+
+### 13.5 Known fix update
+- Replace "delete pokechat.db when adding tables" note — document that `Migrate()` handles upgrades, new seed data requires data migration or manual table clear
+
+### 13.6 Verify
+- `dotnet build` — succeeds
+- `dotnet test` — 121/121 pass
+
+---
+
+## Phase 14 — Reset / Start Fresh ✅
+
+Allow users to wipe all learned data and start a new conversation: "Can we start afresh?"
+
+### 14.1 Detection and confirmation flow
+- `ChatSession.ResetTriggers` — static array of 12 phrases: "start fresh", "start afresh", "start over", "reset everything", "reset all data", "forget everything", "wipe all memories", "wipe everything", "clear all data", "clear everything", "clear all memories", "fresh start"
+- `ChatSession.TryHandleResetRequest` — pattern-matched via `input.Contains(trigger)` after user identity established
+- First detection returns warning (`bot_reset_warning`), sets `ContextKeys.PendingReset`
+- Second call with affirmation (`Affirmations.Contains`) wipes all user data; anything else cancels
+
+### 14.2 Data wipe
+- `KnowledgeStore.ResetAllUserData()` — `ExecuteSqlRaw` on 9 tables:
+  - `DELETE FROM Conversations`
+  - `DELETE FROM Facts`
+  - `DELETE FROM WordDefinitions`
+  - `DELETE FROM WordLinks`
+  - `DELETE FROM GreetingWords WHERE LearnedFromUserId IS NOT NULL`
+  - `DELETE FROM NounCategories WHERE LearnedFromUserId IS NOT NULL`
+  - `DELETE FROM UserBotNames`
+  - `DELETE FROM PosDictionary WHERE WordType = 'unknown'`
+  - `DELETE FROM Users`
+- Preserves all system seed data (null FK rows)
+- After wipe: `_context.Clear()`, `_currentUserId = null`, `_currentUserName = ""` (bot asks for name again)
+
+### 14.3 New bot response categories (seeded)
+| Category | Templates (2 each) |
+|---|---|
+| `bot_reset_warning` | "This will delete all our conversations... Are you sure?" / "Are you sure you want me to forget everything?" |
+| `bot_reset_confirmed` | "Done! I've forgotten everything. Let's start fresh!" / "All memories cleared. It's like we're meeting for the first time!" |
+| `bot_reset_cancelled` | "Okay, nothing was deleted. Let's continue!" / "No problem, I'll keep our memories safe!" |
+
+### 14.4 Files modified
+- `Core/ChatSession.cs` — ResetTriggers, TryHandleResetRequest, GetResetResponse, wired into ProcessInput between unknown-word clear and rename check
+- `Core/ContextKeys.cs` — PendingReset constant
+- `Knowledge/KnowledgeStore.cs` — ResetAllUserData()
+- `Data/DbSeeder.cs` — 6 seed bot responses (3 categories × 2)
+- `tests/PokeChat.Tests/Helpers/TestDataHelper.cs` — 6 BotResponse entries
+- `tests/PokeChat.Tests/Core/ChatSessionTests.cs` — 7 new tests
+- `.agents/plan.md` — this phase
+
+### 14.5 Verify
+- `dotnet build` — succeeds
+- `dotnet test` — 129/129 pass
+
+---
+
 ## Running the Plan
 
 Before each phase, confirm `dotnet build` and `dotnet test` pass.

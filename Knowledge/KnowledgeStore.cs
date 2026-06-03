@@ -191,6 +191,19 @@ public class KnowledgeStore(PokeChatDbContext context)
         return context.PosDictionary.Any(p => p.Word == word.ToLowerInvariant());
     }
 
+    public void ResetAllUserData()
+    {
+        context.Database.ExecuteSqlRaw("DELETE FROM Conversations");
+        context.Database.ExecuteSqlRaw("DELETE FROM Facts");
+        context.Database.ExecuteSqlRaw("DELETE FROM WordDefinitions");
+        context.Database.ExecuteSqlRaw("DELETE FROM WordLinks");
+        context.Database.ExecuteSqlRaw("DELETE FROM GreetingWords WHERE LearnedFromUserId IS NOT NULL");
+        context.Database.ExecuteSqlRaw("DELETE FROM NounCategories WHERE LearnedFromUserId IS NOT NULL");
+        context.Database.ExecuteSqlRaw("DELETE FROM UserBotNames");
+        context.Database.ExecuteSqlRaw("DELETE FROM PosDictionary WHERE WordType = 'unknown'");
+        context.Database.ExecuteSqlRaw("DELETE FROM Users");
+    }
+
     public void Save()
     {
         context.SaveChanges();

@@ -31,11 +31,26 @@ public class ChatSession : IDisposable
         { "yes", "yep", "yeah", "yup", "sure", "correct", "right",
           "that's right", "that is right", "yes please", "ok", "okay" };
 
+    private static readonly string[] ResetTriggers =
+    {
+        "start fresh",
+        "start afresh",
+        "start over",
+        "reset everything",
+        "reset all data",
+        "forget everything",
+        "wipe all memories",
+        "wipe everything",
+        "clear all data",
+        "clear everything",
+        "clear all memories",
+        "fresh start",
+    };
+
     public ChatSession()
     {
         _dbContext = new PokeChatDbContext();
-        _dbContext.Database.EnsureCreated();
-        DbSeeder.Seed(_dbContext);
+        new DatabaseInitializer(_dbContext).Initialize();
 
         _knowledgeStore = new KnowledgeStore(_dbContext);
         _context = new ContextTracker();
@@ -144,6 +159,9 @@ public class ChatSession : IDisposable
         }
 
         _context.SetContext(ContextKeys.UnknownWords, null);
+
+        if (TryHandleResetRequest(input, out var resetResponse))
+            return resetResponse;
 
         if (TryHandleBotRename(input, out var renameResponse))
             return renameResponse;
@@ -560,6 +578,79 @@ public class ChatSession : IDisposable
         {
             var template = fb[Random.Shared.Next(fb.Count)];
             return args.Length > 0 ? string.Format(template, args) : template;
+        }
+
+        return string.Empty;
+    }
+
+    internal bool TryHandleResetRequest(string input, out string response)
+    {
+        var pendingReset = _context.GetContext(ContextKeys.PendingReset);
+
+        if (pendingReset != null)
+        {
+            _context.SetContext(ContextKeys.PendingReset, null);
+
+            if (Affirmations.Contains(input.Trim().ToLowerInvariant()))
+            {
+                _knowledgeStore.ResetAllUserData();
+                _context.Clear();
+                _currentUserName = string.Empty;
+                _currentUserNameLower = string.Empty;
+                _currentUserId = null;
+                response = GetResetResponse("bot_reset_confirmed");
+                return true;
+            }
+
+            response = GetResetResponse("bot_reset_cancelled");
+            return true;
+        }
+
+        var lowerInput = input.ToLowerInvariant();
+        foreach (var trigger in ResetTriggers)
+        {
+            if (lowerInput.Contains(trigger))
+            {
+                _context.SetContext(ContextKeys.PendingReset, "true");
+                response = GetResetResponse("bot_reset_warning");
+                return true;
+            }
+        }
+
+        response = string.Empty;
+        return false;
+    }
+
+    private string GetResetResponse(string category)
+    {
+        var botResponses = GetCachedBotResponses();
+        if (botResponses.TryGetValue(category, out var responses) && responses.Count > 0)
+        {
+            return responses[Random.Shared.Next(responses.Count)];
+        }
+
+        var fallbacks = new Dictionary<string, List<string>>
+        {
+            ["bot_reset_warning"] = new()
+            {
+                "This will delete all our conversations and everything I've learned from you. Are you sure?",
+                "Are you sure you want me to forget everything we've talked about?",
+            },
+            ["bot_reset_confirmed"] = new()
+            {
+                "Done! I've forgotten everything. Let's start fresh!",
+                "All memories cleared. It's like we're meeting for the first time!",
+            },
+            ["bot_reset_cancelled"] = new()
+            {
+                "Okay, nothing was deleted. Let's continue!",
+                "No problem, I'll keep our memories safe!",
+            },
+        };
+
+        if (fallbacks.TryGetValue(category, out var fb) && fb.Count > 0)
+        {
+            return fb[Random.Shared.Next(fb.Count)];
         }
 
         return string.Empty;

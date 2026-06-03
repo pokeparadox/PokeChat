@@ -450,6 +450,12 @@ public static class DbSeeder
             ("bot_rename_suggestion", "How about the name {0}?"),
             ("bot_rename_suggestion", "What do you think of {0} instead?"),
             ("bot_rename_suggestion", "Would {0} work for you?"),
+            ("bot_reset_warning", "This will delete all our conversations and everything I've learned from you. Are you sure?"),
+            ("bot_reset_warning", "Are you sure you want me to forget everything we've talked about?"),
+            ("bot_reset_confirmed", "Done! I've forgotten everything. Let's start fresh!"),
+            ("bot_reset_confirmed", "All memories cleared. It's like we're meeting for the first time!"),
+            ("bot_reset_cancelled", "Okay, nothing was deleted. Let's continue!"),
+            ("bot_reset_cancelled", "No problem, I'll keep our memories safe!"),
         };
 
         context.BotResponses.AddRange(responses.Select(r => new BotResponse

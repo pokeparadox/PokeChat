@@ -33,7 +33,13 @@ internal static class TestDataHelper
             new BotResponse { Category = "bot_rename_accepted", ResponseText = "Okay, from now on you can call me {0}!", CreatedAt = now },
             new BotResponse { Category = "bot_rename_accepted", ResponseText = "I like {0}! You can call me that.", CreatedAt = now },
             new BotResponse { Category = "bot_rename_rejected", ResponseText = "Hmm, I'm not sure {0} suits me. Can you think of something else?", CreatedAt = now },
-            new BotResponse { Category = "bot_rename_suggestion", ResponseText = "How about the name {0}?", CreatedAt = now }
+            new BotResponse { Category = "bot_rename_suggestion", ResponseText = "How about the name {0}?", CreatedAt = now },
+            new BotResponse { Category = "bot_reset_warning", ResponseText = "This will delete all our conversations and everything I've learned from you. Are you sure?", CreatedAt = now },
+            new BotResponse { Category = "bot_reset_warning", ResponseText = "Are you sure you want me to forget everything we've talked about?", CreatedAt = now },
+            new BotResponse { Category = "bot_reset_confirmed", ResponseText = "Done! I've forgotten everything. Let's start fresh!", CreatedAt = now },
+            new BotResponse { Category = "bot_reset_confirmed", ResponseText = "All memories cleared. It's like we're meeting for the first time!", CreatedAt = now },
+            new BotResponse { Category = "bot_reset_cancelled", ResponseText = "Okay, nothing was deleted. Let's continue!", CreatedAt = now },
+            new BotResponse { Category = "bot_reset_cancelled", ResponseText = "No problem, I'll keep our memories safe!", CreatedAt = now }
         );
         db.SaveChanges();
     }

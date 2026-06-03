@@ -12,4 +12,5 @@ public static class ContextKeys
     public const string ObjectCategory = "object_category";
     public const string RecentlyUsedFacts = "recently_used_facts";
     public const string ContextFollowUpCount = "context_follow_up_count";
+    public const string PendingReset = "pending_reset";
 }

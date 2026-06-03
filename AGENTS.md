@@ -9,9 +9,11 @@
 
 ## Commands
 ```bash
-dotnet build          # build
-dotnet run            # run the chat application
-dotnet test           # run all tests
+dotnet build                          # build
+dotnet run                            # run the chat application
+dotnet test                           # run all tests
+dotnet ef migrations add <Name>       # add a new schema migration
+dotnet ef migrations remove           # undo last migration (if unapplied)
 ```
 
 ## Architecture
@@ -58,7 +60,7 @@ Responses/
 
 ## Key Details
 - **DB location:** `pokechat.db` in project root (resolved by walking up from `BaseDirectory` to find `PokeChat.csproj`); override via `POKECHAT_DB_PATH` environment variable
-- **DB init:** `Database.EnsureCreated()` called lazily in `ChatSession()` constructor (not in `PokeChatDbContext` constructor)
+- **DB init:** `DatabaseInitializer` in `ChatSession()` constructor. Uses EF Core migrations (`Database.Migrate()`) instead of `EnsureCreated()`. On first run, applies `InitialCreate` migration to create all tables. Detects legacy databases from the `EnsureCreated` era and seeds `__EFMigrationsHistory` to preserve existing data.
 - **Seeder:** `DbSeeder.Seed()` populates greetings, greeting words, response rules, POS dictionary (from `pos_dictionary.json`), name patterns, bot commands, misspellings, and bot responses on first run
 - **Knowledge extraction:** "my name is Alice" → (user, is_named, Alice); "I like pizza" → (user, likes, pizza); "the sky is blue" → (sky, is, blue) [general knowledge]
 - **Pronoun resolution:** ContextTracker resolves "it/this/that" → last object, "he/she/they" → last subject; "him/her/them" → last object
@@ -107,11 +109,13 @@ A phased improvement plan is maintained in `.agents/plan.md`, ordered by priorit
 - **Phase 11:** Plural Handling ✅ (Pluraliser utility, auto-learn plurals, plural-aware POS tagging)
 - **Maintenance & Cleanup (Post-Phase 11):** Code review batch fix — 10 issues resolved (NounCategoriser eager Save, duplicated path resolution, dead ProperNoun enum, N+1 query in GetResponsesForRule, HandleNameInput hardcoded greetings, HandleClarification code collapse, private IsPunctuation wrappers removed, shared TestDataHelper for seed data, Moq dependency removed, double-dispose test pattern fixed)
 - **Phase 12:** Bot Renaming ✅ (per-user bot name stored in `user_bot_names` table, rename intent detected via `bot_rename_patterns`, 85% acceptance with 15% rejection/suggestion)
-
+- **Phase 13:** EF Core Migrations ✅ (replaced `EnsureCreated` with `Database.Migrate`, `DatabaseInitializer` handles legacy DB transition, data survives schema upgrades)
+- **Phase 14:** Reset / Start Fresh ✅ (detect "can we start afresh" patterns, warn → confirm → wipe all user data, preserve system seed, reset user identity)
+ 
 ## Known Fixes
 - **Math operators in tokeniser:** `+`, `-`, `*`, `/`, `^` are extracted as standalone tokens by Tokeniser regex. `GetUnknownWords` in `SpellChecker` must skip math operators to prevent false unknown-word prompts before math evaluation. Fixed via `SpellChecker.MathOperators` HashSet.
 - **Solution file path:** `PokeChat.slnx` must use `tests/PokeChat.Tests/PokeChat.Tests.csproj` (not `../tests/...`) — the `..` resolved to a stale project copy at `/mnt/Storage/RiderProjects/tests/`.
-- **Re-seeding after new categories:** `SeedBotResponses` and all other `Seed*` methods check `if (context.X.Any()) return;`. When new categories or responses are added to the seeder, existing `pokechat.db` must be deleted to get the new seed data.
+- **Re-seeding after new categories:** All `Seed*` methods check `if (context.X.Any()) return;`. Since EF Core Migrations handle schema upgrades, the database is never deleted. To get new seed data added to an existing database, add a data migration or manually clear the relevant table.
 - **NounCategoriser:** Instance-based, injected into ChatSession. Lookup chain: DB → common names set → place suffixes → "thing" default. Auto-learns on heuristic match (persists to noun_categories table). Used in ChatSession.ProcessSentence after SVO extraction to set SubjectCategory/ObjectCategory context keys.
 - **Context follow-up loop:** `LastSubject` is never cleared when user gives minimal responses ("no", "yes"). Context follow-up fires every turn, permanently blocking proactive question generation. Fix: `ContextFollowUpCount` counter (context key) incremented each time follow-up fires, reset on SVO-bearing input. After 3 consecutive follow-ups without SVO, skip to proactive generation.
 - **ConjugateVerb:** `ResponseEngine.ConjugateVerb()` applies English 3rd-person singular present tense rules (like→likes, have→has, go→goes, -y→-ies, -s/-sh/-ch/-x/-z/-o→+es). Used in `BuildProactiveQuestion`, `existing_fact`, and `random_fact_followup` paths. Only applies for third-person subjects (not I/you/we/they).
@@ -134,6 +138,7 @@ A phased improvement plan is maintained in `.agents/plan.md`, ordered by priorit
 - **Moq dependency removed:** `tests/PokeChat.Tests/PokeChat.Tests.csproj` no longer lists `Moq` (was unused).
 - **Dispose test pattern fixed:** `Dispose_DoesNotThrow` no longer wraps `db` in `using` that would double-dispose the shared `PokeChatDbContext`.
 - **Bot Renaming (Phase 12):** Per-user bot names stored in `user_bot_names` table. Rename patterns in `bot_rename_patterns` table (seeded: "can i call you", "i'll call you", "i will call you", "your name is"). Detection in `ChatSession.TryHandleBotRename` runs after user identity established. 85% acceptance rate; rejection triggers either a suggestion (from {Zara, Nova, Echo, Pixel, Azure, Kai, Rex}) or asks for another. `GreetingPool.GetRandomGreeting` now takes a `botName` parameter and replaces `{BOTNAME}` / `"PokeChat"` with the current name. Console output labels use `_botName`. Response categories: `bot_rename_accepted` (3 templates), `bot_rename_rejected` (2), `bot_rename_suggestion` (3).
+- **Reset / Start Fresh (Phase 14):** `ChatSession.TryHandleResetRequest` detects 12 trigger phrases (e.g. "start fresh", "start afresh", "reset everything") via `Contains` on lowercased input. First match sets `PendingReset` context key and returns warning from `bot_reset_warning`. Second call with affirmation (yes/sure/ok) calls `KnowledgeStore.ResetAllUserData()` — bulk deletes from 9 tables via `ExecuteSqlRaw`, keeping system seed data intact. Clears `_currentUserId` so bot asks for name again. `_context.Clear()` resets conversation context. Negation/other input cancels without deletion. Response categories: `bot_reset_warning` (2), `bot_reset_confirmed` (2), `bot_reset_cancelled` (2).
 
 ## Routines
 - **Code review after every change:** After each modification, review the changed code for bugs and duplicate code — refactor any duplication found.

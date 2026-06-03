@@ -285,4 +285,119 @@ public class ChatSessionTests
         }
     }
 
+    [Fact]
+    public void TryHandleReset_DetectsStartAfresh()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            var result = session.TryHandleResetRequest("can we start afresh", out var response);
+            result.ShouldBeTrue();
+            response.ShouldContain("sure");
+        }
+    }
+
+    [Fact]
+    public void TryHandleReset_DetectsResetTriggers()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            var result = session.TryHandleResetRequest("reset everything", out var response);
+            result.ShouldBeTrue();
+            response.ShouldContain("sure");
+        }
+    }
+
+    [Fact]
+    public void TryHandleReset_NoMatch_ReturnsFalse()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            var result = session.TryHandleResetRequest("I like pizza", out var response);
+            result.ShouldBeFalse();
+            response.ShouldBeEmpty();
+        }
+    }
+
+    [Fact]
+    public void TryHandleReset_Confirms_ReturnsConfirmed()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.TryHandleResetRequest("start fresh", out _);
+            var result = session.TryHandleResetRequest("yes", out var response);
+            result.ShouldBeTrue();
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void TryHandleReset_Cancels_ReturnsCancelled()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.TryHandleResetRequest("start fresh", out _);
+            var result = session.TryHandleResetRequest("no", out var response);
+            result.ShouldBeTrue();
+            response.ShouldNotContain("fresh");
+        }
+    }
+
+    [Fact]
+    public void TryHandleReset_ConfirmationWipesUserData()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("I like pizza");
+
+            db.Context.Facts.Count().ShouldBe(1);
+
+            session.TryHandleResetRequest("start fresh", out _);
+            session.TryHandleResetRequest("yes", out var response);
+
+            db.Context.Facts.Count().ShouldBe(0);
+            db.Context.Conversations.Count().ShouldBe(0);
+            db.Context.Users.Count().ShouldBe(0);
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void TryHandleReset_ForgottenUserMustReintroduce()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.TryHandleResetRequest("start fresh", out _);
+            session.TryHandleResetRequest("yes", out _);
+
+            var response = session.ProcessInput("I like pizza");
+            response.ShouldBe("I didn't catch your name. Could you tell me again?");
+        }
+    }
+
+    [Fact]
+    public void TryHandleReset_WorksThroughProcessInput()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            var response = session.ProcessInput("start fresh");
+            response.ShouldContain("sure");
+        }
+    }
+
 }
