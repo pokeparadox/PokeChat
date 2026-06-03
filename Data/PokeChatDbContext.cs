@@ -49,6 +49,7 @@ public sealed class PokeChatDbContext : DbContext
     public DbSet<BotRenamePattern> BotRenamePatterns => Set<BotRenamePattern>();
     public DbSet<EmotionKeyword> EmotionKeywords => Set<EmotionKeyword>();
     public DbSet<ContractionEntity> Contractions => Set<ContractionEntity>();
+    public DbSet<TemporalExpression> TemporalExpressions => Set<TemporalExpression>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -78,6 +79,8 @@ public sealed class PokeChatDbContext : DbContext
             entity.Property(e => e.PredicateType).IsRequired();
             entity.Property(e => e.Sentiment);
             entity.Property(e => e.EmotionIntensity);
+            entity.Property(e => e.TimeContext);
+            entity.Property(e => e.MentionedAt);
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.HasOne<User>()
                 .WithMany()
@@ -245,6 +248,15 @@ public sealed class PokeChatDbContext : DbContext
             entity.HasIndex(e => e.Contraction).IsUnique();
             entity.Property(e => e.Contraction).IsRequired();
             entity.Property(e => e.Expansion).IsRequired();
+        });
+
+        modelBuilder.Entity<TemporalExpression>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Expression).IsUnique();
+            entity.Property(e => e.Expression).IsRequired();
+            entity.Property(e => e.DaysOffset);
+            entity.Property(e => e.IsRange);
         });
     }
 }

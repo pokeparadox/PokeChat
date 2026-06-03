@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS facts (
     predicate_type TEXT NOT NULL,
     sentiment TEXT,
     emotion_intensity INTEGER NOT NULL DEFAULT 0,
+    time_context TEXT,
+    mentioned_at TEXT,
     created_at TEXT NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
@@ -144,4 +146,11 @@ CREATE TABLE IF NOT EXISTS contractions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     contraction TEXT NOT NULL UNIQUE,
     expansion TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS temporal_expressions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    expression TEXT NOT NULL UNIQUE,
+    days_offset INTEGER NOT NULL DEFAULT 0,
+    is_range INTEGER NOT NULL DEFAULT 0
 );

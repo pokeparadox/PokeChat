@@ -126,6 +126,12 @@ public class ResponseEngine
         var linkResult = HandleLinkCreation(input);
         if (linkResult != null) return linkResult;
 
+        var temporalResult = HandleTemporalQuery(input, userId);
+        if (temporalResult != null) return temporalResult;
+
+        var inferenceResult = HandleInferenceResponse();
+        if (inferenceResult != null) return inferenceResult;
+
         var rule = ResponseRules.MatchRule(input, _knowledgeStore);
 
         if (rule != null && rule.Responses.Count > 0)
@@ -337,6 +343,70 @@ public class ResponseEngine
                 }
 
                 return GetRandomResponse("thesaurus_query_none", word);
+            }
+        }
+
+        return null;
+    }
+
+    private string? HandleTemporalQuery(string input, int? userId)
+    {
+        if (userId == null) return null;
+
+        var lower = input.ToLowerInvariant().Trim();
+        var match = Regex.Match(lower,
+            @"(?:what did I do|what happened|tell me about)\s+(yesterday|today|earlier|last night|this week|last week|this month|last month|recently|lately|a while ago|long ago|last year)");
+        if (!match.Success)
+        {
+            match = Regex.Match(lower, @"(?:what did I do|what happened|tell me about)\s+(.+)");
+            if (!match.Success) return null;
+        }
+
+        var timeExpr = match.Groups[1].Value.ToLowerInvariant();
+        var facts = _knowledgeStore.GetFactsWithTimeContext(userId.Value, timeExpr);
+
+        if (facts.Count == 0)
+        {
+            facts = _knowledgeStore.GetFactsByUser(userId.Value);
+            if (facts.Count == 0)
+                return GetRandomResponse("temporal_fact_none", timeExpr);
+        }
+
+        if (facts.Count == 1)
+        {
+            var f = facts[0];
+            var conjVerb = ConjugateVerb(f.Verb, f.Subject);
+            return GetRandomResponse("temporal_fact_found", timeExpr, f.Subject, conjVerb, f.Object);
+        }
+
+        var summaries = facts.Take(3).Select(f => $"{f.Subject} {f.Verb} {f.Object}");
+        var joined = string.Join("; ", summaries);
+        return GetRandomResponse("temporal_fact_list", timeExpr, joined);
+    }
+
+    private string? HandleInferenceResponse()
+    {
+        var contradictionRaw = _context.GetContext(ContextKeys.LastContradiction);
+        if (!string.IsNullOrEmpty(contradictionRaw))
+        {
+            _context.SetContext(ContextKeys.LastContradiction, null);
+
+            var parts = contradictionRaw.Split('|');
+            if (parts.Length == 4)
+            {
+                return GetRandomResponse("inference_contradiction", parts[0], parts[1], parts[2], parts[3]);
+            }
+        }
+
+        var generalisationRaw = _context.GetContext(ContextKeys.InferredGeneralisation);
+        if (!string.IsNullOrEmpty(generalisationRaw) && Random.Shared.Next(2) == 0)
+        {
+            _context.SetContext(ContextKeys.InferredGeneralisation, null);
+
+            var parts = generalisationRaw.Split('|');
+            if (parts.Length == 2)
+            {
+                return GetRandomResponse("inference_generalisation", parts[0], parts[1]);
             }
         }
 

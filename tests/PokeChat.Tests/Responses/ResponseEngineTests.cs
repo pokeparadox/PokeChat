@@ -43,7 +43,7 @@ public class ResponseEngineTests
             Pattern = "^(hello|hi)",
             InputType = "Greeting",
             IsActive = true,
-            CreatedAt = DateTime.UtcNow.ToString("O"),
+            CreatedAt = DateTime.UtcNow.ToString("o"),
             Responses = [new() { ResponseText = "Hey there!" }]
         });
         db.Context.SaveChanges();
@@ -55,7 +55,7 @@ public class ResponseEngineTests
 
     private int SeedUser(PokeChat.Data.PokeChatDbContext db)
     {
-        var user = new User { Name = "TestUser", FirstSeen = DateTime.UtcNow.ToString("O"), LastSeen = DateTime.UtcNow.ToString("O") };
+        var user = new User { Name = "TestUser", FirstSeen = DateTime.UtcNow.ToString("o"), LastSeen = DateTime.UtcNow.ToString("o") };
         db.Users.Add(user);
         db.SaveChanges();
         return user.Id;
@@ -75,7 +75,7 @@ public class ResponseEngineTests
             Verb = "like",
             Object = "pizza",
             PredicateType = "Preference",
-            CreatedAt = DateTime.UtcNow.ToString("O")
+            CreatedAt = DateTime.UtcNow.ToString("o")
         });
         db.Context.SaveChanges();
 
@@ -111,7 +111,7 @@ public class ResponseEngineTests
             Verb = "like",
             Object = "pizza",
             PredicateType = "Preference",
-            CreatedAt = DateTime.UtcNow.ToString("O")
+            CreatedAt = DateTime.UtcNow.ToString("o")
         });
         db.Context.SaveChanges();
 
@@ -150,7 +150,7 @@ public class ResponseEngineTests
             Verb = "like",
             Object = "pizza",
             PredicateType = "Preference",
-            CreatedAt = DateTime.UtcNow.ToString("O")
+            CreatedAt = DateTime.UtcNow.ToString("o")
         });
         db.Context.SaveChanges();
 
@@ -293,7 +293,7 @@ public class ResponseEngineTests
             Verb = "is",
             Object = "good",
             PredicateType = "GeneralFact",
-            CreatedAt = DateTime.UtcNow.ToString("O")
+            CreatedAt = DateTime.UtcNow.ToString("o")
         });
         db.Context.SaveChanges();
 

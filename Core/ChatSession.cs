@@ -254,6 +254,9 @@ public class ChatSession : IDisposable
             var resolvedObject = ResolveObject(triple.Object);
 
             var predicateType = ClassifyPredicate(resolvedSubject, triple.Verb, resolvedObject);
+            var timeContext = _knowledgeStore.ExtractTimeContext(sentence) ?? _context.GetContext(ContextKeys.CurrentTimeContext);
+            if (timeContext != null)
+                _context.SetContext(ContextKeys.CurrentTimeContext, timeContext);
 
             var fact = new Fact
             {
@@ -264,8 +267,27 @@ public class ChatSession : IDisposable
                 PredicateType = predicateType.ToString(),
                 Sentiment = sentiment ?? _context.GetContext(ContextKeys.CurrentSentiment),
                 EmotionIntensity = intensity > 0 ? intensity : int.TryParse(_context.GetContext(ContextKeys.LastSentimentIntensity) ?? "0", out var si) ? si : 0,
-                CreatedAt = DateTime.UtcNow.ToString("O")
+                TimeContext = timeContext,
+                MentionedAt = DateTime.UtcNow.ToString("o"),
+                CreatedAt = DateTime.UtcNow.ToString("o")
             };
+
+            if (predicateType is PredicateType.Preference or PredicateType.Dislike)
+            {
+                var contradiction = _knowledgeStore.DetectContradiction(_currentUserId!.Value, resolvedSubject, triple.Verb, resolvedObject);
+                if (contradiction != null)
+                {
+                    _context.SetContext(ContextKeys.LastContradiction,
+                        $"{contradiction.Verb}|{contradiction.Object}|{triple.Verb}|{resolvedObject}");
+                    continue;
+                }
+
+                var categories = _knowledgeStore.GetCategoryChain(resolvedObject);
+                foreach (var category in categories)
+                {
+                    _context.SetContext(ContextKeys.InferredGeneralisation, $"{category}|{resolvedObject}");
+                }
+            }
 
             var existingFact = _knowledgeStore.GetFact(resolvedSubject, triple.Verb, resolvedObject);
             if (existingFact == null)

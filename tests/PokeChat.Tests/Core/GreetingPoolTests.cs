@@ -16,7 +16,7 @@ public class GreetingPoolTests
         {
             Text = "Hello!",
             IsSystem = true,
-            CreatedAt = DateTime.UtcNow.ToString("O")
+            CreatedAt = DateTime.UtcNow.ToString("o")
         });
         db.Context.SaveChanges();
 
@@ -42,7 +42,7 @@ public class GreetingPoolTests
         {
             Text = "Hello! I'm {BOTNAME}. What's your name?",
             IsSystem = true,
-            CreatedAt = DateTime.UtcNow.ToString("O")
+            CreatedAt = DateTime.UtcNow.ToString("o")
         });
         db.Context.SaveChanges();
 
@@ -59,7 +59,7 @@ public class GreetingPoolTests
         {
             Text = "Hello! I'm PokeChat. What's your name?",
             IsSystem = true,
-            CreatedAt = DateTime.UtcNow.ToString("O")
+            CreatedAt = DateTime.UtcNow.ToString("o")
         });
         db.Context.SaveChanges();
 

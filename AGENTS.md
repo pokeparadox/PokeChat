@@ -91,11 +91,12 @@ Responses/
 - `bot_rename_patterns` — id, pattern, created_at
 - `misspellings` — id, wrong_word (unique), correction, created_at
 - `bot_responses` — id, category, response_text, created_at
+- `temporal_expressions` — id, expression (unique), days_offset, is_range
 - `word_definitions` — id, word, definition, defined_by_user_id (nullable FK→users), created_at
 - `word_links` — id, source_word, target_word, link_type, created_by_user_id (nullable FK→users), created_at
 
 ## Improvement Plan
-A phased improvement plan is maintained in `.agents/plan.md`, ordered by priority:
+A completed improvement history is maintained in `.agents/history.md`. A phased improvement plan is maintained in `.agents/plan.md`, ordered by priority:
 - **Phase 1:** Critical bug fixes ✅ (GetFact client-side filtering, proper noun dead code, abbreviation detection, pronoun resolution, empty bot responses)
 - **Phase 2:** High priority ✅ (batch SaveChanges, PosTagger static state, schema-entity mismatch, duplicate POS entries, predicate enum, context key constants)
 - **Phase 3:** Medium priority ✅ (tag duplicate handling, IsPunctuation dedup, test helper consolidation, NLP interfaces, test coverage, POS data file extraction, ResponseEngine strings to DB)
@@ -113,6 +114,8 @@ A phased improvement plan is maintained in `.agents/plan.md`, ordered by priorit
 - **Phase 14:** Reset / Start Fresh ✅ (detect "can we start afresh" patterns, warn → confirm → wipe all user data, preserve system seed, reset user identity)
 - **Phase 15:** Emotion / Sentiment Awareness ✅ (EmotionKeyword entity, ~95 seed keywords across 5 sentiments, AnalyseSentiment in KnowledgeStore, sentiment stored on facts, empathy response categories in ResponseEngine, emotion_followup on sentiment change, 7 new tests)
 - **Phase 16:** Contractions Handling ✅ (ContractionEntity, ContractionExpander, 44 seeded contractions, missing POS words added to pos_dictionary.json, expansion before tokenisation, 15 new tests)
+- **Phase 16 (Temporal Knowledge):** Temporal Knowledge ✅ (TemporalExpression entity + 15 seeded time expressions, FactEntity.TimeContext/MentionedAt columns, ExtractTimeContext/GetFactsByTimeRange/GetFactsWithTimeContext in KnowledgeStore, time context extraction in ChatSession, temporal query handling in ResponseEngine, 7 new tests)
+- **Phase 17:** Inference / Simple Reasoning ✅ (Category chain via is_a WordLinks, contradiction detection for like↔hate, generalisation inference with 50% display chance, 5 new KnowledgeStore methods, 6 inference response categories, 12 new tests)
 ## Known Fixes
 - **ContractionExpander:** Loaded from `contractions` table via `KnowledgeStore.GetContractions()`. Expands contracted forms before tokenisation using regex replace with `IgnoreCase`. The expander uses lowercase expansion text (`"i am"`, not `"I am"`) since the tokeniser lowercases afterward. Seeded via `DbSeeder.SeedContractions()` and `TestDataHelper.SeedContractions()`.
 - **Math operators in tokeniser:** `+`, `-`, `*`, `/`, `^` are extracted as standalone tokens by Tokeniser regex. `GetUnknownWords` in `SpellChecker` must skip math operators to prevent false unknown-word prompts before math evaluation. Fixed via `SpellChecker.MathOperators` HashSet.
@@ -139,12 +142,14 @@ A phased improvement plan is maintained in `.agents/plan.md`, ordered by priorit
 - **TestDataHelper shared seed data:** BotResponse and POS seed data extracted to `tests/PokeChat.Tests/Helpers/TestDataHelper.cs`, used by both `ChatSessionTests` and `ResponseEngineTests`.
 - **Moq dependency removed:** `tests/PokeChat.Tests/PokeChat.Tests.csproj` no longer lists `Moq` (was unused).
 - **Dispose test pattern fixed:** `Dispose_DoesNotThrow` no longer wraps `db` in `using` that would double-dispose the shared `PokeChatDbContext`.
+- **Temporal Knowledge (Phase 16):** `ExtractTimeContext` uses `input.Contains(expression)` for matching — picks the most specific (largest absolute `DaysOffset`). Time context is stored on each fact and persisted in `CurrentTimeContext` context key. Temporal query response rule ("what did I do yesterday") is a regex pattern matched in `ResponseEngine.HandleTemporalQuery` before the generic rule engine.
 - **Bot Renaming (Phase 12):** Per-user bot names stored in `user_bot_names` table. Rename patterns in `bot_rename_patterns` table (seeded: "can i call you", "i'll call you", "i will call you", "your name is"). Detection in `ChatSession.TryHandleBotRename` runs after user identity established. 85% acceptance rate; rejection triggers either a suggestion (from {Zara, Nova, Echo, Pixel, Azure, Kai, Rex}) or asks for another. `GreetingPool.GetRandomGreeting` now takes a `botName` parameter and replaces `{BOTNAME}` / `"PokeChat"` with the current name. Console output labels use `_botName`. Response categories: `bot_rename_accepted` (3 templates), `bot_rename_rejected` (2), `bot_rename_suggestion` (3).
 - **Reset / Start Fresh (Phase 14):** `ChatSession.TryHandleResetRequest` detects 12 trigger phrases (e.g. "start fresh", "start afresh", "reset everything") via `Contains` on lowercased input. First match sets `PendingReset` context key and returns warning from `bot_reset_warning`. Second call with affirmation (yes/sure/ok) calls `KnowledgeStore.ResetAllUserData()` — bulk deletes from 9 tables via `ExecuteSqlRaw`, keeping system seed data intact. Clears `_currentUserId` so bot asks for name again. `_context.Clear()` resets conversation context. Negation/other input cancels without deletion. Response categories: `bot_reset_warning` (2), `bot_reset_confirmed` (2), `bot_reset_cancelled` (2).
+- **Inference (Phase 17):** `DetectContradiction` finds existing facts with same subject + same object + opposite verb (like↔hate, love↔dislike). Only runs for Preference/Dislike predicates. Contradiction detection blocks fact storage and sets `LastContradiction` context key. Generalisation inference runs after contradiction check, sets `InferredGeneralisation` context key, displayed at 50% chance. `HandleInferenceResponse` in ResponseEngine fires before rule matching to catch contradictions. `GetCategoryChain` uses BFS with `visited` HashSet to prevent cycles. Inference seed data uses `is_a` link type in WordLinks table.
 
 ## Routines
 - **Code review after every change:** After each modification, review the changed code for bugs and duplicate code — refactor any duplication found.
-- **When creating a new phase plan:** Append to `.agents/plan.md`, file the plan to MemPalace (`wing: pokechat, room: plans`), and update this file's Improvement Plan section.
+- **When creating a new phase plan:** Append to `.agents/history.md` (completed history), create new phase file in `.plans/`, file the plan to MemPalace (`wing: pokechat, room: plans`), and update this file's Improvement Plan section.
 - **After each phase or significant milestone:** Update `README.md` to reflect current architecture, completed phases, and any relevant changes.
 
 ## Git

@@ -523,4 +523,74 @@ public class ChatSessionTests
         }
     }
 
+    [Fact]
+    public void TemporalFlow_DetectsAndStoresTimeContext()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedTemporalExpressions(db.Context);
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("I went to the cinema yesterday");
+
+            var facts = db.Context.Facts.ToList();
+            facts.Count.ShouldBe(1);
+            facts[0].Subject.ShouldBe("Alice");
+            facts[0].Verb.ShouldBe("went");
+            facts[0].Object.ShouldContain("cinema");
+            facts[0].TimeContext.ShouldBe("yesterday");
+            facts[0].MentionedAt.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void TemporalQuery_ReturnsFormattedResponse()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedTemporalExpressions(db.Context);
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("I went to the cinema yesterday");
+            var response = session.ProcessInput("what did I do yesterday");
+            response.ShouldNotBeNullOrEmpty();
+            response.ShouldContain("yesterday");
+        }
+    }
+
+    [Fact]
+    public void InferenceFlow_ContradictionDetected()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedInferenceWordLinks(db.Context);
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("I like pizza");
+
+            var response = session.ProcessInput("I hate pizza");
+            response.ShouldNotBeNullOrEmpty();
+            response.ToLowerInvariant().ShouldContain("like");
+            response.ToLowerInvariant().ShouldContain("pizza");
+            response.ToLowerInvariant().ShouldContain("hate");
+        }
+    }
+
+    [Fact]
+    public void InferenceFlow_StoresFact_WhenNoContradiction()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedInferenceWordLinks(db.Context);
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("I like pizza");
+
+            var facts = db.Context.Facts.ToList();
+            facts.Count.ShouldBe(1);
+            facts[0].Subject.ShouldBe("Alice");
+            facts[0].Verb.ShouldBe("like");
+            facts[0].Object.ShouldBe("pizza");
+        }
+    }
 }

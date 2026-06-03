@@ -10,5 +10,7 @@ public class FactEntity
     public string PredicateType { get; set; } = string.Empty;
     public string? Sentiment { get; set; }
     public int EmotionIntensity { get; set; }
+    public string? TimeContext { get; set; }
+    public string? MentionedAt { get; set; }
     public string CreatedAt { get; set; } = string.Empty;
 }

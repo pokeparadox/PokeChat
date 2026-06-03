@@ -47,7 +47,7 @@ Low-priority polish and minor improvements.
 - [x] `Program.cs` → `using var` (replace `try/finally` with `using var session = new ChatSession()`)
 - [x] Consolidate `Random` usage (use `Random.Shared` instead of instance `new Random()`)
 - [x] `Database.EnsureCreated()` → lazy/deferred (move out of constructor, call once at startup)
-- [ ] Evaluate date storage format (ISO 8601 strings vs `DateTime` with value converters)
+- [x] Evaluate date storage format (ISO 8601 strings vs `DateTime` with value converters) — **Keep `string`**: CreatedAt is never read/compared/filtered/parsed in production code (pure audit trail). ISO 8601 strings sort lexicographically, need no value converters, no migration. Standardised format strings to `"o"` across codebase.
 - [x] `DbPath` resolution robustness (fallback to environment variable, graceful failure)
 
 ---
@@ -586,13 +586,72 @@ Enable the bot to understand common English contractions (e.g. "I'm", "they're",
 
 ---
 
-## Running the Plan
+## Phase 16 — Temporal Knowledge ✅
 
-Before each phase, confirm `dotnet build` and `dotnet test` pass.
+Give the bot a sense of time. Facts are stored with temporal context so the bot can answer "what did I do yesterday?" and reference when things happened.
 
-```bash
-dotnet build   # must succeed
-dotnet test    # must pass
-```
+### New files
+- `Data/Entities/TemporalExpression.cs` — entity for temporal expression lookup
 
-Mark items `[x]` as completed. If a phase reveals additional issues, add them to the appropriate phase rather than blocking.
+### Modified files
+- `Data/Entities/FactEntity.cs` — added `TimeContext` (string?) and `MentionedAt` (string) columns
+- `Data/PokeChatDbContext.cs` — `DbSet<TemporalExpression>`, fluent config for new FactEntity columns and TemporalExpression unique index
+- `Data/Schema.sql` — added `time_context` and `mentioned_at` to facts; new `temporal_expressions` table
+- `Migrations/20260603221011_Phase16_TemporalKnowledge.cs` — EF Core migration (3rd migration after the original Phase16 naming collision)
+- `Knowledge/KnowledgeStore.cs` — added `ExtractTimeContext`, `GetFactsByTimeRange`, `GetFactsWithTimeContext`, `GetTemporalExpressions`; `StoreFact` now copies `TimeContext`/`MentionedAt`
+- `Data/DbSeeder.cs` — `SeedTemporalExpressions()` with 15 entries, 6 temporal bot responses, 1 temporal response rule
+- `Core/ChatSession.cs` — extracts time context during sentence processing, stores on facts, persists in context tracker
+- `Core/ContextKeys.cs` — `CurrentTimeContext` constant
+- `Responses/ResponseEngine.cs` — `HandleTemporalQuery` method for "what did I do yesterday" patterns, wired before rule matching
+- `tests/PokeChat.Tests/Helpers/TestDataHelper.cs` — `SeedTemporalExpressions()`, 6 temporal BotResponse entries, 5 new POS words
+
+### Tests
+- `KnowledgeStore.ExtractTimeContext_DetectsKnownExpression` — "yesterday" → "yesterday"
+- `KnowledgeStore.ExtractTimeContext_ReturnsNull_WhenNoMatch` — "hello world" → null
+- `KnowledgeStore.ExtractTimeContext_ReturnsMostSpecific` — "yesterday and last year" → "last year"
+- `KnowledgeStore.GetFactsWithTimeContext_ReturnsMatchingFacts` — filters correctly
+- `KnowledgeStore.GetFactsByTimeRange_ReturnsFactsInRange` — date-window filtering
+- `ChatSession.TemporalFlow_DetectsAndStoresTimeContext` — integration test
+- `ChatSession.TemporalQuery_ReturnsFormattedResponse` — end-to-end query
+- **7 new tests, 164/164 total pass**
+
+### Verify
+- `dotnet build` — succeeds
+- `dotnet test` — 164/164 pass
+
+## Phase 17 — Inference / Simple Reasoning ✅
+
+Bot moves from fact-recording to fact-connecting. Syllogistic reasoning, category generalisation, and contradiction detection over known facts and WordLinks.
+
+### New methods (KnowledgeStore)
+- `GetCategoryChain(string word)` — walk `is_a` WordLinks upward to find all parent categories (BFS with cycle protection)
+- `GetAllOfType(string categoryWord)` — find all items linked to a category via `is_a`
+- `InferPreference(int userId, string category)` — check if user has a preference fact about any member of a category
+- `DetectContradiction(int userId, string subject, string verb, string obj)` — find existing fact with same subject + object but opposite verb (like↔hate, love↔dislike)
+- `GetTransitiveFacts(string subject, string relation, int maxDepth)` — follow WordLink chains to find facts about connected entities
+
+### Modified files
+- `Core/ContextKeys.cs` — added `InferenceDepth`, `LastContradiction`, `InferredGeneralisation`
+- `Knowledge/KnowledgeStore.cs` — 5 new inference methods
+- `Core/ChatSession.cs` — inference pipeline in `ProcessSentence`: after SVO extraction for Preference/Dislike predicates, runs `DetectContradiction` (skip store if found, set `LastContradiction` context) and `GetCategoryChain` (set `InferredGeneralisation` context)
+- `Responses/ResponseEngine.cs` — `HandleInferenceResponse()` checks `LastContradiction` (always returns contradiction response) and `InferredGeneralisation` (50% chance); wired in `GenerateResponse` before rule matching
+- `Data/DbSeeder.cs` — `SeedInferenceWordLinks()` with 15 `is_a` links (pizza→food, coffee→drink, dog→animal, etc.), 14 inference bot response templates across 6 categories
+- `tests/PokeChat.Tests/Helpers/TestDataHelper.cs` — `SeedInferenceWordLinks()`, 4 inference BotResponse entries, 3 additional POS words
+
+### Tests (12 new, 176/176 total)
+- `GetCategoryChain_Food` — pizza → food
+- `GetCategoryChain_Unknown_ReturnsEmpty` — unknown word → []
+- `GetAllOfType_Known` — food → [pizza, burger, pasta]
+- `InferPreference_KnownCategory` — likes pizza → infer via food
+- `InferPreference_NoMatch_ReturnsNull` — likes pizza → check drink → null
+- `InferPreference_NoFacts_ReturnsNull` — no facts → null
+- `DetectContradiction_FindsOppositePreference` — like pizza vs hate pizza → found
+- `DetectContradiction_SameVerbDifferentObject_ReturnsNull` — like pizza vs like pasta → null
+- `DetectContradiction_NoMatch_ReturnsNull` — no facts → null
+- `GetTransitiveFacts_FindsDirectLinks` — alice→friends_with→bob finds bob's facts
+- `InferenceFlow_ContradictionDetected` — integration: like pizza then hate pizza → response mentions both
+- `InferenceFlow_StoresFact_WhenNoContradiction` — integration: like pizza → fact stored
+
+### Verify
+- `dotnet build` — succeeds
+- `dotnet test` — 176/176 pass

@@ -18,6 +18,8 @@ public class KnowledgeStore(PokeChatDbContext context)
             PredicateType = fact.PredicateType,
             Sentiment = fact.Sentiment,
             EmotionIntensity = fact.EmotionIntensity,
+            TimeContext = fact.TimeContext,
+            MentionedAt = fact.MentionedAt,
             CreatedAt = fact.CreatedAt
         };
 
@@ -389,7 +391,7 @@ public class KnowledgeStore(PokeChatDbContext context)
             {
                 UserId = userId,
                 BotName = name,
-                CreatedAt = DateTime.UtcNow.ToString("O")
+                CreatedAt = DateTime.UtcNow.ToString("o")
             });
         }
     }
@@ -413,5 +415,185 @@ public class KnowledgeStore(PokeChatDbContext context)
             .Distinct()
             .Take(10)
             .ToList();
+    }
+
+    public List<TemporalExpression> GetTemporalExpressions()
+    {
+        return context.TemporalExpressions.ToList();
+    }
+
+    public string? ExtractTimeContext(string input)
+    {
+        var expressions = GetTemporalExpressions();
+        var lowerInput = input.ToLowerInvariant();
+
+        string? bestMatch = null;
+        var bestAbsOffset = 0;
+
+        foreach (var expr in expressions)
+        {
+            if (lowerInput.Contains(expr.Expression))
+            {
+                var absOffset = System.Math.Abs(expr.DaysOffset);
+                if (bestMatch == null || absOffset > bestAbsOffset)
+                {
+                    bestMatch = expr.Expression;
+                    bestAbsOffset = absOffset;
+                }
+            }
+        }
+
+        return bestMatch;
+    }
+
+    public List<Fact> GetFactsByTimeRange(DateTime from, DateTime to, int? userId = null)
+    {
+        var fromStr = from.ToString("o");
+        var toStr = to.ToString("o");
+
+        var query = context.Facts
+            .Where(f => string.Compare(f.CreatedAt, fromStr) >= 0 && string.Compare(f.CreatedAt, toStr) <= 0);
+
+        if (userId.HasValue)
+            query = query.Where(f => f.UserId == userId.Value);
+
+        return query.SelectFacet<Fact>().ToList();
+    }
+
+    public List<Fact> GetFactsWithTimeContext(int userId, string timeContext)
+    {
+        return context.Facts
+            .Where(f => f.UserId == userId && f.TimeContext == timeContext)
+            .SelectFacet<Fact>()
+            .ToList();
+    }
+
+    public List<string> GetCategoryChain(string word)
+    {
+        var lower = word.ToLowerInvariant();
+        var categories = new List<string>();
+        var visited = new HashSet<string>();
+
+        var queue = new Queue<string>();
+        queue.Enqueue(lower);
+        visited.Add(lower);
+
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            var parents = context.WordLinks
+                .Where(l => l.SourceWord == current && l.LinkType == "is_a")
+                .Select(l => l.TargetWord)
+                .Distinct()
+                .ToList();
+
+            foreach (var parent in parents)
+            {
+                if (visited.Add(parent))
+                {
+                    categories.Add(parent);
+                    queue.Enqueue(parent);
+                }
+            }
+        }
+
+        return categories;
+    }
+
+    public List<string> GetAllOfType(string categoryWord)
+    {
+        var lower = categoryWord.ToLowerInvariant();
+        return context.WordLinks
+            .Where(l => l.TargetWord == lower && l.LinkType == "is_a")
+            .Select(l => l.SourceWord)
+            .Distinct()
+            .ToList();
+    }
+
+    public Fact? InferPreference(int userId, string category)
+    {
+        var members = GetAllOfType(category);
+        if (members.Count == 0) return null;
+
+        var preferenceVerbs = new[] { "like", "love", "enjoy", "prefer", "hate", "dislike" };
+
+        return context.Facts
+            .Where(f => f.UserId == userId && preferenceVerbs.Contains(f.Verb))
+            .SelectFacet<Fact>()
+            .ToList()
+            .FirstOrDefault(f => members.Contains(f.Object.ToLowerInvariant()));
+    }
+
+    public Fact? DetectContradiction(int userId, string subject, string verb, string obj)
+    {
+        var lowerVerb = verb.ToLowerInvariant();
+        var lowerObj = obj.ToLowerInvariant();
+
+        var oppositeVerbs = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "like", new[] { "hate", "dislike" } },
+            { "love", new[] { "hate", "dislike" } },
+            { "enjoy", new[] { "hate", "dislike" } },
+            { "prefer", new[] { "hate", "dislike" } },
+            { "hate", new[] { "like", "love", "enjoy", "prefer" } },
+            { "dislike", new[] { "like", "love", "enjoy", "prefer" } },
+        };
+
+        var verbsToCheck = new List<string> { lowerVerb };
+        if (oppositeVerbs.TryGetValue(lowerVerb, out var opposites))
+            verbsToCheck.AddRange(opposites);
+
+        var existingFacts = context.Facts
+            .Where(f => f.UserId == userId && f.Subject == subject)
+            .SelectFacet<Fact>()
+            .ToList();
+
+        return existingFacts.FirstOrDefault(f =>
+            verbsToCheck.Contains(f.Verb.ToLowerInvariant()) &&
+            string.Equals(f.Object, lowerObj, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public List<Fact> GetTransitiveFacts(string subject, string relation, int maxDepth)
+    {
+        var lowerSubject = subject.ToLowerInvariant();
+        var lowerRelation = relation.ToLowerInvariant();
+
+        var visited = new HashSet<string>();
+        var results = new List<Fact>();
+
+        var queue = new Queue<(string Word, int Depth)>();
+        queue.Enqueue((lowerSubject, 0));
+        visited.Add(lowerSubject);
+
+        while (queue.Count > 0)
+        {
+            var (current, depth) = queue.Dequeue();
+            if (depth > 0)
+            {
+                var facts = context.Facts
+                    .Where(f => f.Subject == current)
+                    .SelectFacet<Fact>()
+                    .ToList();
+
+                results.AddRange(facts);
+            }
+
+            if (depth < maxDepth)
+            {
+                var links = context.WordLinks
+                    .Where(l => l.SourceWord == current && l.LinkType == lowerRelation)
+                    .Select(l => l.TargetWord)
+                    .Distinct()
+                    .ToList();
+
+                foreach (var target in links)
+                {
+                    if (visited.Add(target))
+                        queue.Enqueue((target, depth + 1));
+                }
+            }
+        }
+
+        return results;
     }
 }

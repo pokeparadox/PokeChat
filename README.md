@@ -72,6 +72,9 @@ All conversational data is persisted:
 - **Word definitions** — user-taught vocabulary
 - **Word links** — synonyms, antonyms, related words
 - **Noun categories** — person/place/thing classification
+- **Emotion keywords** — sentiment analysis with ~95 keywords across 5 sentiments
+- **Contractions** — 44 common English contractions mapped to expanded forms
+- **User bot names** — per-user custom bot name assignment
 
 ## Improvements (Phases)
 
@@ -88,5 +91,10 @@ All conversational data is persisted:
 | 9 | Proactive conversation | ✅ |
 | 10 | Phrasing improvement (ConjugateVerb, template rewrite) | ✅ |
 | 11 | Plural handling (Pluraliser, auto-learn plurals) | ✅ |
+| 12 | Bot renaming (per-user custom bot name) | ✅ |
+| 13 | EF Core migrations (schema-safe upgrades) | ✅ |
+| 14 | Reset / start fresh (wipe user data, keep seeds) | ✅ |
+| 15 | Emotion / sentiment awareness (empathy responses) | ✅ |
+| 16 | Contractions handling (I'm, don't, etc. expanded before tokenisation) | ✅ |
 
-See `.agents/plan.md` for full details. 
+See `.agents/history.md` for completed improvements. 

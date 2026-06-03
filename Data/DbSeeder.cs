@@ -20,6 +20,8 @@ public static class DbSeeder
         SeedBotRenamePatterns(context, now);
         SeedEmotionKeywords(context, now);
         SeedContractions(context, now);
+        SeedTemporalExpressions(context);
+        SeedInferenceWordLinks(context, now);
         SeedBotResponses(context, now);
 
         context.SaveChanges();
@@ -133,6 +135,12 @@ public static class DbSeeder
                 "Interesting fact! I'll remember that.",
                 "Good to know! I've stored that away.",
                 "Noted! Tell me something else."
+            }),
+            (@"(what did I do|what happened|tell me about)\s+(yesterday|today|earlier|last night|this week|last week|this month|last month|recently|lately|a while ago|long ago|last year)",
+                "Question", new[]
+            {
+                "Let me check my memories from that time...",
+                "I'll look through what I remember from that period."
             })
         };
 
@@ -535,6 +543,69 @@ public static class DbSeeder
         }));
     }
 
+    private static void SeedTemporalExpressions(PokeChatDbContext context)
+    {
+        if (context.TemporalExpressions.Any()) return;
+
+        var expressions = new (string Expression, int DaysOffset, bool IsRange)[]
+        {
+            ("today", 0, false),
+            ("now", 0, false),
+            ("just now", 0, false),
+            ("earlier", 0, true),
+            ("yesterday", -1, false),
+            ("last night", -1, false),
+            ("this week", -7, true),
+            ("last week", -7, false),
+            ("this month", -30, true),
+            ("last month", -30, false),
+            ("recently", -7, true),
+            ("lately", -7, true),
+            ("a while ago", -30, true),
+            ("long ago", -365, true),
+            ("last year", -365, false),
+        };
+
+        context.TemporalExpressions.AddRange(expressions.Select(e => new TemporalExpression
+        {
+            Expression = e.Expression,
+            DaysOffset = e.DaysOffset,
+            IsRange = e.IsRange
+        }));
+    }
+
+    private static void SeedInferenceWordLinks(PokeChatDbContext context, string now)
+    {
+        if (context.WordLinks.Any()) return;
+
+        var links = new (string SourceWord, string TargetWord)[]
+        {
+            ("pizza", "food"),
+            ("burger", "food"),
+            ("pasta", "food"),
+            ("salad", "food"),
+            ("coffee", "drink"),
+            ("tea", "drink"),
+            ("juice", "drink"),
+            ("dog", "animal"),
+            ("cat", "animal"),
+            ("bird", "animal"),
+            ("fish", "animal"),
+            ("book", "thing"),
+            ("movie", "thing"),
+            ("song", "thing"),
+            ("game", "thing"),
+        };
+
+        context.WordLinks.AddRange(links.Select(l => new WordLink
+        {
+            SourceWord = l.SourceWord,
+            TargetWord = l.TargetWord,
+            LinkType = "is_a",
+            CreatedAt = now
+        }));
+    }
+
     private static void SeedBotResponses(PokeChatDbContext context, string now)
     {
         if (context.BotResponses.Any()) return;
@@ -648,6 +719,27 @@ public static class DbSeeder
             ("emotion_followup", "You seemed {0} earlier. Are you feeling better now?"),
             ("emotion_followup", "Last time you were feeling {0}. Has anything changed?"),
             ("emotion_followup", "You were {0} before. How are you feeling now about it?"),
+            ("temporal_fact_found", "Let me think... {0} you mentioned that {1} {2} {3}."),
+            ("temporal_fact_found", "I remember! {0} you said {1} {2} {3}."),
+            ("temporal_fact_none", "I don't remember anything about {0}. What did you do?"),
+            ("temporal_fact_none", "I don't have any memories from {0}. Tell me what happened."),
+            ("temporal_fact_list", "Here's what I recall from {0}: {1}"),
+            ("temporal_fact_list", "From {0}, I remember: {1}"),
+            ("temporal_confirmation", "I'll remember that for {0}."),
+            ("temporal_confirmation", "Noted for {0}!"),
+            ("inference_generalisation", "It sounds like you like {0}! You mentioned {1}."),
+            ("inference_generalisation", "So you like {0}? You said you like {1}."),
+            ("inference_generalisation", "You seem to enjoy {0} — you told me you like {1}."),
+            ("inference_transitive", "It seems you know {0} through {1}!"),
+            ("inference_transitive", "So {0} is connected to {1} through what you've told me."),
+            ("inference_contradiction", "Earlier you said you {0} {1}, but now you're saying you {2} {3}. Did your mind change?"),
+            ("inference_contradiction", "I've noticed something — before you said you {0} {1}, and now you {2} {3}. Can you clarify?"),
+            ("inference_contradiction_resolved", "Thanks! I've updated that."),
+            ("inference_contradiction_resolved", "Got it! I'll remember the new version."),
+            ("inference_no_chain", "I can't connect that to anything else I know yet."),
+            ("inference_no_chain", "I don't see any connections to other things I've learned."),
+            ("inference_ask_clarify", "Do you like all {0}s, or just {1}?"),
+            ("inference_ask_clarify", "Is it just {1} you like, or do you like {0} in general?"),
         };
 
         context.BotResponses.AddRange(responses.Select(r => new BotResponse

@@ -47,7 +47,7 @@ public class ResponseRulesTests
             Pattern = pattern,
             InputType = inputType,
             IsActive = true,
-            CreatedAt = DateTime.UtcNow.ToString("O"),
+            CreatedAt = DateTime.UtcNow.ToString("o"),
             Responses = responses.Select(r => new ResponseRuleResponse { ResponseText = r }).ToList()
         };
         context.ResponseRules.Add(rule);

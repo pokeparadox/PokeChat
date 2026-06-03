@@ -15,7 +15,7 @@ public class NounCategoriserTests
         {
             Noun = "london",
             Category = "place",
-            CreatedAt = DateTime.UtcNow.ToString("O")
+            CreatedAt = DateTime.UtcNow.ToString("o")
         });
         db.Context.SaveChanges();
 

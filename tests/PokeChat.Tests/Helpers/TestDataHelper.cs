@@ -7,58 +7,74 @@ internal static class TestDataHelper
 {
     public static void SeedBotResponses(PokeChatDbContext db)
     {
-        var now = DateTime.UtcNow.ToString("O");
-        db.BotResponses.AddRange(
-            new BotResponse { Category = "default_response", ResponseText = "Interesting! Tell me more.", CreatedAt = now },
-            new BotResponse { Category = "default_response", ResponseText = "I see.", CreatedAt = now },
-            new BotResponse { Category = "existing_fact", ResponseText = "I already know that {0} {1} {2}.", CreatedAt = now },
-            new BotResponse { Category = "context_followup", ResponseText = "Tell me more about {0}.", CreatedAt = now },
-            new BotResponse { Category = "context_followup_with_object", ResponseText = "Tell me more about {0} and {1}.", CreatedAt = now },
-            new BotResponse { Category = "random_fact_followup", ResponseText = "You told me {0} {1} {2}. Tell me more!", CreatedAt = now },
-            new BotResponse { Category = "dictionary_query_found", ResponseText = "A {0} is {1}.", CreatedAt = now },
-            new BotResponse { Category = "dictionary_query_not_found", ResponseText = "I don't know what {0} means.", CreatedAt = now },
-            new BotResponse { Category = "thesaurus_query_found", ResponseText = "Some words related to {0} are: {1}.", CreatedAt = now },
-            new BotResponse { Category = "thesaurus_query_none", ResponseText = "I don't know of any related words.", CreatedAt = now },
-            new BotResponse { Category = "link_saved", ResponseText = "I've noted that {0} is related to {1}.", CreatedAt = now },
-            new BotResponse { Category = "unknown_word_suggestion", ResponseText = "Did you mean '{0}' instead of '{1}'?", CreatedAt = now },
-            new BotResponse { Category = "unknown_word_no_suggestion", ResponseText = "I don't know the word '{0}'. What does it mean?", CreatedAt = now },
-            new BotResponse { Category = "proactive_preference", ResponseText = "What else do you like? You mentioned {0}.", CreatedAt = now },
-            new BotResponse { Category = "proactive_dislike", ResponseText = "Why don't you like {0}?", CreatedAt = now },
-            new BotResponse { Category = "proactive_possession", ResponseText = "Tell me more about your {0}.", CreatedAt = now },
-            new BotResponse { Category = "proactive_belief", ResponseText = "How did you learn about {0}?", CreatedAt = now },
-            new BotResponse { Category = "proactive_personal", ResponseText = "You said you're {0}. What's that like?", CreatedAt = now },
-            new BotResponse { Category = "proactive_general_fact", ResponseText = "You mentioned {0} {1} {2}.", CreatedAt = now },
-            new BotResponse { Category = "proactive_general", ResponseText = "Tell me more about {0}.", CreatedAt = now },
-            new BotResponse { Category = "proactive_statement", ResponseText = "I remember that {0} {1} {2}.", CreatedAt = now },
-            new BotResponse { Category = "bot_rename_accepted", ResponseText = "Okay, from now on you can call me {0}!", CreatedAt = now },
-            new BotResponse { Category = "bot_rename_accepted", ResponseText = "I like {0}! You can call me that.", CreatedAt = now },
-            new BotResponse { Category = "bot_rename_rejected", ResponseText = "Hmm, I'm not sure {0} suits me. Can you think of something else?", CreatedAt = now },
-            new BotResponse { Category = "bot_rename_suggestion", ResponseText = "How about the name {0}?", CreatedAt = now },
-            new BotResponse { Category = "bot_reset_warning", ResponseText = "This will delete all our conversations and everything I've learned from you. Are you sure?", CreatedAt = now },
-            new BotResponse { Category = "bot_reset_warning", ResponseText = "Are you sure you want me to forget everything we've talked about?", CreatedAt = now },
-            new BotResponse { Category = "bot_reset_confirmed", ResponseText = "Done! I've forgotten everything. Let's start fresh!", CreatedAt = now },
-            new BotResponse { Category = "bot_reset_confirmed", ResponseText = "All memories cleared. It's like we're meeting for the first time!", CreatedAt = now },
-            new BotResponse { Category = "bot_reset_cancelled", ResponseText = "Okay, nothing was deleted. Let's continue!", CreatedAt = now },
-            new BotResponse { Category = "bot_reset_cancelled", ResponseText = "No problem, I'll keep our memories safe!", CreatedAt = now },
-            new BotResponse { Category = "empathy_sad", ResponseText = "I'm sorry you're feeling that way. Do you want to talk about it?", CreatedAt = now },
-            new BotResponse { Category = "empathy_sad", ResponseText = "That sounds difficult. I'm here if you need someone to listen.", CreatedAt = now },
-            new BotResponse { Category = "empathy_happy", ResponseText = "That's great to hear! What's making you happy?", CreatedAt = now },
-            new BotResponse { Category = "empathy_happy", ResponseText = "I'm glad you're feeling good! Tell me more.", CreatedAt = now },
-            new BotResponse { Category = "empathy_angry", ResponseText = "That sounds frustrating. Do you want to tell me more?", CreatedAt = now },
-            new BotResponse { Category = "empathy_angry", ResponseText = "I can understand why you'd feel that way. What happened?", CreatedAt = now },
-            new BotResponse { Category = "empathy_afraid", ResponseText = "That sounds worrying. I'm here if you want to talk.", CreatedAt = now },
-            new BotResponse { Category = "empathy_afraid", ResponseText = "I understand feeling anxious about things. What's on your mind?", CreatedAt = now },
-            new BotResponse { Category = "empathy_surprised", ResponseText = "That is surprising! Tell me more about it.", CreatedAt = now },
-            new BotResponse { Category = "empathy_surprised", ResponseText = "Wow, I bet that caught you off guard! What happened?", CreatedAt = now },
-            new BotResponse { Category = "emotion_followup", ResponseText = "You seemed {0} earlier. Are you feeling better now?", CreatedAt = now },
-            new BotResponse { Category = "emotion_followup", ResponseText = "Last time you were feeling {0}. Has anything changed?", CreatedAt = now }
-        );
+        var now = DateTime.UtcNow.ToString("o");
+        var responses = new (string Category, string Text)[]
+        {
+            ("default_response", "Interesting! Tell me more."),
+            ("default_response", "I see."),
+            ("existing_fact", "I already know that {0} {1} {2}."),
+            ("context_followup", "Tell me more about {0}."),
+            ("context_followup_with_object", "Tell me more about {0} and {1}."),
+            ("random_fact_followup", "You told me {0} {1} {2}. Tell me more!"),
+            ("dictionary_query_found", "A {0} is {1}."),
+            ("dictionary_query_not_found", "I don't know what {0} means."),
+            ("thesaurus_query_found", "Some words related to {0} are: {1}."),
+            ("thesaurus_query_none", "I don't know of any related words."),
+            ("link_saved", "I've noted that {0} is related to {1}."),
+            ("unknown_word_suggestion", "Did you mean '{0}' instead of '{1}'?"),
+            ("unknown_word_no_suggestion", "I don't know the word '{0}'. What does it mean?"),
+            ("proactive_preference", "What else do you like? You mentioned {0}."),
+            ("proactive_dislike", "Why don't you like {0}?"),
+            ("proactive_possession", "Tell me more about your {0}."),
+            ("proactive_belief", "How did you learn about {0}?"),
+            ("proactive_personal", "You said you're {0}. What's that like?"),
+            ("proactive_general_fact", "You mentioned {0} {1} {2}."),
+            ("proactive_general", "Tell me more about {0}."),
+            ("proactive_statement", "I remember that {0} {1} {2}."),
+            ("bot_rename_accepted", "Okay, from now on you can call me {0}!"),
+            ("bot_rename_accepted", "I like {0}! You can call me that."),
+            ("bot_rename_rejected", "Hmm, I'm not sure {0} suits me. Can you think of something else?"),
+            ("bot_rename_suggestion", "How about the name {0}?"),
+            ("bot_reset_warning", "This will delete all our conversations and everything I've learned from you. Are you sure?"),
+            ("bot_reset_warning", "Are you sure you want me to forget everything we've talked about?"),
+            ("bot_reset_confirmed", "Done! I've forgotten everything. Let's start fresh!"),
+            ("bot_reset_confirmed", "All memories cleared. It's like we're meeting for the first time!"),
+            ("bot_reset_cancelled", "Okay, nothing was deleted. Let's continue!"),
+            ("bot_reset_cancelled", "No problem, I'll keep our memories safe!"),
+            ("empathy_sad", "I'm sorry you're feeling that way. Do you want to talk about it?"),
+            ("empathy_sad", "That sounds difficult. I'm here if you need someone to listen."),
+            ("empathy_happy", "That's great to hear! What's making you happy?"),
+            ("empathy_happy", "I'm glad you're feeling good! Tell me more."),
+            ("empathy_angry", "That sounds frustrating. Do you want to tell me more?"),
+            ("empathy_angry", "I can understand why you'd feel that way. What happened?"),
+            ("empathy_afraid", "That sounds worrying. I'm here if you want to talk."),
+            ("empathy_afraid", "I understand feeling anxious about things. What's on your mind?"),
+            ("empathy_surprised", "That is surprising! Tell me more about it."),
+            ("empathy_surprised", "Wow, I bet that caught you off guard! What happened?"),
+            ("emotion_followup", "You seemed {0} earlier. Are you feeling better now?"),
+            ("emotion_followup", "Last time you were feeling {0}. Has anything changed?"),
+            ("temporal_fact_found", "Let me think... {0} you mentioned that {1} {2} {3}."),
+            ("temporal_fact_found", "I remember! {0} you said {1} {2} {3}."),
+            ("temporal_fact_none", "I don't remember anything about {0}. What did you do?"),
+            ("temporal_fact_list", "From {0}, I remember: {1}"),
+            ("temporal_confirmation", "I'll remember that for {0}."),
+            ("inference_generalisation", "It sounds like you like {0}! You mentioned {1}."),
+            ("inference_generalisation", "So you like {0}? You said you like {1}."),
+            ("inference_contradiction", "Earlier you said you {0} {1}, but now you're saying you {2} {3}. Did your mind change?"),
+            ("inference_contradiction", "I've noticed something - before you said you {0} {1}, and now you {2} {3}. Can you clarify?"),
+        };
+        db.BotResponses.AddRange(responses.Select(r => new BotResponse
+        {
+            Category = r.Category,
+            ResponseText = r.Text,
+            CreatedAt = now
+        }));
         db.SaveChanges();
     }
 
     public static void SeedEmotionKeywords(PokeChatDbContext db)
     {
-        var now = DateTime.UtcNow.ToString("O");
+        var now = DateTime.UtcNow.ToString("o");
         db.EmotionKeywords.AddRange(
             new EmotionKeyword { Word = "happy", Sentiment = "positive", Intensity = 2, CreatedAt = now },
             new EmotionKeyword { Word = "great", Sentiment = "positive", Intensity = 2, CreatedAt = now },
@@ -83,7 +99,7 @@ internal static class TestDataHelper
 
     public static void SeedPosDictionary(PokeChatDbContext db)
     {
-        var now = DateTime.UtcNow.ToString("O");
+        var now = DateTime.UtcNow.ToString("o");
         db.PosDictionary.AddRange(
             new PosDictionaryEntry { Word = "i", WordType = "pronoun", CreatedAt = now },
             new PosDictionaryEntry { Word = "like", WordType = "verb", CreatedAt = now },
@@ -106,14 +122,52 @@ internal static class TestDataHelper
             new PosDictionaryEntry { Word = "not", WordType = "adverb", CreatedAt = now },
             new PosDictionaryEntry { Word = "going", WordType = "verb", CreatedAt = now },
             new PosDictionaryEntry { Word = "got", WordType = "verb", CreatedAt = now },
-            new PosDictionaryEntry { Word = "cannot", WordType = "verb", CreatedAt = now }
+            new PosDictionaryEntry { Word = "cannot", WordType = "verb", CreatedAt = now },
+            new PosDictionaryEntry { Word = "went", WordType = "verb", CreatedAt = now },
+            new PosDictionaryEntry { Word = "cinema", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "yesterday", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "to", WordType = "preposition", CreatedAt = now },
+            new PosDictionaryEntry { Word = "what", WordType = "pronoun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "did", WordType = "verb", CreatedAt = now },
+            new PosDictionaryEntry { Word = "food", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "burger", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "pasta", WordType = "noun", CreatedAt = now }
+        );
+        db.SaveChanges();
+    }
+
+    public static void SeedTemporalExpressions(PokeChatDbContext db)
+    {
+        db.TemporalExpressions.AddRange(
+            new TemporalExpression { Expression = "today", DaysOffset = 0, IsRange = false },
+            new TemporalExpression { Expression = "yesterday", DaysOffset = -1, IsRange = false },
+            new TemporalExpression { Expression = "last night", DaysOffset = -1, IsRange = false },
+            new TemporalExpression { Expression = "recently", DaysOffset = -7, IsRange = true },
+            new TemporalExpression { Expression = "last week", DaysOffset = -7, IsRange = false },
+            new TemporalExpression { Expression = "last year", DaysOffset = -365, IsRange = false }
+        );
+        db.SaveChanges();
+    }
+
+    public static void SeedInferenceWordLinks(PokeChatDbContext db)
+    {
+        var now = DateTime.UtcNow.ToString("o");
+        db.WordLinks.AddRange(
+            new WordLink { SourceWord = "pizza", TargetWord = "food", LinkType = "is_a", CreatedAt = now },
+            new WordLink { SourceWord = "burger", TargetWord = "food", LinkType = "is_a", CreatedAt = now },
+            new WordLink { SourceWord = "pasta", TargetWord = "food", LinkType = "is_a", CreatedAt = now },
+            new WordLink { SourceWord = "salad", TargetWord = "food", LinkType = "is_a", CreatedAt = now },
+            new WordLink { SourceWord = "coffee", TargetWord = "drink", LinkType = "is_a", CreatedAt = now },
+            new WordLink { SourceWord = "tea", TargetWord = "drink", LinkType = "is_a", CreatedAt = now },
+            new WordLink { SourceWord = "book", TargetWord = "thing", LinkType = "is_a", CreatedAt = now },
+            new WordLink { SourceWord = "movie", TargetWord = "thing", LinkType = "is_a", CreatedAt = now }
         );
         db.SaveChanges();
     }
 
     public static void SeedContractions(PokeChatDbContext db)
     {
-        var now = DateTime.UtcNow.ToString("O");
+        var now = DateTime.UtcNow.ToString("o");
         db.Contractions.AddRange(
             new ContractionEntity { Contraction = "i'm", Expansion = "i am" },
             new ContractionEntity { Contraction = "you're", Expansion = "you are" },
