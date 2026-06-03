@@ -508,6 +508,84 @@ Allow users to wipe all learned data and start a new conversation: "Can we start
 
 ---
 
+## Phase 15 — Emotion / Sentiment Awareness ✅
+
+Emotion keyword analysis and empathy responses. Analysing sentiment from user input and responding with emotion-appropriate templates.
+
+### 15.1 New entity
+- `EmotionKeyword` (Id, Word unique, Sentiment, Intensity, CreatedAt)
+- `DbSet<EmotionKeyword>` in PokeChatDbContext with unique index on Word
+- Seeded ~95 keywords across 5 sentiments (positive, negative, anger, fear, surprise)
+
+### 15.2 KnowledgeStore additions
+- `AnalyseSentiment(string input)` — scans for emotion keywords, returns dominant sentiment + intensity
+- `GetEmotionKeywords()` — returns all keywords
+- `UpdateFactSentiment(int factId, string sentiment, int intensity)` — retroactive sentiment update
+
+### 15.3 ChatSession flow
+- `AnalyseSentiment` called before sentence processing
+- Sentiment stored on each fact (Sentiment, EmotionIntensity columns)
+- `PreviousSentiment` / `CurrentSentiment` context keys added
+- Sentiment change triggers `emotion_followup` response
+
+### 15.4 ResponseEngine additions
+- Empathy response categories seeded: `empathy_sad`, `empathy_happy`, `empathy_angry`, `empathy_afraid`, `empathy_surprised`
+- `emotion_followup` category for sentiment change detection
+- Response selection prioritises empathy category when sentiment detected
+
+### 15.5 Files modified
+- `Data/Entities/EmotionKeyword.cs` — new
+- `Data/PokeChatDbContext.cs` — DbSet + fluent config
+- `Data/Schema.sql` — DDL
+- `Data/DbSeeder.cs` — SeedEmotionKeywords (~95 entries)
+- `Knowledge/KnowledgeStore.cs` — AnalyseSentiment, GetEmotionKeywords, UpdateFactSentiment
+- `Core/ChatSession.cs` — sentiment analysis wiring
+- `Core/ContextKeys.cs` — CurrentSentiment, PreviousSentiment, LastSentimentIntensity
+- `Responses/ResponseEngine.cs` — empathy response path
+- `Data/Entities/FactEntity.cs` — Sentiment, EmotionIntensity columns
+- `tests/PokeChat.Tests/Helpers/TestDataHelper.cs` — SeedEmotionKeywords
+- `tests/PokeChat.Tests/Core/ChatSessionTests.cs` — 7 new tests
+
+### 15.6 Verify
+- `dotnet build && dotnet test` — 142/142 pass
+
+---
+
+## Phase 16 — Contractions Handling ✅
+
+Enable the bot to understand common English contractions (e.g. "I'm", "they're", "don't", "can't") by expanding them during tokenisation.
+
+### 16.1 New files
+- `Data/Entities/ContractionEntity.cs` — entity (Id, Contraction unique, Expansion)
+- `NLP/ContractionExpander.cs` — loaded from DB, `Expand(string input)` via Regex with IgnoreCase
+
+### 16.2 Modified files
+- `Data/PokeChatDbContext.cs` — `DbSet<ContractionEntity>`, fluent config (unique index on Contraction)
+- `Data/Schema.sql` — DDL for `contractions` table
+- `Data/DbSeeder.cs` — `SeedContractions()` with 44 entries
+- `Data/pos_dictionary.json` — added `cannot`, `not`, `going`, `got`
+- `NLP/Tokeniser.cs` — optional `ContractionExpander` constructor param, expands before regex
+- `Core/ChatSession.cs` — loads contractions, creates expander, passes to Tokeniser
+- `Knowledge/KnowledgeStore.cs` — `GetContractions()` method
+- `tests/PokeChat.Tests/Helpers/TestDataHelper.cs` — `SeedContractions()`, 4 POS words added
+
+### 16.3 Expansion approach
+- Expansion happens before tokenisation (pre-process input)
+- ContractionExpander is thread-safe after initialisation
+- Expand uses `Regex.Replace` with `RegexOptions.IgnoreCase`
+- Expansion text is lowercase (tokeniser lowercases after expansion)
+- 44 seeded contractions covering verb+not, pronoun+verb, let's, gonna/wanna/gotta
+
+### 16.4 Tests
+- `ContractionExpanderTests` — 11 tests: per-contraction, multiple contractions, no-contraction, case-insensitive, empty
+- `TokeniserTests` — 2 new tests: expansion integration, multiple contractions
+- `ChatSessionTests` — 2 new integration tests: fact storage with contractions
+
+### 16.5 Verify
+- `dotnet build && dotnet test` — 157/157 pass
+
+---
+
 ## Running the Plan
 
 Before each phase, confirm `dotnet build` and `dotnet test` pass.

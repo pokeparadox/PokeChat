@@ -48,6 +48,7 @@ public sealed class PokeChatDbContext : DbContext
     public DbSet<UserBotName> UserBotNames => Set<UserBotName>();
     public DbSet<BotRenamePattern> BotRenamePatterns => Set<BotRenamePattern>();
     public DbSet<EmotionKeyword> EmotionKeywords => Set<EmotionKeyword>();
+    public DbSet<ContractionEntity> Contractions => Set<ContractionEntity>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -236,6 +237,14 @@ public sealed class PokeChatDbContext : DbContext
             entity.Property(e => e.Sentiment).IsRequired();
             entity.Property(e => e.Intensity);
             entity.Property(e => e.CreatedAt).IsRequired();
+        });
+
+        modelBuilder.Entity<ContractionEntity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Contraction).IsUnique();
+            entity.Property(e => e.Contraction).IsRequired();
+            entity.Property(e => e.Expansion).IsRequired();
         });
     }
 }

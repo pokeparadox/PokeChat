@@ -399,6 +399,11 @@ public class KnowledgeStore(PokeChatDbContext context)
         return context.BotRenamePatterns.Select(p => p.Pattern.ToLowerInvariant()).ToList();
     }
 
+    public List<ContractionEntity> GetContractions()
+    {
+        return context.Contractions.ToList();
+    }
+
     public List<string> SearchDictionary(string partial)
     {
         var lower = partial.ToLowerInvariant();

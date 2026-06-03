@@ -11394,5 +11394,21 @@
   {
     "Word": "definitely",
     "Type": "adverb"
+  },
+  {
+    "Word": "cannot",
+    "Type": "verb"
+  },
+  {
+    "Word": "not",
+    "Type": "adverb"
+  },
+  {
+    "Word": "going",
+    "Type": "verb"
+  },
+  {
+    "Word": "got",
+    "Type": "verb"
   }
 ]

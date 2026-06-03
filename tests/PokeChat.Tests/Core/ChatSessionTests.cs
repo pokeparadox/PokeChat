@@ -400,6 +400,87 @@ public class ChatSessionTests
         }
     }
 
+    private (ChatSession Session, FreshDbContext Db) CreateSessionWithContractions(
+        List<string>? namePatterns = null,
+        HashSet<string>? botCommands = null,
+        HashSet<string>? greetingWords = null)
+    {
+        var db = new FreshDbContext();
+        TestDataHelper.SeedBotResponses(db.Context);
+        TestDataHelper.SeedPosDictionary(db.Context);
+        TestDataHelper.SeedContractions(db.Context);
+        var store = new KnowledgeStore(db.Context);
+        var contextTracker = new ContextTracker();
+        var spellChecker = new SpellChecker();
+
+        var posEntries = store.GetPosDictionary();
+        var posTagger = new PosTagger(posEntries);
+
+        var spellDict = new HashSet<string>(posEntries.Select(e => e.Word), StringComparer.OrdinalIgnoreCase);
+        var misspellings = store.GetMisspellings();
+        spellChecker.Initialise(spellDict, misspellings);
+
+        var contractions = store.GetContractions();
+        var contractionMap = contractions.ToDictionary(c => c.Contraction, c => c.Expansion);
+        var expander = new ContractionExpander(contractionMap);
+        var tokeniser = new Tokeniser(expander);
+        var sentenceSplitter = new SentenceSplitter();
+        var svoExtractor = new SvoExtractor();
+
+        var nounCategoriser = new NounCategoriser(store);
+        var responseEngine = new ResponseEngine(store, contextTracker, spellChecker, posTagger, tokeniser, svoExtractor);
+
+        var session = new ChatSession(
+            db.Context,
+            store,
+            responseEngine,
+            spellChecker,
+            posTagger,
+            tokeniser,
+            sentenceSplitter,
+            svoExtractor,
+            contextTracker,
+            nounCategoriser,
+            namePatterns ?? new List<string> { "my name is", "i am", "i'm", "call me" },
+            botCommands ?? new List<string> { "quit", "exit" }.ToHashSet(StringComparer.OrdinalIgnoreCase),
+            greetingWords ?? new List<string> { "hi", "hello" }.ToHashSet(StringComparer.OrdinalIgnoreCase)
+        );
+
+        return (session, db);
+    }
+
+    [Fact]
+    public void Contraction_ImHappy_StoresFactViaExpansion()
+    {
+        var (session, db) = CreateSessionWithContractions();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("I'm happy");
+
+            var facts = db.Context.Facts.ToList();
+            facts.Count.ShouldBe(1);
+            facts[0].Subject.ShouldBe("Alice");
+            facts[0].Verb.ShouldBe("am");
+            facts[0].Object.ShouldBe("happy");
+        }
+    }
+
+    [Fact]
+    public void Contraction_ILikePizza_StoresFactCorrectly()
+    {
+        var (session, db) = CreateSessionWithContractions();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("I'm happy and I like pizza");
+
+            var facts = db.Context.Facts.ToList();
+            facts.Count.ShouldBe(2);
+            facts.Any(f => f.Verb == "like" && f.Object == "pizza").ShouldBeTrue();
+        }
+    }
+
     [Fact]
     public void ProcessInput_StoresSentimentOnFact()
     {

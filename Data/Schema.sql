@@ -139,3 +139,9 @@ CREATE TABLE IF NOT EXISTS emotion_keywords (
     intensity INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS contractions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    contraction TEXT NOT NULL UNIQUE,
+    expansion TEXT NOT NULL
+);

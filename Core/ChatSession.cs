@@ -55,7 +55,12 @@ public class ChatSession : IDisposable
         _knowledgeStore = new KnowledgeStore(_dbContext);
         _context = new ContextTracker();
         _spellChecker = new SpellChecker();
-        _tokeniser = new Tokeniser();
+
+        var contractions = _knowledgeStore.GetContractions();
+        var contractionMap = contractions.ToDictionary(c => c.Contraction, c => c.Expansion);
+        var expander = new ContractionExpander(contractionMap);
+        _tokeniser = new Tokeniser(expander);
+
         _sentenceSplitter = new SentenceSplitter();
         _svoExtractor = new SvoExtractor();
         var posEntries = _knowledgeStore.GetPosDictionary();

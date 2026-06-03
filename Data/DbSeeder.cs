@@ -19,6 +19,7 @@ public static class DbSeeder
         SeedNounCategories(context, now);
         SeedBotRenamePatterns(context, now);
         SeedEmotionKeywords(context, now);
+        SeedContractions(context, now);
         SeedBotResponses(context, now);
 
         context.SaveChanges();
@@ -471,6 +472,66 @@ public static class DbSeeder
             Sentiment = k.Sentiment,
             Intensity = k.Intensity,
             CreatedAt = now
+        }));
+    }
+
+    private static void SeedContractions(PokeChatDbContext context, string now)
+    {
+        if (context.Contractions.Any()) return;
+
+        var contractions = new (string Contraction, string Expansion)[]
+        {
+            ("i'm", "i am"),
+            ("you're", "you are"),
+            ("he's", "he is"),
+            ("she's", "she is"),
+            ("it's", "it is"),
+            ("we're", "we are"),
+            ("they're", "they are"),
+            ("i've", "i have"),
+            ("you've", "you have"),
+            ("we've", "we have"),
+            ("they've", "they have"),
+            ("i'll", "i will"),
+            ("you'll", "you will"),
+            ("he'll", "he will"),
+            ("she'll", "she will"),
+            ("it'll", "it will"),
+            ("we'll", "we will"),
+            ("they'll", "they will"),
+            ("i'd", "i would"),
+            ("you'd", "you would"),
+            ("he'd", "he would"),
+            ("she'd", "she would"),
+            ("we'd", "we would"),
+            ("they'd", "they would"),
+            ("isn't", "is not"),
+            ("aren't", "are not"),
+            ("wasn't", "was not"),
+            ("weren't", "were not"),
+            ("don't", "do not"),
+            ("doesn't", "does not"),
+            ("didn't", "did not"),
+            ("won't", "will not"),
+            ("wouldn't", "would not"),
+            ("can't", "cannot"),
+            ("couldn't", "could not"),
+            ("shouldn't", "should not"),
+            ("mustn't", "must not"),
+            ("needn't", "need not"),
+            ("hasn't", "has not"),
+            ("haven't", "have not"),
+            ("hadn't", "had not"),
+            ("let's", "let us"),
+            ("gonna", "going to"),
+            ("wanna", "want to"),
+            ("gotta", "got to"),
+        };
+
+        context.Contractions.AddRange(contractions.Select(c => new ContractionEntity
+        {
+            Contraction = c.Contraction,
+            Expansion = c.Expansion
         }));
     }
 

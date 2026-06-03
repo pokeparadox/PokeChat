@@ -43,10 +43,35 @@ public class TokeniserTests
     }
 
     [Fact]
-    public void Tokenise_HandlesContractions()
+    public void Tokenise_HandlesContractions_WithoutExpander()
     {
         var result = _tokeniser.Tokenise("don't");
         result.ShouldBe(new[] { "don't" });
+    }
+
+    [Fact]
+    public void Tokenise_WithExpander_ExpandsContractions()
+    {
+        var expansions = new Dictionary<string, string> { { "don't", "do not" } };
+        var expander = new ContractionExpander(expansions);
+        var tokeniser = new Tokeniser(expander);
+        var result = tokeniser.Tokenise("don't");
+        result.ShouldBe(new[] { "do", "not" });
+    }
+
+    [Fact]
+    public void Tokenise_WithExpander_MultipleContractions()
+    {
+        var expansions = new Dictionary<string, string>
+        {
+            { "i'm", "i am" },
+            { "you're", "you are" },
+            { "don't", "do not" }
+        };
+        var expander = new ContractionExpander(expansions);
+        var tokeniser = new Tokeniser(expander);
+        var result = tokeniser.Tokenise("I'm happy and you're not");
+        result.ShouldBe(new[] { "i", "am", "happy", "and", "you", "are", "not" });
     }
 
     [Fact]
