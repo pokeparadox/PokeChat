@@ -7,4 +7,5 @@ public class Conversation
     public string UserInput { get; set; } = string.Empty;
     public string BotResponse { get; set; } = string.Empty;
     public string Timestamp { get; set; } = string.Empty;
+    public string? SessionId { get; set; }
 }

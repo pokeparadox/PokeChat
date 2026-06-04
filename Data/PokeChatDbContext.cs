@@ -50,6 +50,7 @@ public sealed class PokeChatDbContext : DbContext
     public DbSet<EmotionKeyword> EmotionKeywords => Set<EmotionKeyword>();
     public DbSet<ContractionEntity> Contractions => Set<ContractionEntity>();
     public DbSet<TemporalExpression> TemporalExpressions => Set<TemporalExpression>();
+    public DbSet<ConversationSession> ConversationSessions => Set<ConversationSession>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -93,6 +94,7 @@ public sealed class PokeChatDbContext : DbContext
             entity.Property(e => e.UserInput).IsRequired();
             entity.Property(e => e.BotResponse).IsRequired();
             entity.Property(e => e.Timestamp).IsRequired();
+            entity.Property(e => e.SessionId);
             entity.HasOne<User>()
                 .WithMany()
                 .HasForeignKey(e => e.UserId);
@@ -257,6 +259,18 @@ public sealed class PokeChatDbContext : DbContext
             entity.Property(e => e.Expression).IsRequired();
             entity.Property(e => e.DaysOffset);
             entity.Property(e => e.IsRange);
+        });
+
+        modelBuilder.Entity<ConversationSession>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.SessionGuid).IsUnique();
+            entity.Property(e => e.SessionGuid).IsRequired();
+            entity.Property(e => e.StartedAt).IsRequired();
+            entity.Property(e => e.TurnCount);
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => e.UserId);
         });
     }
 }

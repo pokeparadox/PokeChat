@@ -593,4 +593,58 @@ public class ChatSessionTests
             facts[0].Object.ShouldBe("pizza");
         }
     }
+
+    [Fact]
+    public void SessionSummary_DetectsSummaryRequest_AndReturnsResponse()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("I like pizza");
+            var response = session.ProcessInput("what did we talk about");
+            response.ShouldNotBeNullOrEmpty();
+            response.ShouldContain("Bob");
+            response.ShouldContain("like");
+            response.ShouldContain("pizza");
+        }
+    }
+
+    [Fact]
+    public void SessionSummary_ReturnsEmptyMessage_WhenNoFacts()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Carol");
+            var response = session.ProcessInput("summarise our conversation");
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void SessionSummary_RecognizesSummaryKeyword()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Dave");
+            session.ProcessInput("I like pizza");
+            var response = session.ProcessInput("summary");
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void SessionSummary_RecognizesSummaryOfPrefix()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Eve");
+            session.ProcessInput("I like chess");
+            var response = session.ProcessInput("summary of today");
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
 }

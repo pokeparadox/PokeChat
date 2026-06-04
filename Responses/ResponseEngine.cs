@@ -69,6 +69,9 @@ public class ResponseEngine
 
     public string GenerateResponse(string input, int? userId)
     {
+        var summaryResult = HandleSessionSummaryRequest(input, userId);
+        if (summaryResult != null) return summaryResult;
+
         var unknownWordsRaw = _context.GetContext(ContextKeys.UnknownWords);
         if (!string.IsNullOrEmpty(unknownWordsRaw))
         {
@@ -411,6 +414,36 @@ public class ResponseEngine
         }
 
         return null;
+    }
+
+    private string? HandleSessionSummaryRequest(string input, int? userId)
+    {
+        if (userId == null) return null;
+
+        var lower = input.ToLowerInvariant().Trim();
+        var isSummaryRequest = lower.Contains("what did we talk about") ||
+                               lower.Contains("summarise our conversation") ||
+                               lower.Contains("summarize our conversation") ||
+                               lower.Contains("what have we discussed") ||
+                               lower.Contains("tell me what we talked about") ||
+                               lower.Equals("summary") ||
+                               lower.StartsWith("summary of");
+
+        if (!isSummaryRequest) return null;
+
+        var sessionId = _context.GetContext(ContextKeys.SessionId);
+        if (string.IsNullOrEmpty(sessionId))
+            return GetRandomResponse("session_summary_empty");
+
+        var summary = _knowledgeStore.BuildSessionSummary(userId!.Value, sessionId);
+        if (string.IsNullOrEmpty(summary))
+            return GetRandomResponse("session_summary_empty");
+
+        var factCount = summary.Split(new[] { ';', ')' }, StringSplitOptions.RemoveEmptyEntries).Length;
+        if (factCount <= 2)
+            return GetRandomResponse("session_summary_short", summary);
+
+        return GetRandomResponse("session_summary_long", summary);
     }
 
     private string? HandleLinkCreation(string input)

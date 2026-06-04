@@ -21,4 +21,5 @@ public static class ContextKeys
     public const string InferenceDepth = "inference_depth";
     public const string LastContradiction = "last_contradiction";
     public const string InferredGeneralisation = "inferred_generalisation";
+    public const string SessionId = "session_id";
 }

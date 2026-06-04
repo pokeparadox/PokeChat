@@ -81,14 +81,15 @@ public class KnowledgeStore(PokeChatDbContext context)
         return newUser.Id;
     }
 
-    public void StoreConversation(int userId, string userInput, string botResponse)
+    public void StoreConversation(int userId, string userInput, string botResponse, string? sessionId = null)
     {
         var conversation = new Conversation
         {
             UserId = userId,
             UserInput = userInput,
             BotResponse = botResponse,
-            Timestamp = DateTime.UtcNow.ToString("o")
+            Timestamp = DateTime.UtcNow.ToString("o"),
+            SessionId = sessionId
         };
 
         context.Conversations.Add(conversation);
@@ -246,6 +247,7 @@ public class KnowledgeStore(PokeChatDbContext context)
 
     public void ResetAllUserData()
     {
+        context.Database.ExecuteSqlRaw("DELETE FROM ConversationSessions");
         context.Database.ExecuteSqlRaw("DELETE FROM Conversations");
         context.Database.ExecuteSqlRaw("DELETE FROM Facts");
         context.Database.ExecuteSqlRaw("DELETE FROM WordDefinitions");
@@ -595,5 +597,82 @@ public class KnowledgeStore(PokeChatDbContext context)
         }
 
         return results;
+    }
+
+    public void CreateConversationSession(string sessionGuid, int userId)
+    {
+        var session = new ConversationSession
+        {
+            SessionGuid = sessionGuid,
+            UserId = userId,
+            StartedAt = DateTime.UtcNow.ToString("o"),
+            TurnCount = 0
+        };
+        context.ConversationSessions.Add(session);
+    }
+
+    public void EndConversationSession(string sessionGuid)
+    {
+        var session = context.ConversationSessions.FirstOrDefault(s => s.SessionGuid == sessionGuid);
+        if (session != null)
+        {
+            session.EndedAt = DateTime.UtcNow.ToString("o");
+        }
+    }
+
+    public int GetSessionConversationCount(string sessionGuid)
+    {
+        return context.Conversations.Count(c => c.SessionId == sessionGuid);
+    }
+
+    public string BuildSessionSummary(int userId, string sessionId)
+    {
+        var conversations = context.Conversations
+            .Where(c => c.SessionId == sessionId && c.UserId == userId)
+            .OrderBy(c => c.Timestamp)
+            .ToList();
+
+        if (conversations.Count == 0)
+            return string.Empty;
+
+        var facts = context.Facts
+            .Where(f => f.UserId == userId)
+            .SelectFacet<Fact>()
+            .ToList();
+
+        var sessionFactSignatures = new HashSet<string>();
+        foreach (var conv in conversations)
+        {
+            var lowerInput = conv.UserInput.ToLowerInvariant();
+            var matchingFacts = facts.Where(f =>
+                lowerInput.Contains(f.Object.ToLowerInvariant()) &&
+                (lowerInput.Contains(f.Subject.ToLowerInvariant()) ||
+                 lowerInput.Contains(f.Verb.ToLowerInvariant())));
+            foreach (var f in matchingFacts)
+                sessionFactSignatures.Add($"{f.Subject} {f.Verb} {f.Object}");
+        }
+
+        if (sessionFactSignatures.Count == 0)
+        {
+            foreach (var conv in conversations)
+            {
+                var lowerInput = conv.UserInput.ToLowerInvariant();
+                var objectMatches = facts.Where(f =>
+                    lowerInput.Contains(f.Object.ToLowerInvariant()));
+                foreach (var f in objectMatches)
+                    sessionFactSignatures.Add($"{f.Subject} {f.Verb} {f.Object}");
+            }
+        }
+
+        var factList = sessionFactSignatures.ToList();
+
+        if (factList.Count == 0)
+            return string.Empty;
+
+        if (factList.Count <= 2)
+            return string.Join("; ", factList);
+
+        var numbered = factList.Select((f, i) => $"{i + 1}) {f}");
+        return string.Join(". ", numbered);
     }
 }

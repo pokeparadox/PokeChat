@@ -24,6 +24,7 @@ public class ChatSession : IDisposable
     private readonly HashSet<string> _greetingWords;
     private string _botName = "PokeChat";
     private readonly List<string> _renamePatterns;
+    private readonly string _sessionId = Guid.NewGuid().ToString();
     private string _currentUserNameLower = string.Empty;
     private Dictionary<string, List<string>>? _cachedBotResponses;
     private static readonly string[] AlternativeNames = { "Zara", "Nova", "Echo", "Pixel", "Azure", "Kai", "Rex" };
@@ -94,7 +95,8 @@ public class ChatSession : IDisposable
         HashSet<string> botCommands,
         HashSet<string> greetingWords,
         string botName = "PokeChat",
-        List<string>? renamePatterns = null)
+        List<string>? renamePatterns = null,
+        string sessionId = "")
     {
         _dbContext = dbContext;
         _knowledgeStore = knowledgeStore;
@@ -111,6 +113,8 @@ public class ChatSession : IDisposable
         _greetingWords = greetingWords;
         _botName = botName;
         _renamePatterns = renamePatterns ?? new List<string>();
+        if (!string.IsNullOrEmpty(sessionId))
+            _sessionId = sessionId;
         _currentUserNameLower = _currentUserName.ToLowerInvariant();
     }
 
@@ -134,6 +138,9 @@ public class ChatSession : IDisposable
 
             if (ShouldExit(input))
             {
+                var sessionSummary = GenerateSessionEndSummary();
+                if (!string.IsNullOrEmpty(sessionSummary))
+                    Console.WriteLine($"{_botName}: {sessionSummary}");
                 Console.WriteLine($"{_botName}: Goodbye! It was great chatting with you.");
                 break;
             }
@@ -193,8 +200,10 @@ public class ChatSession : IDisposable
             ProcessSentence(sentence, sentiment, intensity);
         }
 
+        _context.SetContext(ContextKeys.SessionId, _sessionId);
+
         var response = _responseEngine.GenerateResponse(input, _currentUserId);
-        _knowledgeStore.StoreConversation(_currentUserId!.Value, input, response);
+        _knowledgeStore.StoreConversation(_currentUserId!.Value, input, response, _sessionId);
         _knowledgeStore.Save();
         return response;
     }
@@ -696,6 +705,23 @@ public class ChatSession : IDisposable
         }
 
         return string.Empty;
+    }
+
+    private string GenerateSessionEndSummary()
+    {
+        if (_currentUserId == null) return string.Empty;
+
+        var summary = _knowledgeStore.BuildSessionSummary(_currentUserId.Value, _sessionId);
+        if (string.IsNullOrEmpty(summary)) return string.Empty;
+
+        var botResponses = GetCachedBotResponses();
+        if (botResponses.TryGetValue("session_summary_end", out var responses) && responses.Count > 0)
+        {
+            var template = responses[Random.Shared.Next(responses.Count)];
+            return string.Format(template, summary);
+        }
+
+        return $"Before you go — today we talked about {summary}. See you next time!";
     }
 
     public void Dispose()

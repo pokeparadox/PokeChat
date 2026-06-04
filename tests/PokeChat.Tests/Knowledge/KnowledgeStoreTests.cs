@@ -457,4 +457,95 @@ public class KnowledgeStoreTests
         facts.Count.ShouldBe(1);
         facts[0].Subject.ShouldBe("bob");
     }
+
+    [Fact]
+    public void CreateConversationSession_StoresSession()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var user = new User { Name = "Test", FirstSeen = DateTime.UtcNow.ToString("o"), LastSeen = DateTime.UtcNow.ToString("o") };
+        db.Context.Users.Add(user);
+        db.Context.SaveChanges();
+
+        var sessionGuid = Guid.NewGuid().ToString();
+        store.CreateConversationSession(sessionGuid, user.Id);
+        store.Save();
+
+        var sessions = db.Context.ConversationSessions.ToList();
+        sessions.Count.ShouldBe(1);
+        sessions[0].SessionGuid.ShouldBe(sessionGuid);
+        sessions[0].UserId.ShouldBe(user.Id);
+        sessions[0].EndedAt.ShouldBeNull();
+        sessions[0].TurnCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public void EndConversationSession_SetsEndedAt()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var user = new User { Name = "Test", FirstSeen = DateTime.UtcNow.ToString("o"), LastSeen = DateTime.UtcNow.ToString("o") };
+        db.Context.Users.Add(user);
+        db.Context.SaveChanges();
+
+        var sessionGuid = Guid.NewGuid().ToString();
+        store.CreateConversationSession(sessionGuid, user.Id);
+        store.Save();
+
+        store.EndConversationSession(sessionGuid);
+        store.Save();
+
+        var session = db.Context.ConversationSessions.First(s => s.SessionGuid == sessionGuid);
+        session.EndedAt.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void GetSessionConversationCount_ReturnsCorrectCount()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var user = new User { Name = "Test", FirstSeen = DateTime.UtcNow.ToString("o"), LastSeen = DateTime.UtcNow.ToString("o") };
+        db.Context.Users.Add(user);
+        db.Context.SaveChanges();
+        var sessionId = "test-session";
+        db.Context.Conversations.Add(new Conversation { UserId = user.Id, UserInput = "a", BotResponse = "b", Timestamp = "t1", SessionId = sessionId });
+        db.Context.Conversations.Add(new Conversation { UserId = user.Id, UserInput = "c", BotResponse = "d", Timestamp = "t2", SessionId = sessionId });
+        db.Context.Conversations.Add(new Conversation { UserId = user.Id, UserInput = "e", BotResponse = "f", Timestamp = "t3", SessionId = "other" });
+        db.Context.SaveChanges();
+
+        var count = store.GetSessionConversationCount(sessionId);
+        count.ShouldBe(2);
+    }
+
+    [Fact]
+    public void BuildSessionSummary_ReturnsEmpty_WhenNoConversations()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var result = store.BuildSessionSummary(1, "nonexistent");
+        result.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void BuildSessionSummary_ReturnsFactsFromSession()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var user = new User { Name = "Alice", FirstSeen = DateTime.UtcNow.ToString("o"), LastSeen = DateTime.UtcNow.ToString("o") };
+        db.Context.Users.Add(user);
+        db.Context.SaveChanges();
+        var userId = user.Id;
+        var sessionId = "sum-session";
+
+        var fact = new Fact { UserId = userId, Subject = "Alice", Verb = "likes", Object = "pizza", PredicateType = "preference", CreatedAt = DateTime.UtcNow.ToString("o") };
+        store.StoreFact(fact);
+        store.Save();
+
+        db.Context.Conversations.Add(new Conversation { UserId = userId, UserInput = "Alice likes pizza", BotResponse = "Nice!", Timestamp = "t1", SessionId = sessionId });
+        db.Context.SaveChanges();
+
+        var result = store.BuildSessionSummary(userId, sessionId);
+        result.ShouldContain("likes");
+        result.ShouldContain("pizza");
+    }
 }

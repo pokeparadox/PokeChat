@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS conversations (
     user_input TEXT NOT NULL,
     bot_response TEXT NOT NULL,
     timestamp TEXT NOT NULL,
+    session_id TEXT,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
@@ -153,4 +154,14 @@ CREATE TABLE IF NOT EXISTS temporal_expressions (
     expression TEXT NOT NULL UNIQUE,
     days_offset INTEGER NOT NULL DEFAULT 0,
     is_range INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS conversation_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_guid TEXT NOT NULL UNIQUE,
+    user_id INTEGER,
+    started_at TEXT NOT NULL,
+    ended_at TEXT,
+    turn_count INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (user_id) REFERENCES users(id)
 );

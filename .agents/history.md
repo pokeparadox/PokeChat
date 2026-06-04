@@ -655,3 +655,43 @@ Bot moves from fact-recording to fact-connecting. Syllogistic reasoning, categor
 ### Verify
 - `dotnet build` — succeeds
 - `dotnet test` — 176/176 pass
+
+---
+
+## Phase 18 — Session Summarisation ✅
+
+### Files Changed
+- `Data/Entities/Conversation.cs` — added `SessionId` (string?) property
+- `Data/Entities/ConversationSession.cs` — new entity (Id, SessionGuid, UserId, StartedAt, EndedAt, TurnCount)
+- `Data/PokeChatDbContext.cs` — added `DbSet<ConversationSession>`, fluent config for both `SessionId` and `ConversationSessions`
+- `Data/Schema.sql` — added `session_id` column to `conversations`, added `conversation_sessions` table
+- `Data/DbSeeder.cs` — seeded `session_summary_short`, `session_summary_long`, `session_summary_empty`, `session_summary_end` response categories (8 entries)
+- `Core/ChatSession.cs` — added `_sessionId` field (`Guid.NewGuid().ToString()` default), passed to `StoreConversation`, stored in context, `GenerateSessionEndSummary()` called on exit
+- `Core/ContextKeys.cs` — added `SessionId = "session_id"`
+- `Knowledge/KnowledgeStore.cs` — updated `StoreConversation` to accept `sessionId`, added `CreateConversationSession`, `EndConversationSession`, `GetSessionConversationCount`, `BuildSessionSummary`
+- `Responses/ResponseEngine.cs` — added `HandleSessionSummaryRequest()` called at the start of `GenerateResponse`, detects summary trigger phrases before unknown word checking
+- `tests/PokeChat.Tests/Helpers/TestDataHelper.cs` — seeded session summary bot responses + POS dictionary entries for trigger words (summary, we, talk, about, etc.)
+- `Migrations/20260604215343_Phase18_SessionSummarisation.cs` — EF Core migration
+
+### Key Details
+- **Session ID:** A GUID assigned in the `ChatSession` constructor, stored in `Conversation.SessionId` for each turn
+- **Summary triggers:** "what did we talk about", "summarise/summarize our conversation", "what have we discussed", "tell me what we talked about", "summary" (exact), "summary of..." (prefix)
+- **Summary building:** `BuildSessionSummary` finds all conversations in the session, then looks up facts whose verb and object appear in the conversation input text
+- **Content categories:** `session_summary_short` (1-2 facts, inline), `session_summary_long` (3+ facts, numbered), `session_summary_empty` (no facts yet), `session_summary_end` (on quit/exit)
+- **Exit recap:** When user types `quit` or `exit`, `GenerateSessionEndSummary()` builds and displays the session summary before the goodbye message
+- **Summary detection runs first:** The summary handler runs at the top of `GenerateResponse`, before unknown word checking, so trigger words like "summary" don't get flagged as unknown
+
+### New Tests
+- `KnowledgeStoreTests.CreateConversationSession_StoresSession` — session row created correctly
+- `KnowledgeStoreTests.EndConversationSession_SetsEndedAt` — EndedAt populated after end
+- `KnowledgeStoreTests.GetSessionConversationCount_ReturnsCorrectCount` — count per session ID
+- `KnowledgeStoreTests.BuildSessionSummary_ReturnsEmpty_WhenNoConversations` — empty session returns empty
+- `KnowledgeStoreTests.BuildSessionSummary_ReturnsFactsFromSession` — builds summary from session facts
+- `ChatSessionTests.SessionSummary_DetectsSummaryRequest_AndReturnsResponse` — "what did we talk about" returns fact-based summary
+- `ChatSessionTests.SessionSummary_ReturnsEmptyMessage_WhenNoFacts` — "summarise our conversation" without facts returns empty message
+- `ChatSessionTests.SessionSummary_RecognizesSummaryKeyword` — bare "summary" keyword works
+- `ChatSessionTests.SessionSummary_RecognizesSummaryOfPrefix` — "summary of today" prefix works
+
+### Verify
+- `dotnet build` — succeeds
+- `dotnet test` — 185/185 pass

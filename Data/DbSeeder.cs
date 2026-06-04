@@ -740,6 +740,14 @@ public static class DbSeeder
             ("inference_no_chain", "I don't see any connections to other things I've learned."),
             ("inference_ask_clarify", "Do you like all {0}s, or just {1}?"),
             ("inference_ask_clarify", "Is it just {1} you like, or do you like {0} in general?"),
+            ("session_summary_short", "Today we talked about {0}. That was our main topic!"),
+            ("session_summary_short", "We covered {0} in our conversation. Not bad!"),
+            ("session_summary_long", "We covered a few things: {0}. Quite a chat!"),
+            ("session_summary_long", "Here's what we talked about: {0}. I'm learning a lot!"),
+            ("session_summary_empty", "We haven't talked about anything yet. What's on your mind?"),
+            ("session_summary_empty", "There's nothing to summarise yet. Tell me something!"),
+            ("session_summary_end", "Before you go — today we talked about {0}. See you next time!"),
+            ("session_summary_end", "As you leave — we talked about {0} today. Come back anytime!"),
         };
 
         context.BotResponses.AddRange(responses.Select(r => new BotResponse

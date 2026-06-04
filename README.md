@@ -96,5 +96,8 @@ All conversational data is persisted:
 | 14 | Reset / start fresh (wipe user data, keep seeds) | ✅ |
 | 15 | Emotion / sentiment awareness (empathy responses) | ✅ |
 | 16 | Contractions handling (I'm, don't, etc. expanded before tokenisation) | ✅ |
+|   | Temporal knowledge (yesterday, last week query support) | ✅ |
+| 17 | Inference / simple reasoning (contradiction, generalisation, category chains) | ✅ |
+| 18 | Session summarisation (per-session summaries, end-of-session recap) | ✅ |
 
 See `.agents/history.md` for completed improvements. 

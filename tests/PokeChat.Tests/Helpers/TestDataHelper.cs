@@ -62,6 +62,11 @@ internal static class TestDataHelper
             ("inference_generalisation", "So you like {0}? You said you like {1}."),
             ("inference_contradiction", "Earlier you said you {0} {1}, but now you're saying you {2} {3}. Did your mind change?"),
             ("inference_contradiction", "I've noticed something - before you said you {0} {1}, and now you {2} {3}. Can you clarify?"),
+            ("session_summary_short", "Today we talked about {0}. That was our main topic!"),
+            ("session_summary_short", "We covered {0} in our conversation. Not bad!"),
+            ("session_summary_long", "We covered a few things: {0}. Quite a chat!"),
+            ("session_summary_empty", "We haven't talked about anything yet. What's on your mind?"),
+            ("session_summary_end", "Before you go — today we talked about {0}. See you next time!"),
         };
         db.BotResponses.AddRange(responses.Select(r => new BotResponse
         {
@@ -131,7 +136,18 @@ internal static class TestDataHelper
             new PosDictionaryEntry { Word = "did", WordType = "verb", CreatedAt = now },
             new PosDictionaryEntry { Word = "food", WordType = "noun", CreatedAt = now },
             new PosDictionaryEntry { Word = "burger", WordType = "noun", CreatedAt = now },
-            new PosDictionaryEntry { Word = "pasta", WordType = "noun", CreatedAt = now }
+            new PosDictionaryEntry { Word = "pasta", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "summary", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "we", WordType = "pronoun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "talk", WordType = "verb", CreatedAt = now },
+            new PosDictionaryEntry { Word = "about", WordType = "preposition", CreatedAt = now },
+            new PosDictionaryEntry { Word = "our", WordType = "pronoun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "me", WordType = "pronoun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "summarise", WordType = "verb", CreatedAt = now },
+            new PosDictionaryEntry { Word = "summarize", WordType = "verb", CreatedAt = now },
+            new PosDictionaryEntry { Word = "conversation", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "today", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "chess", WordType = "noun", CreatedAt = now }
         );
         db.SaveChanges();
     }
