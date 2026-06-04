@@ -67,6 +67,12 @@ internal static class TestDataHelper
             ("session_summary_long", "We covered a few things: {0}. Quite a chat!"),
             ("session_summary_empty", "We haven't talked about anything yet. What's on your mind?"),
             ("session_summary_end", "Before you go — today we talked about {0}. See you next time!"),
+            ("pattern_learned", "Got it! I'll remember to say that next time."),
+            ("pattern_learned", "Noted! I'll use that response from now on."),
+            ("pattern_acknowledged", "Thanks for the feedback. I'll try to do better."),
+            ("pattern_acknowledged", "I appreciate the correction! I'll keep that in mind."),
+            ("pattern_not_clear", "I'm not sure what you want me to say instead. Can you give me an example?"),
+            ("pattern_already_known", "I already know that one! But thanks for the reminder."),
         };
         db.BotResponses.AddRange(responses.Select(r => new BotResponse
         {

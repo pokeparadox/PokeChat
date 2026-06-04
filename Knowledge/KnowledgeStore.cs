@@ -675,4 +675,65 @@ public class KnowledgeStore(PokeChatDbContext context)
         var numbered = factList.Select((f, i) => $"{i + 1}) {f}");
         return string.Join(". ", numbered);
     }
+
+    public void LearnResponseRule(string pattern, string responseTemplate, string inputType, int? userId = null)
+    {
+        var existing = context.LearnedResponseRules.Local
+            .FirstOrDefault(r => r.Pattern == pattern && r.ResponseTemplate == responseTemplate)
+            ?? context.LearnedResponseRules
+            .FirstOrDefault(r => r.Pattern == pattern && r.ResponseTemplate == responseTemplate);
+        if (existing != null)
+            return;
+
+        var rule = new LearnedResponseRule
+        {
+            Pattern = pattern,
+            ResponseTemplate = responseTemplate,
+            InputType = inputType,
+            LearnedFromUserId = userId,
+            Confidence = 5,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow.ToString("o")
+        };
+        context.LearnedResponseRules.Add(rule);
+    }
+
+    public bool IsLearnedRuleKnown(string pattern)
+    {
+        return context.LearnedResponseRules.Any(r => r.Pattern == pattern && r.IsActive);
+    }
+
+    public List<LearnedResponseRule> GetLearnedRules()
+    {
+        return context.LearnedResponseRules
+            .Where(r => r.IsActive)
+            .OrderByDescending(r => r.Confidence)
+            .ToList();
+    }
+
+    public void AdjustConfidence(int ruleId, int delta, bool isLearned = true)
+    {
+        if (isLearned)
+        {
+            var rule = context.LearnedResponseRules.Find(ruleId);
+            if (rule == null) return;
+            rule.Confidence = System.Math.Clamp(rule.Confidence + delta, 1, 10);
+            if (rule.Confidence <= 1)
+                rule.IsActive = false;
+        }
+    }
+
+    public void RecordFeedback(int ruleId, int userId, string feedback, bool isLearned, string? correctionText = null)
+    {
+        var entry = new ResponseFeedback
+        {
+            RuleId = ruleId,
+            IsLearnedRule = isLearned,
+            UserId = userId,
+            Feedback = feedback,
+            CorrectionText = correctionText,
+            CreatedAt = DateTime.UtcNow.ToString("o")
+        };
+        context.ResponseFeedbacks.Add(entry);
+    }
 }

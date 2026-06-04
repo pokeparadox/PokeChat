@@ -695,3 +695,53 @@ Bot moves from fact-recording to fact-connecting. Syllogistic reasoning, categor
 ### Verify
 - `dotnet build` — succeeds
 - `dotnet test` — 185/185 pass
+
+---
+
+## Phase 19 — Self-Learning Response Patterns ✅
+
+Bot learns new response patterns from user corrections and rephrasings. Moves beyond fact-learning into behavioural adaptation.
+
+### New entities
+- `LearnedResponseRule` (Id, Pattern, ResponseTemplate, InputType, LearnedFromUserId FK→users, Confidence 1-10 default 5, IsActive default true, CreatedAt)
+- `ResponseFeedback` (Id, RuleId, IsLearnedRule, UserId FK→users, Feedback, CorrectionText, CreatedAt)
+
+### Modified files
+- `Data/PokeChatDbContext.cs` — `DbSet<LearnedResponseRule>` and `DbSet<ResponseFeedback>`, fluent config with FKs to User
+- `Data/Schema.sql` — DDL for `learned_response_rules` and `response_feedback` tables
+- `Data/DbSeeder.cs` — seeded `pattern_learned`, `pattern_acknowledged`, `pattern_not_clear`, `pattern_already_known` (10 total)
+- `Core/ContextKeys.cs` — added `LastRuleId`, `LastRuleIsLearned`, `LastUserInput`
+- `Core/ChatSession.cs` — `TryHandleCorrection` with regex on original input (`RegexOptions.IgnoreCase`):
+  - `you should say X`, `say X instead`, `try saying X` → learn new response pattern
+  - `when/if I say X you should/could Y` → learn pattern+response pair
+  - Negative feedback ("that's not right"/"not what i meant") → record negative, adjust confidence -2
+  - Positive feedback ("that's better"/"exactly") → record positive, adjust confidence +1
+  - Wired into `ProcessInput` after rename check, before sentiment analysis
+- `Knowledge/KnowledgeStore.cs` — `LearnResponseRule` (checks Local+DB for duplicates), `IsLearnedRuleKnown`, `GetLearnedRules` (active only, confidence desc), `AdjustConfidence` (Clamp 1-10, deactivate at 1), `RecordFeedback`
+- `Responses/ResponseRules.cs` — `ResponseRuleRecord` extended with `RuleId`, `IsLearned`, `Confidence` (seed default 8). `MatchRule` merges learned rules with seeded, prefers learned if confidence >= 7
+- `Responses/ResponseEngine.cs` — stores `LastRuleId` and `LastRuleIsLearned` in context after rule match
+- `tests/PokeChat.Tests/Helpers/TestDataHelper.cs` — seeded correction bot responses
+- Migration: `Phase19_SelfLearningResponsePatterns`
+
+### Key Details
+- **Duplicate check:** LearnsResponseRule checks `.Local` change tracker first, falls back to DB query
+- **Correction regex:** Uses original `input` (not `lowerInput`) with `RegexOptions.IgnoreCase` to preserve template case, then `Trim('.', '!', '?')` strips trailing punctuation
+- **Pattern extraction:** `ExtractPatternFromLastInput` takes last word from `LastUserInput`, strips punctuation, turns into `\bword\b` regex
+- **Pre-existing bug fixed:** `"not what I meant"` with uppercase `I` never matched lowercased input — changed to `"not what i meant"`
+- **Confidence system:** New at 5/10, successful match + (cap 10), negative feedback -2 (floor 1, deactivates `IsActive=false` at 1). Seed rules fixed at 8. Learned >= 7 beats seed.
+
+### New Tests (11 total, 196/196 pass)
+- `KnowledgeStore.LearnResponseRule_StoresAndRetrieves`
+- `KnowledgeStore.LearnResponseRule_Duplicate_DoesNotStore`
+- `KnowledgeStore.RecordFeedback_Positive_IncreasesConfidence`
+- `KnowledgeStore.RecordFeedback_Negative_DecreasesConfidence`
+- `KnowledgeStore.AdjustConfidence_ClampsToRange`
+- `KnowledgeStore.IsLearnedRuleKnown_ReturnsTrue_WhenExists`
+- `ChatSession.CorrectionDetection_LearnsPattern_FromYouShouldSay`
+- `ChatSession.CorrectionDetection_LearnsPattern_FromSayInstead`
+- `ChatSession.CorrectionDetection_NegativeFeedback_RecordsFeedback`
+- `ChatSession.CorrectionDetection_PositiveFeedback_RecordsFeedback`
+- `ChatSession.CorrectionDetection_WhenISay_LearnsPair`
+
+### Verify
+- `dotnet build && dotnet test` — 196/196 pass

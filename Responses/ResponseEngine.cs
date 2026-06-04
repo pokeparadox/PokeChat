@@ -139,6 +139,8 @@ public class ResponseEngine
 
         if (rule != null && rule.Responses.Count > 0)
         {
+            _context.SetContext(ContextKeys.LastRuleId, rule.RuleId.ToString());
+            _context.SetContext(ContextKeys.LastRuleIsLearned, rule.IsLearned ? "true" : "false");
             return rule.Responses[Random.Shared.Next(rule.Responses.Count)];
         }
 

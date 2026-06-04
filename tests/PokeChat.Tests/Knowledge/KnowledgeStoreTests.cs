@@ -518,6 +518,113 @@ public class KnowledgeStoreTests
     }
 
     [Fact]
+    public void LearnResponseRule_StoresAndRetrieves()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var user = new User { Name = "Tutor", FirstSeen = DateTime.UtcNow.ToString("o"), LastSeen = DateTime.UtcNow.ToString("o") };
+        db.Context.Users.Add(user);
+        db.Context.SaveChanges();
+
+        store.LearnResponseRule(@"\bhello\b", "Hi there!", "Statement", user.Id);
+        store.Save();
+
+        var rules = store.GetLearnedRules();
+        rules.Count.ShouldBe(1);
+        rules[0].Pattern.ShouldBe(@"\bhello\b");
+        rules[0].ResponseTemplate.ShouldBe("Hi there!");
+        rules[0].Confidence.ShouldBe(5);
+        rules[0].IsActive.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void LearnResponseRule_Duplicate_DoesNotStore()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+
+        store.LearnResponseRule(@"\btest\b", "Response A", "Statement");
+        store.LearnResponseRule(@"\btest\b", "Response A", "Statement");
+        store.Save();
+
+        var rules = store.GetLearnedRules();
+        rules.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public void RecordFeedback_Positive_IncreasesConfidence()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var user = new User { Name = "User1", FirstSeen = DateTime.UtcNow.ToString("o"), LastSeen = DateTime.UtcNow.ToString("o") };
+        db.Context.Users.Add(user);
+        db.Context.SaveChanges();
+
+        store.LearnResponseRule(@"\bfoo\b", "Bar", "Statement", user.Id);
+        store.Save();
+        var rule = store.GetLearnedRules().First();
+
+        store.RecordFeedback(rule.Id, user.Id, "positive", true);
+        store.AdjustConfidence(rule.Id, 1, true);
+        store.Save();
+
+        var updated = store.GetLearnedRules().First();
+        updated.Confidence.ShouldBe(6);
+    }
+
+    [Fact]
+    public void RecordFeedback_Negative_DecreasesConfidence()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var user = new User { Name = "User2", FirstSeen = DateTime.UtcNow.ToString("o"), LastSeen = DateTime.UtcNow.ToString("o") };
+        db.Context.Users.Add(user);
+        db.Context.SaveChanges();
+
+        store.LearnResponseRule(@"\bbaz\b", "Qux", "Statement", user.Id);
+        store.Save();
+        var rule = store.GetLearnedRules().First();
+
+        store.RecordFeedback(rule.Id, user.Id, "negative", true);
+        store.AdjustConfidence(rule.Id, -2, true);
+        store.Save();
+
+        var updated = store.GetLearnedRules().First();
+        updated.Confidence.ShouldBe(3);
+    }
+
+    [Fact]
+    public void AdjustConfidence_ClampsToRange()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+
+        store.LearnResponseRule(@"\bnobody\b", "None", "Statement");
+        store.Save();
+        var rule = db.Context.LearnedResponseRules.First();
+
+        store.AdjustConfidence(rule.Id, -10, true);
+        store.Save();
+
+        var updated = db.Context.LearnedResponseRules.First();
+        updated.Confidence.ShouldBe(1);
+        updated.IsActive.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void IsLearnedRuleKnown_ReturnsTrue_WhenExists()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+
+        store.LearnResponseRule(@"\bknown\b", "Yes", "Statement");
+        store.Save();
+
+        store.IsLearnedRuleKnown(@"\bknown\b").ShouldBeTrue();
+        store.IsLearnedRuleKnown(@"\bunknown\b").ShouldBeFalse();
+    }
+
+    [Fact]
     public void BuildSessionSummary_ReturnsEmpty_WhenNoConversations()
     {
         using var db = new FreshDbContext();

@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using PokeChat.Data;
 using PokeChat.Knowledge;
 using PokeChat.NLP;
@@ -178,6 +179,9 @@ public class ChatSession : IDisposable
         if (TryHandleBotRename(input, out var renameResponse))
             return renameResponse;
 
+        if (TryHandleCorrection(input, out var correctionResponse))
+            return correctionResponse;
+
         LearnGreetingWords(input);
 
         var (sentiment, intensity) = _knowledgeStore.AnalyseSentiment(input);
@@ -201,6 +205,7 @@ public class ChatSession : IDisposable
         }
 
         _context.SetContext(ContextKeys.SessionId, _sessionId);
+        _context.SetContext(ContextKeys.LastUserInput, input);
 
         var response = _responseEngine.GenerateResponse(input, _currentUserId);
         _knowledgeStore.StoreConversation(_currentUserId!.Value, input, response, _sessionId);
@@ -705,6 +710,121 @@ public class ChatSession : IDisposable
         }
 
         return string.Empty;
+    }
+
+    internal bool TryHandleCorrection(string input, out string response)
+    {
+        var trimmedInput = input.Trim();
+
+        var youShouldMatch = Regex.Match(trimmedInput, @"^you should say\s+(.+?)$", RegexOptions.IgnoreCase);
+        if (youShouldMatch.Success)
+            return LearnFromCorrection(youShouldMatch.Groups[1].Value, out response);
+
+        var sayInsteadMatch = Regex.Match(trimmedInput, @"^say\s+(.+?)\s+instead$", RegexOptions.IgnoreCase);
+        if (sayInsteadMatch.Success)
+            return LearnFromCorrection(sayInsteadMatch.Groups[1].Value, out response);
+
+        var trySayingMatch = Regex.Match(trimmedInput, @"^try saying\s+(.+?)$", RegexOptions.IgnoreCase);
+        if (trySayingMatch.Success)
+            return LearnFromCorrection(trySayingMatch.Groups[1].Value, out response);
+
+        var pairMatch = Regex.Match(trimmedInput, @"^(?:when I say|if I say)\s+(.+?)\s+(?:you should say|you could say|you should|you could)\s+(.+?)$", RegexOptions.IgnoreCase);
+        if (pairMatch.Success)
+        {
+            var triggerPattern = pairMatch.Groups[1].Value.Trim();
+            var responseTemplate = pairMatch.Groups[2].Value.Trim().Trim('.', '!', '?');
+            if (triggerPattern.Length > 0 && responseTemplate.Length > 0)
+            {
+                if (_knowledgeStore.IsLearnedRuleKnown(triggerPattern))
+                    return GetCorrectionResponse("pattern_already_known", out response);
+
+                _knowledgeStore.LearnResponseRule(triggerPattern, responseTemplate, "Statement", _currentUserId);
+                _knowledgeStore.Save();
+                return GetCorrectionResponse("pattern_learned", out response);
+            }
+        }
+
+        var lastRuleIdRaw = _context.GetContext(ContextKeys.LastRuleId);
+        if (string.IsNullOrEmpty(lastRuleIdRaw))
+        {
+            response = string.Empty;
+            return false;
+        }
+
+        var lastRuleId = int.Parse(lastRuleIdRaw);
+        var isLearned = _context.GetContext(ContextKeys.LastRuleIsLearned) == "true";
+
+        var lowerInput = trimmedInput.ToLowerInvariant();
+        if (lowerInput is "that's not right" or "that is not right" or "not what i meant" or "wrong" or "not helpful")
+        {
+            _knowledgeStore.RecordFeedback(lastRuleId, _currentUserId!.Value, "negative", isLearned);
+            _knowledgeStore.AdjustConfidence(lastRuleId, -2, isLearned);
+            _knowledgeStore.Save();
+            _context.SetContext(ContextKeys.LastRuleId, null);
+            return GetCorrectionResponse("pattern_acknowledged", out response);
+        }
+
+        if (lowerInput is "that's exactly right" or "now you've got it" or "yes, that's it" or "perfect" or "that's better")
+        {
+            _knowledgeStore.RecordFeedback(lastRuleId, _currentUserId!.Value, "positive", isLearned);
+            _knowledgeStore.AdjustConfidence(lastRuleId, 1, isLearned);
+            _knowledgeStore.Save();
+            _context.SetContext(ContextKeys.LastRuleId, null);
+            return GetCorrectionResponse("pattern_acknowledged", out response);
+        }
+
+        response = string.Empty;
+        return false;
+    }
+
+    private bool LearnFromCorrection(string templateRaw, out string response)
+    {
+        var template = templateRaw.Trim().Trim('.', '!', '?');
+        if (template.Length == 0)
+            return GetCorrectionResponse("pattern_not_clear", out response);
+
+        var lastInput = _context.GetContext(ContextKeys.LastUserInput);
+        var pattern = ExtractPatternFromLastInput(lastInput);
+        if (pattern == null)
+            return GetCorrectionResponse("pattern_not_clear", out response);
+
+        if (_knowledgeStore.IsLearnedRuleKnown(pattern))
+            return GetCorrectionResponse("pattern_already_known", out response);
+
+        _knowledgeStore.LearnResponseRule(pattern, template, "Statement", _currentUserId);
+        _knowledgeStore.Save();
+        return GetCorrectionResponse("pattern_learned", out response);
+    }
+
+    private static string? ExtractPatternFromLastInput(string? lastInput)
+    {
+        if (string.IsNullOrEmpty(lastInput)) return null;
+        var lower = lastInput.ToLowerInvariant().Trim();
+        lower = Regex.Replace(lower, @"[^\w\s]", "");
+        var lastWord = lower.Split(' ', StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
+        if (string.IsNullOrEmpty(lastWord) || lastWord.Length < 2)
+            return null;
+        return $@"\b{Regex.Escape(lastWord)}\b";
+    }
+
+    private bool GetCorrectionResponse(string category, out string response)
+    {
+        var botResponses = GetCachedBotResponses();
+        if (botResponses.TryGetValue(category, out var responses) && responses.Count > 0)
+        {
+            response = responses[Random.Shared.Next(responses.Count)];
+            return true;
+        }
+
+        response = category switch
+        {
+            "pattern_learned" => "Got it! I'll remember to say that next time.",
+            "pattern_acknowledged" => "Thanks for the feedback. I'll try to do better.",
+            "pattern_not_clear" => "I'm not sure what you want me to say instead. Can you give me an example?",
+            "pattern_already_known" => "I already know that one! But thanks for the reminder.",
+            _ => string.Empty
+        };
+        return true;
     }
 
     private string GenerateSessionEndSummary()

@@ -647,4 +647,90 @@ public class ChatSessionTests
             response.ShouldNotBeNullOrEmpty();
         }
     }
+
+    [Fact]
+    public void CorrectionDetection_LearnsPattern_FromYouShouldSay()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("I like pizza");
+
+            var response = session.ProcessInput("you should say Great question!");
+            response.ShouldNotBeNullOrEmpty();
+
+            var learnedRules = db.Context.LearnedResponseRules.ToList();
+            learnedRules.Count.ShouldBe(1);
+            learnedRules[0].Pattern.ShouldBe(@"\bpizza\b");
+            learnedRules[0].ResponseTemplate.ShouldBe("Great question");
+            learnedRules[0].Confidence.ShouldBe(5);
+        }
+    }
+
+    [Fact]
+    public void CorrectionDetection_LearnsPattern_FromSayInstead()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            var firstResponse = session.ProcessInput("I like chess");
+            firstResponse.ShouldNotBeNullOrEmpty();
+
+            var response = session.ProcessInput("say Tell me more instead");
+            response.ShouldNotBeNullOrEmpty();
+
+            var learnedRules = db.Context.LearnedResponseRules.ToList();
+            learnedRules.Count.ShouldBe(1);
+            learnedRules[0].Pattern.ShouldBe(@"\bchess\b");
+            learnedRules[0].ResponseTemplate.ShouldBe("Tell me more");
+        }
+    }
+
+    [Fact]
+    public void CorrectionDetection_NegativeFeedback_RecordsFeedback()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Carol");
+            session.ProcessInput("I like pizza");
+
+            var response = session.ProcessInput("that's not right");
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void CorrectionDetection_PositiveFeedback_RecordsFeedback()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Dave");
+            session.ProcessInput("I like pizza");
+
+            var response = session.ProcessInput("that's better");
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void CorrectionDetection_WhenISay_LearnsPair()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Eve");
+
+            var response = session.ProcessInput("when I say hello you should say hi there");
+            response.ShouldNotBeNullOrEmpty();
+
+            var learnedRules = db.Context.LearnedResponseRules.ToList();
+            learnedRules.Count.ShouldBe(1);
+            learnedRules[0].Pattern.ShouldBe("hello");
+            learnedRules[0].ResponseTemplate.ShouldBe("hi there");
+        }
+    }
 }

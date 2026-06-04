@@ -51,6 +51,8 @@ public sealed class PokeChatDbContext : DbContext
     public DbSet<ContractionEntity> Contractions => Set<ContractionEntity>();
     public DbSet<TemporalExpression> TemporalExpressions => Set<TemporalExpression>();
     public DbSet<ConversationSession> ConversationSessions => Set<ConversationSession>();
+    public DbSet<LearnedResponseRule> LearnedResponseRules => Set<LearnedResponseRule>();
+    public DbSet<ResponseFeedback> ResponseFeedbacks => Set<ResponseFeedback>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -268,6 +270,34 @@ public sealed class PokeChatDbContext : DbContext
             entity.Property(e => e.SessionGuid).IsRequired();
             entity.Property(e => e.StartedAt).IsRequired();
             entity.Property(e => e.TurnCount);
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => e.UserId);
+        });
+
+        modelBuilder.Entity<LearnedResponseRule>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Pattern).IsRequired();
+            entity.Property(e => e.ResponseTemplate).IsRequired();
+            entity.Property(e => e.InputType).IsRequired();
+            entity.Property(e => e.Confidence);
+            entity.Property(e => e.IsActive);
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => e.LearnedFromUserId);
+        });
+
+        modelBuilder.Entity<ResponseFeedback>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.RuleId).IsRequired();
+            entity.Property(e => e.IsLearnedRule);
+            entity.Property(e => e.UserId).IsRequired();
+            entity.Property(e => e.Feedback).IsRequired();
+            entity.Property(e => e.CorrectionText);
+            entity.Property(e => e.CreatedAt).IsRequired();
             entity.HasOne<User>()
                 .WithMany()
                 .HasForeignKey(e => e.UserId);

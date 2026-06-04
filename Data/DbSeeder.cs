@@ -748,6 +748,16 @@ public static class DbSeeder
             ("session_summary_empty", "There's nothing to summarise yet. Tell me something!"),
             ("session_summary_end", "Before you go — today we talked about {0}. See you next time!"),
             ("session_summary_end", "As you leave — we talked about {0} today. Come back anytime!"),
+            ("pattern_learned", "Got it! I'll remember to say that next time."),
+            ("pattern_learned", "Noted! I'll use that response from now on."),
+            ("pattern_learned", "Thanks! I'll say that instead going forward."),
+            ("pattern_acknowledged", "Thanks for the feedback. I'll try to do better."),
+            ("pattern_acknowledged", "I appreciate the correction! I'll keep that in mind."),
+            ("pattern_acknowledged", "Okay, I'll learn from that feedback."),
+            ("pattern_not_clear", "I'm not sure what you want me to say instead. Can you give me an example?"),
+            ("pattern_not_clear", "Could you rephrase that? I want to make sure I learn the right thing."),
+            ("pattern_already_known", "I already know that one! But thanks for the reminder."),
+            ("pattern_already_known", "I've already learned that response. Feel free to teach me something else!"),
         };
 
         context.BotResponses.AddRange(responses.Select(r => new BotResponse

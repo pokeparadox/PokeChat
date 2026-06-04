@@ -165,3 +165,26 @@ CREATE TABLE IF NOT EXISTS conversation_sessions (
     turn_count INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
+
+CREATE TABLE IF NOT EXISTS learned_response_rules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pattern TEXT NOT NULL,
+    response_template TEXT NOT NULL,
+    input_type TEXT NOT NULL,
+    learned_from_user_id INTEGER,
+    confidence INTEGER NOT NULL DEFAULT 5,
+    is_active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (learned_from_user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS response_feedback (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    rule_id INTEGER NOT NULL,
+    is_learned_rule INTEGER NOT NULL DEFAULT 0,
+    user_id INTEGER NOT NULL,
+    feedback TEXT NOT NULL,
+    correction_text TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);

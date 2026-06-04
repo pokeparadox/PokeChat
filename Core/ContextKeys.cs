@@ -22,4 +22,9 @@ public static class ContextKeys
     public const string LastContradiction = "last_contradiction";
     public const string InferredGeneralisation = "inferred_generalisation";
     public const string SessionId = "session_id";
+    public const string LastRuleId = "last_rule_id";
+    public const string LastRuleIsLearned = "last_rule_is_learned";
+    public const string PendingCorrectionPattern = "pending_correction_pattern";
+    public const string PendingCorrectionResponse = "pending_correction_response";
+    public const string LastUserInput = "last_user_input";
 }
