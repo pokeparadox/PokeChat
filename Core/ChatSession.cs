@@ -254,6 +254,28 @@ public class ChatSession : IDisposable
             }
         }
 
+        var tags = _posTagger.Tag(correctedTokens);
+        var triples = _svoExtractor.Extract(correctedTokens, tags);
+
+        if (unknownWords.Count > 0 && triples.Count > 0)
+        {
+            foreach (var triple in triples)
+            {
+                var subjTokens = triple.Subject.Split(' ');
+                var objTokens = triple.Object.Split(' ');
+                foreach (var unknown in unknownWords.ToList())
+                {
+                    if (subjTokens.Any(t => t.Equals(unknown, StringComparison.OrdinalIgnoreCase)) ||
+                        objTokens.Any(t => t.Equals(unknown, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        _spellChecker.AddToDictionary(unknown);
+                        _knowledgeStore.AddLearnedWord(unknown);
+                        unknownWords.Remove(unknown);
+                    }
+                }
+            }
+        }
+
         if (unknownWords.Count > 0)
         {
             var existing = _context.GetContext(ContextKeys.UnknownWords) ?? "";
@@ -261,9 +283,6 @@ public class ChatSession : IDisposable
             foreach (var uw in unknownWords) existingWords.Add(uw);
             _context.SetContext(ContextKeys.UnknownWords, string.Join(",", existingWords));
         }
-
-        var tags = _posTagger.Tag(correctedTokens);
-        var triples = _svoExtractor.Extract(correctedTokens, tags);
 
         foreach (var triple in triples)
         {

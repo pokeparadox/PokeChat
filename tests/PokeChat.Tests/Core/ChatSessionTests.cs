@@ -785,6 +785,23 @@ public class ChatSessionTests
     }
 
     [Fact]
+    public void ProcessInput_ReturnsSentimentAcknowledgement_AfterEmotionFollowUp()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedEmotionKeywords(db.Context);
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("I love pizza");
+            var followUp = session.ProcessInput("I'm sad");
+            followUp.ShouldNotBeNullOrEmpty();
+            var ack = session.ProcessInput("I'm happy");
+            ack.ShouldNotBeNullOrEmpty();
+            ack.ShouldNotContain("Bob and happy");
+        }
+    }
+
+    [Fact]
     public void MultiTurnTopicFlow_TopicReference_ReturnsTopicResponse_WhenFollowUpExhausted()
     {
         var (session, db) = CreateSessionAndDb();
@@ -800,6 +817,79 @@ public class ChatSessionTests
 
             var response = session.ProcessInput("tell me something");
             response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void ProcessInput_AutoLearnsUnknownWordInSvoObject()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            var response = session.ProcessInput("I love steak");
+
+            response.ShouldNotContain("unknown");
+            response.ShouldNotContain("Don't know");
+
+            var facts = db.Context.Facts.ToList();
+            facts.Count.ShouldBe(1);
+            facts[0].Subject.ShouldBe("Alice");
+            facts[0].Verb.ShouldBe("love");
+            facts[0].Object.ShouldBe("steak");
+        }
+    }
+
+    [Fact]
+    public void ProcessInput_AutoLearnsUnknownWordInSvoSubject()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            var response = session.ProcessInput("steak is tasty");
+
+            response.ShouldNotContain("unknown");
+            response.ShouldNotContain("Don't know");
+
+            var facts = db.Context.Facts.ToList();
+            facts.Count.ShouldBe(1);
+            facts[0].Subject.ShouldBe("steak");
+            facts[0].Verb.ShouldBe("is");
+            facts[0].Object.ShouldBe("tasty");
+        }
+    }
+
+    [Fact]
+    public void ProcessInput_AutoLearnsUnknownWordInCompoundObject()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            var response = session.ProcessInput("I like pizza and steak");
+
+            response.ShouldNotContain("unknown");
+            response.ShouldNotContain("Don't know");
+
+            var facts = db.Context.Facts.ToList();
+            facts.Count.ShouldBe(1);
+            facts[0].Subject.ShouldBe("Alice");
+            facts[0].Verb.ShouldBe("like");
+            facts[0].Object.ShouldBe("pizza and steak");
+        }
+    }
+
+    [Fact]
+    public void ProcessInput_DoesNotAutoLearnUnknownWord_OutsideSvo()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            var response = session.ProcessInput("gobbledygook");
+
+            response.ShouldContain("gobbledygook");
         }
     }
 }

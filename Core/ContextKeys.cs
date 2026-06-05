@@ -16,6 +16,7 @@ public static class ContextKeys
     public const string CurrentSentiment = "current_sentiment";
     public const string LastSentimentIntensity = "last_sentiment_intensity";
     public const string PreviousSentiment = "previous_sentiment";
+    public const string PendingSentimentFollowUp = "pending_sentiment_followup";
     public const string SentimentTurnCount = "sentiment_turn_count";
     public const string CurrentTimeContext = "current_time_context";
     public const string InferenceDepth = "inference_depth";

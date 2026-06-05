@@ -4412,6 +4412,34 @@
     "Type": "adjective"
   },
   {
+    "Word": "ok",
+    "Type": "adjective"
+  },
+  {
+    "Word": "nope",
+    "Type": "adverb"
+  },
+  {
+    "Word": "nah",
+    "Type": "adverb"
+  },
+  {
+    "Word": "yes",
+    "Type": "adverb"
+  },
+  {
+    "Word": "yeah",
+    "Type": "adverb"
+  },
+  {
+    "Word": "yep",
+    "Type": "adverb"
+  },
+  {
+    "Word": "yup",
+    "Type": "adverb"
+  },
+  {
     "Word": "important",
     "Type": "adjective"
   },

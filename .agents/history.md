@@ -805,3 +805,55 @@ Three-turn breakdown where clarification, question, and multi-verb sentences pro
 
 ### Verify
 - `dotnet build && dotnet test` — 214/214 pass
+
+---
+
+## Fix: "ok" unknown + sentiment question ignored ✅
+
+Two bugs: (1) `"ok"` missing from POS dictionary caused Levenshtein to suggest `"of"` instead. (2) After `emotion_followup` asked about a sentiment change, the answer was ignored — `HandleSentiment()` skipped mild emotions (intensity < 2), so the bot fell through to context follow-up: "Tell me more about Bob and fine."
+
+### Changes
+- **`Data/pos_dictionary.json`** — Added `{"Word": "ok", "Type": "adjective"}` after `"okay"`
+- **`Core/ContextKeys.cs`** — Added `PendingSentimentFollowUp` constant
+- **`Responses/ResponseEngine.cs`** — Two changes:
+  - `GenerateResponse()`: between unknown word check and `HandleSentiment()`, checks `PendingSentimentFollowUp`. If set + intensity ≥ 1, returns sentiment-aware acknowledgement (positive/negative/fallback templates), clears flag.
+  - `HandleSentiment()`: when `emotion_followup` fires (sentiment change detected), sets `PendingSentimentFollowUp = "true"`
+- **`Data/DbSeeder.cs`** + **`tests/PokeChat.Tests/Helpers/TestDataHelper.cs`** — Seeded `sentiment_ack_positive` (×2), `sentiment_ack_negative` (×1), `sentiment_ack` (×1)
+- **`tests/PokeChat.Tests/Core/ChatSessionTests.cs`** — Integration test: emotional → emotion_followup → sentiment acknowledgement, verify response is not context follow-up
+
+### Files modified
+- `Data/pos_dictionary.json`
+- `Core/ContextKeys.cs`
+- `Responses/ResponseEngine.cs`
+- `Data/DbSeeder.cs`
+- `tests/PokeChat.Tests/Helpers/TestDataHelper.cs`
+- `tests/PokeChat.Tests/Core/ChatSessionTests.cs`
+
+### Verify
+- `dotnet build && dotnet test` — 215/215 pass
+
+---
+
+## Fix: SVO Auto-Learn Unknown Words + Missing POS Words ✅
+
+After fixing "ok" and the sentiment flow, conversation testing revealed two blockers: (1) `"yes"`, `"yeah"`, `"yep"`, `"yup"`, `"nope"`, `"nah"` missing from POS dictionary caused them to be flagged as unknown during name confirmation. (2) Any noun like `"pizza"` or `"steak"` in an SVO position (e.g. "I love pizza") triggered the unknown-word handler before the sentiment/rule engine could run, breaking both sentiment detection and normal conversation flow.
+
+### Changes
+- **`Data/pos_dictionary.json`** — Added 7 missing words: `"yes"`(adverb), `"yeah"`(adverb), `"yep"`(adverb), `"yup"`(adverb), `"nope"`(adverb), `"nah"`(adverb), `"ok"`(adjective)
+- **`Core/ChatSession.cs`** — Modified `ProcessSentence()` to extract SVO triples BEFORE setting unknown words on context, then auto-learn any unknown word that appears as a subject or object token within any valid triple (split by space). `AddToDictionary` + `AddLearnedWord` for each match; only set unknown words context for remaining words.
+- **`tests/PokeChat.Tests/Helpers/TestDataHelper.cs`** — Added same 6 affirmation words to `SeedPosDictionary`
+
+### New Tests (4)
+- `ProcessInput_AutoLearnsUnknownWordInSvoObject` — "I love steak" → no unknown word response, fact stored
+- `ProcessInput_AutoLearnsUnknownWordInSvoSubject` — "steak is tasty" → both unknown words auto-learned
+- `ProcessInput_AutoLearnsUnknownWordInCompoundObject` — "I like pizza and steak" → "steak" auto-learned from compound object token match
+- `ProcessInput_DoesNotAutoLearnUnknownWord_OutsideSvo` — "gobbledygook" → clarification still triggered
+
+### Files modified
+- `Data/pos_dictionary.json`
+- `Core/ChatSession.cs`
+- `tests/PokeChat.Tests/Helpers/TestDataHelper.cs`
+- `tests/PokeChat.Tests/Core/ChatSessionTests.cs`
+
+### Verify
+- `dotnet build && dotnet test` — 219/219 pass

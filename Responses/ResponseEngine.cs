@@ -105,6 +105,26 @@ public class ResponseEngine
             }
         }
 
+        var pendingSentiment = _context.GetContext(ContextKeys.PendingSentimentFollowUp);
+        if (!string.IsNullOrEmpty(pendingSentiment))
+        {
+            _context.SetContext(ContextKeys.PendingSentimentFollowUp, null);
+            var intensityRaw = _context.GetContext(ContextKeys.LastSentimentIntensity);
+            if (int.TryParse(intensityRaw, out var intensity) && intensity >= 1)
+            {
+                var currentSentiment = _context.GetContext(ContextKeys.CurrentSentiment);
+                var ackCat = currentSentiment switch
+                {
+                    "positive" => "sentiment_ack_positive",
+                    "negative" => "sentiment_ack_negative",
+                    _ => "sentiment_ack"
+                };
+                var ack = GetRandomResponse(ackCat);
+                if (!string.IsNullOrEmpty(ack))
+                    return ack;
+            }
+        }
+
         var sentimentResult = HandleSentiment();
         if (sentimentResult != null) return sentimentResult;
 
@@ -296,6 +316,7 @@ public class ResponseEngine
 
         if (previousSentiment != null && previousSentiment != currentSentiment)
         {
+            _context.SetContext(ContextKeys.PendingSentimentFollowUp, "true");
             return GetRandomResponse("emotion_followup", previousSentiment);
         }
 

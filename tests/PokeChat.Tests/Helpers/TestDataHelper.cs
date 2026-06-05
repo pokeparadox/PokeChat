@@ -53,6 +53,10 @@ internal static class TestDataHelper
             ("empathy_surprised", "Wow, I bet that caught you off guard! What happened?"),
             ("emotion_followup", "You seemed {0} earlier. Are you feeling better now?"),
             ("emotion_followup", "Last time you were feeling {0}. Has anything changed?"),
+            ("sentiment_ack_positive", "That's good to hear!"),
+            ("sentiment_ack_positive", "I'm glad!"),
+            ("sentiment_ack_negative", "I'm sorry."),
+            ("sentiment_ack", "OK, thanks for sharing!"),
             ("temporal_fact_found", "Let me think... {0} you mentioned that {1} {2} {3}."),
             ("temporal_fact_found", "I remember! {0} you said {1} {2} {3}."),
             ("temporal_fact_none", "I don't remember anything about {0}. What did you do?"),
@@ -160,7 +164,13 @@ internal static class TestDataHelper
             new PosDictionaryEntry { Word = "summarize", WordType = "verb", CreatedAt = now },
             new PosDictionaryEntry { Word = "conversation", WordType = "noun", CreatedAt = now },
             new PosDictionaryEntry { Word = "today", WordType = "noun", CreatedAt = now },
-            new PosDictionaryEntry { Word = "chess", WordType = "noun", CreatedAt = now }
+            new PosDictionaryEntry { Word = "chess", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "yes", WordType = "adverb", CreatedAt = now },
+            new PosDictionaryEntry { Word = "yeah", WordType = "adverb", CreatedAt = now },
+            new PosDictionaryEntry { Word = "yep", WordType = "adverb", CreatedAt = now },
+            new PosDictionaryEntry { Word = "yup", WordType = "adverb", CreatedAt = now },
+            new PosDictionaryEntry { Word = "nope", WordType = "adverb", CreatedAt = now },
+            new PosDictionaryEntry { Word = "nah", WordType = "adverb", CreatedAt = now }
         );
         db.SaveChanges();
     }
