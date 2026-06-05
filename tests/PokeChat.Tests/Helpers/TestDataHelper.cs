@@ -73,6 +73,13 @@ internal static class TestDataHelper
             ("pattern_acknowledged", "I appreciate the correction! I'll keep that in mind."),
             ("pattern_not_clear", "I'm not sure what you want me to say instead. Can you give me an example?"),
             ("pattern_already_known", "I already know that one! But thanks for the reminder."),
+            ("topic_reference_old", "A few moments ago you mentioned {0}. What do you think about it now?"),
+            ("topic_reference_old", "Earlier you brought up {0}. Tell me more about that."),
+            ("topic_reference_fact", "Earlier you told me {0} {1} {2}. Has anything changed?"),
+            ("topic_reference_fact", "I remember you said {0} {1} {2}. Is that still true?"),
+            ("topic_transition", "So changing the subject from {0} — what's on your mind about {1}?"),
+            ("topic_followup_light", "You seemed interested in {0} earlier. Want to come back to that?"),
+            ("topic_followup_light", "We talked about {0} a bit ago. Shall we revisit that?"),
         };
         db.BotResponses.AddRange(responses.Select(r => new BotResponse
         {

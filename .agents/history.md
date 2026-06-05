@@ -745,3 +745,24 @@ Bot learns new response patterns from user corrections and rephrasings. Moves be
 
 ### Verify
 - `dotnet build && dotnet test` — 196/196 pass
+
+---
+
+## Phase 20 — Multi-Turn Topic Tracking ✅
+
+Topic stack across 5 turns so the bot can reference older topics when context follow-up is exhausted.
+
+### Modified files
+- `Knowledge/ContextTracker.cs` — added `TopicEntry` class, `TopicStack` (max 5), `PushTopic`, `GetRecentTopics`, `GetTopicBySubject`, updated `Clear()`
+- `Core/ContextKeys.cs` — added `TopicStackLength`, `LastTopicSubject`, `LastTopicObject`, `TopicReferenceCount`
+- `Knowledge/KnowledgeStore.cs` — added `GetFactCountAboutSubject(int userId, string subject)`
+- `Core/NounCategoriser.cs` — added `_categoryCache` dictionary to prevent duplicate NounCategory inserts within a session (fixes `UNIQUE constraint` errors when `CategoriseNoun` is called multiple times before `Save()`)
+- `Core/ChatSession.cs` — added `TopicStack` internal property; calls `_context.PushTopic(...)` after each SVO triple in `ProcessSentence`
+- `Responses/ResponseEngine.cs` — added `BuildTopicFollowUp()` method that scans topic stack for older topics after context follow-up exhaustion (followUpCount >= 3); wired into `GenerateResponse`
+- `Data/DbSeeder.cs` — 12 new bot responses across 4 categories: `topic_reference_old` (3), `topic_reference_fact` (3), `topic_transition` (2), `topic_followup_light` (3)
+- `tests/PokeChat.Tests/Helpers/TestDataHelper.cs` — 7 topic bot response entries
+- `tests/PokeChat.Tests/Knowledge/ContextTrackerTests.cs` — 7 new tests: `PushTopic_AddsToStack`, `PushTopic_EvictsOldest_WhenFull`, `PushTopic_IncrementsMentionCount_OnDuplicate`, `GetRecentTopics_ReturnsCorrectCount`, `GetTopicBySubject_ReturnsTopic`, `GetTopicBySubject_NoMatch_ReturnsNull`, `Clear_EmptiesTopicStack`
+- `tests/PokeChat.Tests/Core/ChatSessionTests.cs` — 4 new tests: `MultiTurnTopicFlow_PushesTopicAfterSvoExtraction`, `MultiTurnTopicFlow_MultipleTopics_AddedToStack`, `MultiTurnTopicFlow_DoesNotDuplicateTopic_OnSameInput`, `MultiTurnTopicFlow_TopicReference_ReturnsTopicResponse_WhenFollowUpExhausted`
+
+### Verify
+- `dotnet build && dotnet test` — 207/207 pass

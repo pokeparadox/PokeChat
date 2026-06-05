@@ -322,6 +322,9 @@ public class ChatSession : IDisposable
 
             _context.UpdateLastSubject(resolvedSubject);
             _context.UpdateLastObject(resolvedObject);
+
+            var topicCategory = _nounCategoriser.CategoriseNoun(resolvedObject);
+            _context.PushTopic(resolvedSubject, triple.Verb, resolvedObject, topicCategory, predicateType);
         }
 
         if (triples.Count > 0)
@@ -360,6 +363,8 @@ public class ChatSession : IDisposable
             _ => obj
         };
     }
+
+    internal IReadOnlyList<TopicEntry> TopicStack => _context.TopicStack;
 
     internal PredicateType ClassifyPredicate(string subject, string verb, string obj)
     {

@@ -186,6 +186,10 @@ public class ResponseEngine
 
                 return GetRandomResponse("context_followup", subject);
             }
+
+            var topicRef = BuildTopicFollowUp();
+            if (topicRef != null)
+                return topicRef;
         }
 
         var facts = userId.HasValue ? _knowledgeStore.GetFactsByUser(userId.Value) : new List<Fact>();
@@ -197,6 +201,32 @@ public class ResponseEngine
         }
 
         return GenerateProactiveQuestion(userId);
+    }
+
+    private string? BuildTopicFollowUp()
+    {
+        var topics = _context.GetRecentTopics(5);
+        if (topics.Count == 0) return null;
+
+        var lastSubject = _context.LastSubject;
+
+        var olderTopic = topics.FirstOrDefault(t =>
+            !string.IsNullOrEmpty(t.Subject) &&
+            (lastSubject == null ||
+             !string.Equals(t.Subject, lastSubject, StringComparison.OrdinalIgnoreCase)));
+
+        if (olderTopic == null) return null;
+
+        if (olderTopic.PredicateType is PredicateType.GeneralFact or PredicateType.PersonalAttribute or PredicateType.Belief)
+        {
+            var conjVerb = ConjugateVerb(olderTopic.Verb, olderTopic.Subject);
+            return GetRandomResponse("topic_reference_fact", olderTopic.Subject, conjVerb, olderTopic.Object);
+        }
+
+        if (olderTopic.PredicateType is PredicateType.Preference or PredicateType.Dislike or PredicateType.Possession)
+            return GetRandomResponse("topic_reference_old", olderTopic.Subject);
+
+        return GetRandomResponse("topic_reference_old", olderTopic.Subject);
     }
 
     private string GenerateProactiveQuestion(int? userId)

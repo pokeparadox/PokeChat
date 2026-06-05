@@ -758,6 +758,17 @@ public static class DbSeeder
             ("pattern_not_clear", "Could you rephrase that? I want to make sure I learn the right thing."),
             ("pattern_already_known", "I already know that one! But thanks for the reminder."),
             ("pattern_already_known", "I've already learned that response. Feel free to teach me something else!"),
+            ("topic_reference_old", "A few moments ago you mentioned {0}. What do you think about it now?"),
+            ("topic_reference_old", "Earlier you brought up {0}. Tell me more about that."),
+            ("topic_reference_old", "You mentioned {0} a little while ago. Anything new to share about it?"),
+            ("topic_reference_fact", "Earlier you told me {0} {1} {2}. Has anything changed?"),
+            ("topic_reference_fact", "I remember you said {0} {1} {2}. Is that still true?"),
+            ("topic_reference_fact", "You mentioned before that {0} {1} {2}. Do you still feel that way?"),
+            ("topic_transition", "So changing the subject from {0} — what's on your mind about {1}?"),
+            ("topic_transition", "Let's switch gears from {0}. Tell me about {1}."),
+            ("topic_followup_light", "You seemed interested in {0} earlier. Want to come back to that?"),
+            ("topic_followup_light", "We talked about {0} a bit ago. Shall we revisit that?"),
+            ("topic_followup_light", "I remember you were curious about {0}. Any more thoughts?"),
         };
 
         context.BotResponses.AddRange(responses.Select(r => new BotResponse

@@ -676,6 +676,11 @@ public class KnowledgeStore(PokeChatDbContext context)
         return string.Join(". ", numbered);
     }
 
+    public int GetFactCountAboutSubject(int userId, string subject)
+    {
+        return context.Facts.Count(f => f.UserId == userId && f.Subject == subject);
+    }
+
     public void LearnResponseRule(string pattern, string responseTemplate, string inputType, int? userId = null)
     {
         var existing = context.LearnedResponseRules.Local

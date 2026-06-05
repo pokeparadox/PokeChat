@@ -27,4 +27,8 @@ public static class ContextKeys
     public const string PendingCorrectionPattern = "pending_correction_pattern";
     public const string PendingCorrectionResponse = "pending_correction_response";
     public const string LastUserInput = "last_user_input";
+    public const string TopicStackLength = "topic_stack_length";
+    public const string LastTopicSubject = "last_topic_subject";
+    public const string LastTopicObject = "last_topic_object";
+    public const string TopicReferenceCount = "topic_reference_count";
 }

@@ -5,6 +5,7 @@ namespace PokeChat.Core;
 public class NounCategoriser : INounCategoriser
 {
     private readonly KnowledgeStore _knowledgeStore;
+    private readonly Dictionary<string, string> _categoryCache = new(StringComparer.OrdinalIgnoreCase);
 
     private static readonly HashSet<string> CommonNames = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -26,12 +27,18 @@ public class NounCategoriser : INounCategoriser
     {
         var lower = noun.ToLowerInvariant();
 
+        if (_categoryCache.TryGetValue(lower, out var cached))
+            return cached;
+
         var existing = _knowledgeStore.CategoriseNoun(lower);
         if (existing != null)
+        {
+            _categoryCache[lower] = existing;
             return existing;
+        }
 
         var category = InferCategory(lower);
-
+        _categoryCache[lower] = category;
         _knowledgeStore.AddNounCategory(lower, category);
 
         return category;

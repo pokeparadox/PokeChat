@@ -1,3 +1,4 @@
+using PokeChat.Core;
 using PokeChat.Knowledge;
 using Shouldly;
 
@@ -103,5 +104,92 @@ public class ContextTrackerTests
         var tracker = new ContextTracker();
         tracker.UpdateLastSubject("Alice");
         tracker.ResolvePronoun("they").ShouldBe("Alice");
+    }
+
+    [Fact]
+    public void PushTopic_AddsToStack()
+    {
+        var tracker = new ContextTracker();
+        tracker.PushTopic("Alice", "like", "pizza", "thing", PredicateType.Preference);
+        tracker.TopicStack.Count.ShouldBe(1);
+
+        var entry = tracker.TopicStack[0];
+        entry.Subject.ShouldBe("Alice");
+        entry.Verb.ShouldBe("like");
+        entry.Object.ShouldBe("pizza");
+        entry.Category.ShouldBe("thing");
+        entry.PredicateType.ShouldBe(PredicateType.Preference);
+        entry.TurnNumber.ShouldBe(1);
+        entry.MentionCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public void PushTopic_EvictsOldest_WhenFull()
+    {
+        var tracker = new ContextTracker();
+        for (var i = 1; i <= 5; i++)
+            tracker.PushTopic($"Subject{i}", "is", $"Object{i}", null, PredicateType.General);
+
+        tracker.TopicStack.Count.ShouldBe(5);
+
+        tracker.PushTopic("New", "is", "New", null, PredicateType.General);
+        tracker.TopicStack.Count.ShouldBe(5);
+        tracker.GetTopicBySubject("Subject1").ShouldBeNull();
+        tracker.GetTopicBySubject("New").ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void PushTopic_IncrementsMentionCount_OnDuplicate()
+    {
+        var tracker = new ContextTracker();
+        tracker.PushTopic("Alice", "like", "pizza", "thing", PredicateType.Preference);
+        tracker.PushTopic("Alice", "like", "pizza", "thing", PredicateType.Preference);
+
+        tracker.TopicStack.Count.ShouldBe(1);
+        tracker.TopicStack[0].MentionCount.ShouldBe(2);
+        tracker.TopicStack[0].TurnNumber.ShouldBe(2);
+    }
+
+    [Fact]
+    public void GetRecentTopics_ReturnsCorrectCount()
+    {
+        var tracker = new ContextTracker();
+        tracker.PushTopic("A", "is", "A", null, PredicateType.General);
+        tracker.PushTopic("B", "is", "B", null, PredicateType.General);
+        tracker.PushTopic("C", "is", "C", null, PredicateType.General);
+
+        var recent = tracker.GetRecentTopics(2);
+        recent.Count.ShouldBe(2);
+        recent[0].Subject.ShouldBe("C");
+        recent[1].Subject.ShouldBe("B");
+    }
+
+    [Fact]
+    public void GetTopicBySubject_ReturnsTopic()
+    {
+        var tracker = new ContextTracker();
+        tracker.PushTopic("Alice", "like", "pizza", "thing", PredicateType.Preference);
+
+        var topic = tracker.GetTopicBySubject("Alice");
+        topic.ShouldNotBeNull();
+        topic.Object.ShouldBe("pizza");
+    }
+
+    [Fact]
+    public void GetTopicBySubject_NoMatch_ReturnsNull()
+    {
+        var tracker = new ContextTracker();
+        tracker.PushTopic("Alice", "like", "pizza", "thing", PredicateType.Preference);
+
+        tracker.GetTopicBySubject("Bob").ShouldBeNull();
+    }
+
+    [Fact]
+    public void Clear_EmptiesTopicStack()
+    {
+        var tracker = new ContextTracker();
+        tracker.PushTopic("Alice", "like", "pizza", "thing", PredicateType.Preference);
+        tracker.Clear();
+        tracker.TopicStack.Count.ShouldBe(0);
     }
 }

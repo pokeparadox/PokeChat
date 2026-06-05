@@ -733,4 +733,73 @@ public class ChatSessionTests
             learnedRules[0].ResponseTemplate.ShouldBe("hi there");
         }
     }
+
+    [Fact]
+    public void MultiTurnTopicFlow_PushesTopicAfterSvoExtraction()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("I like pizza");
+
+            var topics = session.TopicStack;
+            topics.Count.ShouldBe(1);
+            topics[0].Subject.ShouldBe("Alice");
+            topics[0].Verb.ShouldBe("like");
+            topics[0].Object.ShouldBe("pizza");
+            topics[0].MentionCount.ShouldBe(1);
+        }
+    }
+
+    [Fact]
+    public void MultiTurnTopicFlow_MultipleTopics_AddedToStack()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("I like pizza");
+            session.ProcessInput("I hate broccoli");
+
+            var topics = session.TopicStack;
+            topics.Count.ShouldBe(2);
+            topics[0].Object.ShouldBe("pizza");
+            topics[1].Object.ShouldBe("broccoli");
+        }
+    }
+
+    [Fact]
+    public void MultiTurnTopicFlow_DoesNotDuplicateTopic_OnSameInput()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("I like pizza");
+            session.ProcessInput("I like pizza");
+
+            var topics = session.TopicStack;
+            topics.Count.ShouldBe(1);
+        }
+    }
+
+    [Fact]
+    public void MultiTurnTopicFlow_TopicReference_ReturnsTopicResponse_WhenFollowUpExhausted()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedEmotionKeywords(db.Context);
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("I like pizza");
+            session.ProcessInput("the sky is blue");
+            session.ProcessInput("yes");
+            session.ProcessInput("okay");
+            session.ProcessInput("hmm");
+
+            var response = session.ProcessInput("tell me something");
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
 }
