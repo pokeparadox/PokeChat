@@ -9,7 +9,8 @@ public class SpellCheckerTests
     {
         var dict = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "hello", "world", "the", "cat", "dog", "run", "running"
+            "hello", "world", "the", "cat", "dog", "run", "running",
+            "that", "do", "have", "will", "are", "i", "they"
         };
         var misspellings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -119,7 +120,59 @@ public class SpellCheckerTests
     public void IsPluralOfKnownWord_ReturnsFalse()
     {
         var checker = CreateChecker();
-        checker.IsPluralOfKnownWord("hello").ShouldBeFalse();
         checker.IsPluralOfKnownWord("flurglebargs").ShouldBeFalse();
     }
+
+    [Fact]
+    public void IsPluralOfKnownWord_ReturnsTrueForKnownPlural()
+    {
+        var checker = CreateChecker();
+        checker.IsPluralOfKnownWord("cats").ShouldBeTrue();
+        checker.IsPluralOfKnownWord("dogs").ShouldBeTrue();
+    }
+
+    [Fact]
+    public void IsContractionOfKnownWord_ApostropheS_ReturnsTrue()
+    {
+        var checker = CreateChecker();
+        checker.IsContractionOfKnownWord("that's").ShouldBeTrue();
+    }
+
+    [Fact]
+    public void IsContractionOfKnownWord_UnknownRoot_ReturnsFalse()
+    {
+        var checker = CreateChecker();
+        checker.IsContractionOfKnownWord("flerg's").ShouldBeFalse();
+    }
+
+    [Fact]
+    public void IsContractionOfKnownWord_NoApostrophe_ReturnsFalse()
+    {
+        var checker = CreateChecker();
+        checker.IsContractionOfKnownWord("hello").ShouldBeFalse();
+    }
+
+    [Fact]
+    public void IsContractionOfKnownWord_NtContraction_ReturnsTrue()
+    {
+        var checker = CreateChecker();
+        checker.IsContractionOfKnownWord("don't").ShouldBeTrue();
+    }
+
+    [Fact]
+    public void GetUnknownWords_SkipsContractionOfKnownWord()
+    {
+        var checker = CreateChecker();
+        var result = checker.GetUnknownWords(["hello", "that's", "world"]);
+        result.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void GetUnknownWords_FlagsContractionOfUnknownWord()
+    {
+        var checker = CreateChecker();
+        var result = checker.GetUnknownWords(["hello", "flerg's", "world"]);
+        result.ShouldBe(["flerg's"]);
+    }
 }
+

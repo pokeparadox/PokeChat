@@ -25,6 +25,65 @@ public class SpellChecker
         return Pluraliser.GetCandidates(token).Any(c => _dictionary.Contains(c));
     }
 
+    public bool IsContractionOfKnownWord(string token)
+    {
+        if (!token.Contains('\''))
+            return false;
+
+        ReadOnlySpan<char> span = token.AsSpan();
+
+        if (span.EndsWith("'s") && span.Length > 2)
+        {
+            var root = span[..^2];
+            if (_dictionary.Contains(new string(root)))
+                return true;
+        }
+
+        if (span.EndsWith("n't") && span.Length > 3)
+        {
+            var root = span[..^3];
+            if (_dictionary.Contains(new string(root)))
+                return true;
+        }
+
+        if (span.EndsWith("'ll") && span.Length > 3)
+        {
+            var root = span[..^3];
+            if (_dictionary.Contains(new string(root)))
+                return true;
+        }
+
+        if (span.EndsWith("'ve") && span.Length > 3)
+        {
+            var root = span[..^3];
+            if (_dictionary.Contains(new string(root)))
+                return true;
+        }
+
+        if (span.EndsWith("'re") && span.Length > 3)
+        {
+            var root = span[..^3];
+            if (_dictionary.Contains(new string(root)))
+                return true;
+        }
+
+        if (span.EndsWith("'m") && span.Length > 2)
+        {
+            var root = span[..^2];
+            if (_dictionary.Contains(new string(root)))
+                return true;
+        }
+
+        if (span.EndsWith("'d") && span.Length > 2)
+        {
+            var root = span[..^2];
+            if (_dictionary.Contains(new string(root)))
+                return true;
+        }
+
+        return false;
+    }
+
     public void AddToDictionary(string word)
     {
         _dictionary.Add(word.ToLowerInvariant());
@@ -73,6 +132,9 @@ public class SpellChecker
             if (!_dictionary.Contains(token))
             {
                 if (IsPluralOfKnownWord(token))
+                    continue;
+
+                if (IsContractionOfKnownWord(token))
                     continue;
 
                 unknown.Add(token);

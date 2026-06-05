@@ -33,6 +33,9 @@ public class ChatSession : IDisposable
         { "yes", "yep", "yeah", "yup", "sure", "correct", "right",
           "that's right", "that is right", "yes please", "ok", "okay" };
 
+    private static readonly HashSet<string> FunctionWords = new(StringComparer.OrdinalIgnoreCase)
+        { "not", "never", "no" };
+
     private static readonly string[] ResetTriggers =
     {
         "start fresh",
@@ -272,6 +275,13 @@ public class ChatSession : IDisposable
             if (timeContext != null)
                 _context.SetContext(ContextKeys.CurrentTimeContext, timeContext);
 
+            if (predicateType == PredicateType.General)
+            {
+                var resolvedObjWords = resolvedObject.Split(' ');
+                if (resolvedObjWords.Length == 1 && FunctionWords.Contains(resolvedObjWords[0]))
+                    continue;
+            }
+
             var fact = new Fact
             {
                 UserId = _currentUserId,
@@ -413,11 +423,6 @@ public class ChatSession : IDisposable
 
         if (!string.IsNullOrEmpty(pendingSuggestion))
         {
-            if (lower.StartsWith("yes") ||
-                lower.StartsWith("yeah") ||
-                lower.StartsWith("yep") ||
-                lower.StartsWith("yup"))
-
             if (Affirmations.Contains(lower))
             {
                 _knowledgeStore.AddMisspelling(pendingWord, pendingSuggestion);
@@ -426,6 +431,8 @@ public class ChatSession : IDisposable
             }
         }
 
+        _context.UpdateLastSubject(_currentUserName);
+        _context.UpdateLastObject(pendingWord);
         _knowledgeStore.AddLearnedWord(pendingWord);
         _spellChecker.AddToDictionary(pendingWord);
         return string.IsNullOrEmpty(pendingSuggestion)

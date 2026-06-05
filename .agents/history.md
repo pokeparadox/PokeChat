@@ -766,3 +766,42 @@ Topic stack across 5 turns so the bot can reference older topics when context fo
 
 ### Verify
 - `dotnet build && dotnet test` — 207/207 pass
+
+---
+
+## Fix: Broken Conversation Flow (Post-Phase 20) ✅
+
+Three-turn breakdown where clarification, question, and multi-verb sentences produce garbled context follow-ups.
+
+### Changes
+- **Remove dead empty `if` block** in `ChatSession.HandleClarification` (`ChatSession.cs:416-419`) — no-op code that did nothing
+- **Set context after clarification** — `_context.UpdateLastSubject(_currentUserName)` + `_context.UpdateLastObject(pendingWord)` in `HandleClarification` so learned word becomes active topic
+- **Filter garbage SVO triples** — `FunctionWords` HashSet (`"not"`, `"never"`, `"no"`) skips triples where `predicateType == PredicateType.General` and `resolvedObject` is a single function word. Prevents "(you, do, not)" from becoming last context, replacing "What else can you share about you and not?" with sensible follow-ups
+
+### Files modified
+- `Core/ChatSession.cs` — 3 changes (dead if removal, context after clarification, FunctionWords filter)
+
+### Verify
+- `dotnet build && dotnet test` — 207/207 pass
+
+---
+
+## Fix: Missing Contractions (Post-Phase 20) ✅
+
+`"that's"` was not in the contractions table (45 seed entries covered pronoun+is but not demonstrative/WH-word+is). This caused `"That's nice!"` to tokenise to `["that's", "nice", "!"]` with `PosTag.Unknown`, which triggered the unknown-word handler before any SVO extraction could run.
+
+### Changes
+- **`NLP/SpellChecker.cs`** — Added `IsContractionOfKnownWord()`: dynamically detects unknown words matching contraction patterns (`'s`, `n't`, `'ll`, `'ve`, `'re`, `'m`, `'d`) where the root is a known dictionary word. Wired into `GetUnknownWords` so `"that's"`, `"who's"` etc. are never flagged as unknown. Works for all databases, existing and new, without requiring reseeding.
+- **`Data/DbSeeder.cs`** — Added 9 missing `'s` contractions: `that's`, `there's`, `here's`, `what's`, `who's`, `where's`, `why's`, `how's`, `when's` (all → `"is"`). Total: 45→54.
+- **`tests/PokeChat.Tests/Helpers/TestDataHelper.cs`** — Same 9 contractions added to test seed data.
+- **`tests/PokeChat.Tests/NLP/SpellCheckerTests.cs`** — 7 new tests for `IsContractionOfKnownWord` + `GetUnknownWords` integration. Also fixed pre-existing broken test `IsPluralOfKnownWord_ReturnsFalse` (asserted `"cats"` was not a known plural, but `"cat"` is in the dictionary).
+
+### Files modified
+- `NLP/SpellChecker.cs`
+- `Data/DbSeeder.cs`
+- `tests/PokeChat.Tests/Helpers/TestDataHelper.cs`
+- `tests/PokeChat.Tests/NLP/SpellCheckerTests.cs`
+- `AGENTS.md` (contraction count 44→54, new Known Fixes entry)
+
+### Verify
+- `dotnet build && dotnet test` — 214/214 pass
