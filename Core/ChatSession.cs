@@ -140,12 +140,21 @@ public class ChatSession : IDisposable
 
     public void Start()
     {
-        Console.WriteLine($"Welcome to {_botName}!");
-        Console.WriteLine("A chat bot that learns from you!");
-        Console.WriteLine("Type 'quit' or 'exit' to leave.");
+        var welcome = $"Welcome to {_botName}!";
+        var subtitle = "A chat bot that learns from you!";
+        var exitHint = "Type 'quit' or 'exit' to leave.";
+        Console.WriteLine(welcome);
+        Console.WriteLine(subtitle);
+        Console.WriteLine(exitHint);
         Console.WriteLine();
 
-        Console.WriteLine(GreetingPool.GetRandomGreeting(_knowledgeStore, _botName));
+        _sessionLogger?.LogSystem(welcome);
+        _sessionLogger?.LogSystem(subtitle);
+        _sessionLogger?.LogSystem(exitHint);
+
+        var greeting = GreetingPool.GetRandomGreeting(_knowledgeStore, _botName);
+        Console.WriteLine(greeting);
+        _sessionLogger?.LogSystem(greeting);
 
         while (true)
         {
@@ -162,8 +171,13 @@ public class ChatSession : IDisposable
                 _knowledgeStore.Save();
                 var sessionSummary = GenerateSessionEndSummary();
                 if (!string.IsNullOrEmpty(sessionSummary))
+                {
                     Console.WriteLine($"{_botName}: {sessionSummary}");
-                Console.WriteLine($"{_botName}: Goodbye! It was great chatting with you.");
+                    _sessionLogger?.LogSystem(sessionSummary);
+                }
+                var goodbye = $"Goodbye! It was great chatting with you.";
+                Console.WriteLine($"{_botName}: {goodbye}");
+                _sessionLogger?.LogSystem(goodbye);
                 break;
             }
 

@@ -60,6 +60,7 @@ nunit-*.xml
 /bin
 /obj
 pokechat.db
+logs/
 
 # MemPalace per-project files (issue #185)
 mempalace.yaml

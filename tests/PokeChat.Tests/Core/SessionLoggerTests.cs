@@ -14,12 +14,16 @@ public class SessionLoggerTests : IDisposable
         Directory.CreateDirectory(_tempDir);
     }
 
+    private static SessionLogConfig Config(string mode = "basic", int maxFiles = 10) =>
+        new() { Mode = mode, MaxLogFiles = maxFiles, Directory = "logs" };
+
     [Fact]
     public void SessionLogger_CreatesLogFile()
     {
-        using var logger = new SessionLogger(_sessionId, verbose: false, maxLogs: 10, logDirOverride: _tempDir);
+        using var logger = new SessionLogger(_sessionId, Config(), _tempDir);
         logger.LogTurn("hello", "Hi there!");
 
+        logger.LogPath.ShouldNotBeNull();
         File.Exists(logger.LogPath).ShouldBeTrue();
         var content = File.ReadAllText(logger.LogPath);
         content.ShouldContain("# Chat Session Log");
@@ -29,10 +33,10 @@ public class SessionLoggerTests : IDisposable
     [Fact]
     public void SessionLogger_WritesUserAndBotContent()
     {
-        using var logger = new SessionLogger(_sessionId, verbose: false, maxLogs: 10, logDirOverride: _tempDir);
+        using var logger = new SessionLogger(_sessionId, Config(), _tempDir);
         logger.LogTurn("hello", "Hi there!");
 
-        var content = File.ReadAllText(logger.LogPath);
+        var content = File.ReadAllText(logger.LogPath!);
         content.ShouldContain("### User");
         content.ShouldContain("hello");
         content.ShouldContain("### Bot");
@@ -42,12 +46,12 @@ public class SessionLoggerTests : IDisposable
     [Fact]
     public void SessionLogger_WritesMultipleTurns()
     {
-        using var logger = new SessionLogger(_sessionId, verbose: false, maxLogs: 10, logDirOverride: _tempDir);
+        using var logger = new SessionLogger(_sessionId, Config(), _tempDir);
         logger.LogTurn("hello", "Hi!");
         logger.LogTurn("my name is Alice", "Nice to meet you, Alice!");
         logger.LogTurn("I like pizza", "You like pizza!");
 
-        var content = File.ReadAllText(logger.LogPath);
+        var content = File.ReadAllText(logger.LogPath!);
         content.ShouldContain("## Turn 1");
         content.ShouldContain("## Turn 2");
         content.ShouldContain("## Turn 3");
@@ -59,7 +63,7 @@ public class SessionLoggerTests : IDisposable
     [Fact]
     public void SessionLogger_VerboseMode_IncludesContextData()
     {
-        using var logger = new SessionLogger(_sessionId, verbose: true, maxLogs: 10, logDirOverride: _tempDir);
+        using var logger = new SessionLogger(_sessionId, Config("verbose"), _tempDir);
         var context = new Dictionary<string, string>
         {
             ["sentiment"] = "positive",
@@ -69,7 +73,7 @@ public class SessionLoggerTests : IDisposable
         };
         logger.LogTurn("I'm happy!", "That's great!", context);
 
-        var content = File.ReadAllText(logger.LogPath);
+        var content = File.ReadAllText(logger.LogPath!);
         content.ShouldContain("### Context");
         content.ShouldContain("sentiment: positive");
         content.ShouldContain("intensity: 3");
@@ -80,14 +84,14 @@ public class SessionLoggerTests : IDisposable
     [Fact]
     public void SessionLogger_BasicMode_OmitsContextData()
     {
-        using var logger = new SessionLogger(_sessionId, verbose: false, maxLogs: 10, logDirOverride: _tempDir);
+        using var logger = new SessionLogger(_sessionId, Config("basic"), _tempDir);
         var context = new Dictionary<string, string>
         {
             ["sentiment"] = "positive"
         };
         logger.LogTurn("I'm happy!", "That's great!", context);
 
-        var content = File.ReadAllText(logger.LogPath);
+        var content = File.ReadAllText(logger.LogPath!);
         content.ShouldNotContain("### Context");
         content.ShouldNotContain("sentiment: positive");
     }
@@ -99,7 +103,7 @@ public class SessionLoggerTests : IDisposable
         var oldFilePath = Path.Combine(_tempDir, $"session_{oldId}_20260101_000000.log");
         File.WriteAllText(oldFilePath, "old log");
 
-        using var logger = new SessionLogger(_sessionId, verbose: false, maxLogs: 1, logDirOverride: _tempDir);
+        using var logger = new SessionLogger(_sessionId, Config("basic", maxFiles: 1), _tempDir);
         logger.LogTurn("hello", "Hi!");
 
         File.Exists(oldFilePath).ShouldBeFalse();
@@ -112,36 +116,70 @@ public class SessionLoggerTests : IDisposable
         var oldFilePath = Path.Combine(_tempDir, $"session_{oldId}_20260101_000000.log");
         File.WriteAllText(oldFilePath, "old log");
 
-        using var logger = new SessionLogger(_sessionId, verbose: false, maxLogs: 2, logDirOverride: _tempDir);
+        using var logger = new SessionLogger(_sessionId, Config("basic", maxFiles: 2), _tempDir);
         logger.LogTurn("hello", "Hi!");
 
         File.Exists(oldFilePath).ShouldBeTrue();
     }
 
     [Fact]
-    public void SessionLogger_VerboseProperty_ReflectsConstructorParam()
+    public void SessionLogger_VerboseProperty_ReflectsConfig()
     {
-        using var verboseLogger = new SessionLogger(_sessionId, verbose: true, maxLogs: 10, logDirOverride: _tempDir);
+        using var verboseLogger = new SessionLogger(_sessionId, Config("verbose"), _tempDir);
         verboseLogger.Verbose.ShouldBeTrue();
 
-        using var basicLogger = new SessionLogger(_sessionId, verbose: false, maxLogs: 10, logDirOverride: _tempDir);
+        using var basicLogger = new SessionLogger(_sessionId, Config("basic"), _tempDir);
         basicLogger.Verbose.ShouldBeFalse();
     }
 
     [Fact]
-    public void SessionLogger_LogPath_IsInExpectedDirectory()
+    public void SessionLogger_Disabled_DoesNotCreateFile()
     {
-        using var logger = new SessionLogger(_sessionId, verbose: false, maxLogs: 10, logDirOverride: _tempDir);
-        logger.LogPath.ShouldStartWith(_tempDir);
-        logger.LogPath.ShouldEndWith(".log");
-        logger.LogPath.ShouldContain(_sessionId);
+        var config = new SessionLogConfig { Mode = "basic", MaxLogFiles = 10, Enabled = false };
+        using var logger = new SessionLogger(_sessionId, config, _tempDir);
+        logger.LogTurn("hello", "Hi!");
+
+        logger.LogPath.ShouldBeNull();
+        logger.Enabled.ShouldBeFalse();
+        Directory.GetFiles(_tempDir, "session_*.log").ShouldBeEmpty();
     }
 
     [Fact]
-    public void SessionLogger_LogDirectory_MatchesOverride()
+    public void SessionLogger_LogSystem_WritesSystemEntry()
     {
-        using var logger = new SessionLogger(_sessionId, verbose: false, maxLogs: 10, logDirOverride: _tempDir);
-        logger.LogDirectory.ShouldBe(_tempDir);
+        using var logger = new SessionLogger(_sessionId, Config(), _tempDir);
+        logger.LogSystem("Welcome to PokeChat!");
+
+        var content = File.ReadAllText(logger.LogPath!);
+        content.ShouldContain("## System");
+        content.ShouldContain("Welcome to PokeChat!");
+    }
+
+    [Fact]
+    public void SessionLogger_LogSystem_InterleavesWithTurns()
+    {
+        using var logger = new SessionLogger(_sessionId, Config(), _tempDir);
+        logger.LogSystem("Welcome!");
+        logger.LogTurn("hello", "Hi!");
+        logger.LogSystem("Goodbye!");
+
+        var content = File.ReadAllText(logger.LogPath!);
+        content.ShouldContain("## System");
+        content.ShouldContain("Welcome!");
+        content.ShouldContain("## Turn 1");
+        content.ShouldContain("hello");
+        content.ShouldContain("## System");
+        content.ShouldContain("Goodbye!");
+    }
+
+    [Fact]
+    public void SessionLogger_Dispose_WritesSessionEnded()
+    {
+        var logger = new SessionLogger(_sessionId, Config(), _tempDir);
+        logger.Dispose();
+
+        var content = File.ReadAllText(logger.LogPath!);
+        content.ShouldContain("## Session Ended");
     }
 
     public void Dispose()
