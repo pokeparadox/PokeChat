@@ -30,6 +30,8 @@ public class ChatSession : IDisposable
     private Dictionary<string, List<string>>? _cachedBotResponses;
     private static readonly string[] AlternativeNames = { "Zara", "Nova", "Echo", "Pixel", "Azure", "Kai", "Rex" };
 
+    private readonly SessionLogger? _sessionLogger;
+
     private static readonly Regex InsultPattern = new(
         @"^(you(?:'re| are) (?:a|an) \w+|shut\s+up|shut\s+it)",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
@@ -65,6 +67,7 @@ public class ChatSession : IDisposable
     {
         _dbContext = new PokeChatDbContext();
         new DatabaseInitializer(_dbContext).Initialize();
+        _sessionLogger = new SessionLogger(_sessionId);
 
         _knowledgeStore = new KnowledgeStore(_dbContext);
         _context = new ContextTracker();
@@ -110,9 +113,11 @@ public class ChatSession : IDisposable
         HashSet<string> greetingWords,
         string botName = "PokeChat",
         List<string>? renamePatterns = null,
-        string sessionId = "")
+        string sessionId = "",
+        SessionLogger? sessionLogger = null)
     {
         _dbContext = dbContext;
+        _sessionLogger = sessionLogger;
         _knowledgeStore = knowledgeStore;
         _responseEngine = responseEngine;
         _spellChecker = spellChecker;
@@ -253,6 +258,12 @@ public class ChatSession : IDisposable
         if (prevCategory != null)
         {
             _knowledgeStore.UpdateResponseEffectiveness(prevCategory, hadTriples);
+        }
+
+        if (_sessionLogger != null)
+        {
+            var contextData = _sessionLogger.Verbose ? BuildLogContext() : null;
+            _sessionLogger.LogTurn(input, response, contextData);
         }
 
         return response;
@@ -1185,8 +1196,27 @@ public class ChatSession : IDisposable
         return $"Before you go — today we talked about {summary}. See you next time!";
     }
 
+    private Dictionary<string, string> BuildLogContext()
+    {
+        var ctx = new Dictionary<string, string>
+        {
+            ["sentiment"] = _context.GetContext(ContextKeys.CurrentSentiment) ?? "neutral",
+            ["intensity"] = _context.GetContext(ContextKeys.LastSentimentIntensity) ?? "0",
+            ["response_category"] = _context.GetContext(ContextKeys.CurrentResponseCategory) ?? "unknown",
+            ["last_rule_id"] = _context.GetContext(ContextKeys.LastRuleId) ?? "none",
+            ["last_rule_is_learned"] = _context.GetContext(ContextKeys.LastRuleIsLearned) ?? "false",
+            ["unknown_words"] = _context.GetContext(ContextKeys.UnknownWords) ?? "none",
+            ["context_follow_up_count"] = _context.GetContext(ContextKeys.ContextFollowUpCount) ?? "0",
+            ["last_subject"] = _context.LastSubject ?? "none",
+            ["last_object"] = _context.LastObject ?? "none",
+        };
+
+        return ctx;
+    }
+
     public void Dispose()
     {
+        _sessionLogger?.Dispose();
         _dbContext.Dispose();
     }
 }

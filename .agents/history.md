@@ -1142,3 +1142,47 @@ When the user teaches the bot a new word via clarification, the bot follows up w
 
 ### Verify
 - `dotnet build && dotnet test` — 241/241 pass
+
+---
+
+## Phase 26 — Chat Session Logging ✅
+
+Per-session log files for debugging abnormal responses. Logs each turn's user input, bot response, and verbose context data to `logs/session_{sessionId}_{timestamp}.log`.
+
+### Files changed
+- `Core/SessionLogger.cs` — new: logging class with basic/verbose modes, log rotation (configurable via `POKECHAT_VERBOSE_LOG` and `POKECHAT_LOG_RETENTION` env vars, default 50 logs kept)
+- `Core/ChatSession.cs` — added `_sessionLogger` field (nullable, null for tests), instantiated in public constructor, `LogTurn` called after each `GenerateResponse` in `ProcessInput`, `BuildLogContext()` method for verbose context data, `_sessionLogger.Dispose()` in `Dispose()`
+
+### Log format
+```
+# Chat Session Log
+- Session ID: {guid}
+- Started: {ISO 8601}
+- Mode: Basic | Verbose
+---
+## Turn {N}
+- Timestamp: {ISO 8601}
+- Session: {guid}
+### User
+{input}
+### Bot
+{response}
+### Context          (verbose only)
+- sentiment: positive
+- response_category: rule_match
+- last_rule_id: 42
+...
+---
+```
+
+### New Tests (10 total, 251/251 pass)
+- `SessionLogger_CreatesLogFile` — file exists with header
+- `SessionLogger_WritesUserAndBotContent` — content includes user/bot sections
+- `SessionLogger_WritesMultipleTurns` — sequential turn numbering
+- `SessionLogger_VerboseMode_IncludesContextData` — context dict rendered
+- `SessionLogger_BasicMode_OmitsContextData` — no context section in basic mode
+- `SessionLogger_LogRotation_RemovesOldest` — exceeds maxLogs deletes oldest
+- `SessionLogger_LogRotation_KeepsNewestWithinLimit` — within maxLogs keeps all
+- `SessionLogger_VerboseProperty_ReflectsConstructorParam` — Verbose property matches constructor arg
+- `SessionLogger_LogPath_IsInExpectedDirectory` — path format verified
+- `SessionLogger_LogDirectory_MatchesOverride` — matches provided temp dir
