@@ -146,10 +146,10 @@ public class SpellChecker
 
     public bool HasSuggestions(string word)
     {
-        return SuggestCorrections(word, 2).Count > 0;
+        return SuggestCorrections(word, 1).Count > 0;
     }
 
-    public List<string> SuggestCorrections(string word, int maxDistance = 2)
+    public List<string> SuggestCorrections(string word, int maxDistance = 1)
     {
         var suggestions = new List<(string Word, int Distance)>();
 

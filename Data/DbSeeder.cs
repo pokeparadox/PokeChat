@@ -142,7 +142,25 @@ public static class DbSeeder
             {
                 "Let me check my memories from that time...",
                 "I'll look through what I remember from that period."
-            })
+            }),
+            (@"^(who are you|what are you|what is this|who is this)$", "Question", new[]
+            {
+                "I'm a chat bot that learns from our conversations! You can call me {BOTNAME}.",
+                "I'm {BOTNAME}, your personal chat companion. I learn more every time we talk!",
+                "I'm {BOTNAME}! I'm here to chat and learn from you."
+            }),
+            (@"(do you have|can you feel|are you.*sentient|can you think|are you.*alive)", "Question", new[]
+            {
+                "I don't have feelings like humans do, but I try to understand yours!",
+                "I'm a machine learning from our conversations. I don't feel emotions, but I can learn about yours!",
+                "Not in the way you do, but I'm always learning to understand you better!"
+            }),
+            (@"what do you know about (me|us)", "Question", new[]
+            {
+                "I remember things we've talked about! You've told me quite a bit.",
+                "Let me think about what I've learned from our conversations...",
+                "I've picked up a few things about you from our chats!"
+            }),
         };
 
         foreach (var (pattern, inputType, responses) in rules)
@@ -363,7 +381,7 @@ public static class DbSeeder
     {
         if (context.BotRenamePatterns.Any()) return;
 
-        var patterns = new[] { "can i call you", "i'll call you", "i will call you", "your name is" };
+        var patterns = new[] { "can i call you", "i'll call you", "i will call you", "your name is", "call you", "rename you", "rename yourself", "change your name", "i want to call you" };
 
         context.BotRenamePatterns.AddRange(patterns.Select(p => new BotRenamePattern
         {
@@ -491,6 +509,7 @@ public static class DbSeeder
         var contractions = new (string Contraction, string Expansion)[]
         {
             ("i'm", "i am"),
+            ("im", "i am"),
             ("you're", "you are"),
             ("he's", "he is"),
             ("she's", "she is"),
@@ -544,6 +563,18 @@ public static class DbSeeder
             ("gonna", "going to"),
             ("wanna", "want to"),
             ("gotta", "got to"),
+            ("dont", "do not"),
+            ("cant", "cannot"),
+            ("wont", "will not"),
+            ("didnt", "did not"),
+            ("couldnt", "could not"),
+            ("wouldnt", "would not"),
+            ("shouldnt", "should not"),
+            ("theyll", "they will"),
+            ("ive", "i have"),
+            ("youve", "you have"),
+            ("youre", "you are"),
+            ("theyre", "they are"),
         };
 
         context.Contractions.AddRange(contractions.Select(c => new ContractionEntity
@@ -622,15 +653,15 @@ public static class DbSeeder
 
         var templates = new[]
         {
-            "Once upon a time, a {adj} {noun} lived in a {place}. Every day it would {verb} through the {place}, until one day it met a {adj} {noun} and everything changed.",
-            "In a {place} far away, {user} found a {adj} {noun}. It could {verb} and {verb}! Together, they set off to find the legendary {noun} of {place}.",
-            "A long time ago, {character} was a {adj} {noun} who dreamed of {verb}ing. Everyone said it was impossible, but {character} didn't listen. And that's how the greatest adventure began.",
-            "Deep in the heart of {place}, there lived a {adj} {noun} named {character}. It spent its days {verb}ing and dreaming of {noun_plural}.",
-            "Have you heard the tale of the {adj} {noun}? It could {verb} faster than any {noun} in {place}. But what it really wanted was a {noun} of its own.",
-            "In {place}, there was a {adj} {noun} that only appeared at night. {character} was the only one brave enough to {verb} it and discover its secret.",
-            "The bravest {noun} in all of {place} was a {adj} {character}. With {a_noun} in hand, {character} set out to {verb} the legendary {noun} of the ancients.",
+            "Once upon a time, {a_adj} {noun} lived in a {place}. Every day it would {verb} through the {place}, until one day it met {a_adj} {noun} and everything changed.",
+            "In a {place} far away, {user} found {a_adj} {noun}. It could {verb} and {verb}! Together, they set off to find the legendary {noun} of {place}.",
+            "A long time ago, {character} was {a_adj} {noun} who dreamed of {verb}ing. Everyone said it was impossible, but {character} didn't listen. And that's how the greatest adventure began.",
+            "Deep in the heart of {place}, there lived {a_adj} {noun} named {character}. It spent its days {verb}ing and dreaming of {noun_plural}.",
+            "Have you heard the tale of the {adj} {noun}? It could {verb} faster than any {noun} in {place}. But what it really wanted was {a_noun} of its own.",
+            "In {place}, there was {a_adj} {noun} that only appeared at night. {character} was the only one brave enough to {verb} it and discover its secret.",
+            "The bravest {noun} in all of {place} was {a_adj} {character}. With {a_noun} in hand, {character} set out to {verb} the legendary {noun} of the ancients.",
             "{user} loved {noun_plural}. So when a mysterious {adj} {character} offered {user} {a_noun}, of course {user} accepted! What happened next surprised everyone.",
-            "In a hidden corner of {place}, {a_noun} held the power to grant wishes. But only a {adj} {character} could {verb} it. Would anyone succeed?",
+            "In a hidden corner of {place}, {a_noun} held the power to grant wishes. But only {a_adj} {character} could {verb} it. Would anyone succeed?",
             "Once, {user} met {a_noun} who loved {noun_plural} more than anything. Every day they would {verb} together, exploring every {place} they could find.",
         };
 
@@ -668,8 +699,8 @@ public static class DbSeeder
             ("context_followup_self", "Tell me about yourself, {0}."),
             ("context_followup_self", "What else can you tell me about yourself?"),
             ("context_followup_self", "Tell me more about yourself."),
-            ("context_followup_with_object_self", "Tell me more about your {1}."),
-            ("context_followup_with_object_self", "What else can you tell me about your {1}?"),
+            ("context_followup_with_object_self", "Tell me more about {1}."),
+            ("context_followup_with_object_self", "What else can you tell me about {1}?"),
             ("random_fact_followup", "You told me {0} {1} {2}. Tell me more!"),
             ("random_fact_followup", "I remember you said something about {0}. What else?"),
             ("random_fact_followup", "You mentioned {0} {1} {2}. Anything new about that?"),
@@ -846,6 +877,10 @@ public static class DbSeeder
             ("story_time", "Would you like to hear a story?"),
             ("story_time", "I could tell you a story if you're interested!"),
             ("story_time", "Do you want to hear a tale?"),
+            ("direct_insult", "That's not very nice. Let's keep things friendly."),
+            ("direct_insult", "I'm here to chat, not to fight. Let's talk about something else."),
+            ("direct_insult", "Let's keep our conversation respectful, please."),
+            ("direct_insult", "That's a bit harsh. What's really on your mind?"),
         };
 
         context.BotResponses.AddRange(responses.Select(r => new BotResponse

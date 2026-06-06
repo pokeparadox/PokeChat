@@ -19,10 +19,19 @@ public class ResponseEngine
     private readonly StoryGenerator _storyGenerator;
     private readonly Dictionary<string, List<string>> _botResponses;
     private string _currentUserName = string.Empty;
+    private string _botName = "PokeChat";
+
+    private static readonly HashSet<string> ObjectPronouns = new(StringComparer.OrdinalIgnoreCase)
+        { "you", "me", "him", "her", "them", "it", "us", "this", "that" };
 
     public void SetCurrentUserName(string name)
     {
         _currentUserName = name;
+    }
+
+    public void SetBotName(string name)
+    {
+        _botName = name;
     }
 
     public ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker context, SpellChecker spellChecker, IPosTagger posTagger, ITokeniser tokeniser, ISvoExtractor svoExtractor, IMathEngine? mathEngine = null, StoryGenerator? storyGenerator = null)
@@ -38,12 +47,18 @@ public class ResponseEngine
         _botResponses = knowledgeStore.GetBotResponses();
     }
 
+    private static readonly HashSet<string> ModalVerbs = new(StringComparer.OrdinalIgnoreCase)
+        { "can", "could", "will", "would", "shall", "should", "may", "might", "must" };
+
     public static string ConjugateVerb(string verb, string subject)
     {
         var lowerVerb = verb.ToLowerInvariant();
         var lowerSubject = subject.ToLowerInvariant();
 
         if (lowerSubject is "i" or "you" or "we" or "they")
+            return verb;
+
+        if (ModalVerbs.Contains(lowerVerb))
             return verb;
 
         if (lowerVerb is "is" or "am" or "are") return "is";
@@ -176,7 +191,8 @@ public class ResponseEngine
             _context.SetContext(ContextKeys.CurrentResponseCategory, "rule_match");
             _context.SetContext(ContextKeys.LastRuleId, rule.RuleId.ToString());
             _context.SetContext(ContextKeys.LastRuleIsLearned, rule.IsLearned ? "true" : "false");
-            return rule.Responses[Random.Shared.Next(rule.Responses.Count)];
+            var response = rule.Responses[Random.Shared.Next(rule.Responses.Count)];
+            return response.Replace("{BOTNAME}", _botName);
         }
 
         var tokens = _tokeniser.Tokenise(input);
@@ -208,7 +224,7 @@ public class ResponseEngine
                 var isSelf = !string.IsNullOrEmpty(_currentUserName) &&
                     string.Equals(subject, _currentUserName, StringComparison.OrdinalIgnoreCase);
 
-                if (!string.IsNullOrEmpty(_context.LastObject))
+                if (!string.IsNullOrEmpty(_context.LastObject) && !ObjectPronouns.Contains(_context.LastObject))
                 {
                     var obj = _context.LastObject;
                     if (isSelf)
@@ -236,9 +252,17 @@ public class ResponseEngine
                 return GetRandomResponse("context_followup", subject);
             }
 
-            var topicRef = BuildTopicFollowUp();
-            if (topicRef != null)
-                return topicRef;
+            var topicRefCountRaw = _context.GetContext(ContextKeys.TopicReferenceCount);
+            int.TryParse(topicRefCountRaw, out var topicRefCount);
+            topicRefCount++;
+            _context.SetContext(ContextKeys.TopicReferenceCount, topicRefCount.ToString());
+
+            if (topicRefCount < 3)
+            {
+                var topicRef = BuildTopicFollowUp();
+                if (topicRef != null)
+                    return topicRef;
+            }
         }
 
         var facts = userId.HasValue ? _knowledgeStore.GetFactsByUser(userId.Value) : new List<Fact>();

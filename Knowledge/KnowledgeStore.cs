@@ -6,6 +6,22 @@ using PokeChat.Responses;
 
 namespace PokeChat.Knowledge;
 
+internal static class SummaryFilters
+{
+    private static readonly HashSet<string> Interrogatives = new(StringComparer.OrdinalIgnoreCase)
+        { "what", "who", "where", "when", "why", "how" };
+
+    public static bool IsGarbageFact(Fact fact)
+    {
+        if (Interrogatives.Contains(fact.Subject))
+            return true;
+        if (string.Equals(fact.Subject, "you", StringComparison.OrdinalIgnoreCase) &&
+            fact.Verb is "be" or "do" or "have" or "is" or "am" or "are" or "was" or "were")
+            return true;
+        return false;
+    }
+}
+
 public class KnowledgeStore(PokeChatDbContext context)
 {
     public void StoreFact(Fact fact)
@@ -263,6 +279,9 @@ public class KnowledgeStore(PokeChatDbContext context)
 
     public void ResetAllUserData()
     {
+        context.Database.ExecuteSqlRaw("DELETE FROM ResponseFeedbacks");
+        context.Database.ExecuteSqlRaw("DELETE FROM LearnedResponseRules");
+        context.Database.ExecuteSqlRaw("DELETE FROM ConversationMetrics");
         context.Database.ExecuteSqlRaw("DELETE FROM ConversationSessions");
         context.Database.ExecuteSqlRaw("DELETE FROM Conversations");
         context.Database.ExecuteSqlRaw("DELETE FROM Facts");
@@ -672,6 +691,7 @@ public class KnowledgeStore(PokeChatDbContext context)
         {
             var lowerInput = conv.UserInput.ToLowerInvariant();
             var matchingFacts = facts.Where(f =>
+                !SummaryFilters.IsGarbageFact(f) &&
                 lowerInput.Contains(f.Object.ToLowerInvariant()) &&
                 (lowerInput.Contains(f.Subject.ToLowerInvariant()) ||
                  lowerInput.Contains(f.Verb.ToLowerInvariant())));
@@ -685,6 +705,7 @@ public class KnowledgeStore(PokeChatDbContext context)
             {
                 var lowerInput = conv.UserInput.ToLowerInvariant();
                 var objectMatches = facts.Where(f =>
+                    !SummaryFilters.IsGarbageFact(f) &&
                     lowerInput.Contains(f.Object.ToLowerInvariant()));
                 foreach (var f in objectMatches)
                     sessionFactSignatures.Add(FormatFact(f));

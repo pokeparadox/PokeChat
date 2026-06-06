@@ -74,6 +74,7 @@ public class StoryGenerator
             "user_like" => ResolveUserLike(userId),
             "number" => Random.Shared.Next(1, 1001).ToString(),
             "a_noun" => AddArticle(_knowledgeStore.GetRandomWord("noun") ?? FallbackNouns[Random.Shared.Next(FallbackNouns.Length)]),
+            "a_adj" => AddArticle(_knowledgeStore.GetRandomWord("adjective") ?? FallbackAdjs[Random.Shared.Next(FallbackAdjs.Length)]),
             _ => $"{{{slot}}}"
         };
     }

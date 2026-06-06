@@ -17,8 +17,8 @@ internal static class TestDataHelper
             ("context_followup_with_object", "Tell me more about {0} and {1}."),
             ("context_followup_self", "Tell me about yourself, {0}."),
             ("context_followup_self", "What else can you tell me about yourself?"),
-            ("context_followup_with_object_self", "Tell me more about your {1}."),
-            ("context_followup_with_object_self", "What else can you tell me about your {1}?"),
+            ("context_followup_with_object_self", "Tell me more about {1}."),
+            ("context_followup_with_object_self", "What else can you tell me about {1}?"),
             ("random_fact_followup", "You told me {0} {1} {2}. Tell me more!"),
             ("dictionary_query_found", "A {0} is {1}."),
             ("dictionary_query_not_found", "I don't know what {0} means."),
@@ -98,6 +98,8 @@ internal static class TestDataHelper
             ("topic_followup_light", "We talked about {0} a bit ago. Shall we revisit that?"),
             ("story_response", "Here's a story just for you:\n\n{0}"),
             ("story_response", "Let me tell you a tale:\n\n{0}"),
+            ("direct_insult", "That's not very nice. Let's keep things friendly."),
+            ("direct_insult", "I'm here to chat, not to fight. Let's talk about something else."),
         };
         db.BotResponses.AddRange(responses.Select(r => new BotResponse
         {
@@ -223,6 +225,7 @@ internal static class TestDataHelper
         var now = DateTime.UtcNow.ToString("o");
         db.Contractions.AddRange(
             new ContractionEntity { Contraction = "i'm", Expansion = "i am" },
+            new ContractionEntity { Contraction = "im", Expansion = "i am" },
             new ContractionEntity { Contraction = "you're", Expansion = "you are" },
             new ContractionEntity { Contraction = "he's", Expansion = "he is" },
             new ContractionEntity { Contraction = "she's", Expansion = "she is" },
@@ -275,7 +278,19 @@ internal static class TestDataHelper
             new ContractionEntity { Contraction = "let's", Expansion = "let us" },
             new ContractionEntity { Contraction = "gonna", Expansion = "going to" },
             new ContractionEntity { Contraction = "wanna", Expansion = "want to" },
-            new ContractionEntity { Contraction = "gotta", Expansion = "got to" }
+            new ContractionEntity { Contraction = "gotta", Expansion = "got to" },
+            new ContractionEntity { Contraction = "dont", Expansion = "do not" },
+            new ContractionEntity { Contraction = "cant", Expansion = "cannot" },
+            new ContractionEntity { Contraction = "wont", Expansion = "will not" },
+            new ContractionEntity { Contraction = "didnt", Expansion = "did not" },
+            new ContractionEntity { Contraction = "couldnt", Expansion = "could not" },
+            new ContractionEntity { Contraction = "wouldnt", Expansion = "would not" },
+            new ContractionEntity { Contraction = "shouldnt", Expansion = "should not" },
+            new ContractionEntity { Contraction = "theyll", Expansion = "they will" },
+            new ContractionEntity { Contraction = "ive", Expansion = "i have" },
+            new ContractionEntity { Contraction = "youve", Expansion = "you have" },
+            new ContractionEntity { Contraction = "youre", Expansion = "you are" },
+            new ContractionEntity { Contraction = "theyre", Expansion = "they are" }
         );
         db.SaveChanges();
     }
@@ -286,17 +301,17 @@ internal static class TestDataHelper
         db.StoryTemplates.AddRange(
             new StoryTemplate
             {
-                Template = "Once upon a time, a {adj} {noun} lived in a {place}. Every day it would {verb} through the {place}, until one day it met a {adj} {noun} and everything changed.",
+                Template = "Once upon a time, {a_adj} {noun} lived in a {place}. Every day it would {verb} through the {place}, until one day it met {a_adj} {noun} and everything changed.",
                 CreatedAt = now
             },
             new StoryTemplate
             {
-                Template = "In a {place} far away, {user} found a {adj} {noun}. It could {verb} and {verb}! Together, they set off to find the legendary {noun} of {place}.",
+                Template = "In a {place} far away, {user} found {a_adj} {noun}. It could {verb} and {verb}! Together, they set off to find the legendary {noun} of {place}.",
                 CreatedAt = now
             },
             new StoryTemplate
             {
-                Template = "A long time ago, {character} was a {adj} {noun} who dreamed of {verb}ing. Everyone said it was impossible, but {character} didn't listen. And that's how the greatest adventure began.",
+                Template = "A long time ago, {character} was {a_adj} {noun} who dreamed of {verb}ing. Everyone said it was impossible, but {character} didn't listen. And that's how the greatest adventure began.",
                 CreatedAt = now
             }
         );

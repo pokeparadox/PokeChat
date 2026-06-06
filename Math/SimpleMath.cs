@@ -28,11 +28,15 @@ public class SimpleMath : IMathEngine
             return null;
 
         var expr = match.Value;
+        var remainder = cleaned.AsSpan(match.Index + match.Length).TrimStart();
         var eqMatch = EqualsRegex.Match(cleaned, match.Index + match.Length);
 
         double? statedResult = null;
         if (eqMatch.Success && double.TryParse(eqMatch.Groups[1].Value, out var stated))
             statedResult = stated;
+
+        if (remainder.Length > 0 && !eqMatch.Success)
+            return null;
 
         var value = EvaluateBinary(expr);
         if (double.IsNaN(value) || double.IsInfinity(value))

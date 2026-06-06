@@ -1050,3 +1050,95 @@ When the user teaches the bot a new word via clarification, the bot follows up w
 
 ### Verify
 - `dotnet build && dotnet test` — all pass
+
+---
+
+## Bugfix: Negated Context Follow-Up ✅
+
+### Problem
+1. Single-noun input (e.g. "Bees") → bot assumed user ownership ("your bees") because `LastSubject` was set to username.
+2. Negated sentences ("They are not my bees") → `GeneralFact` triples with function-word objects ("not my bees") were stored and used in follow-ups ("What else can you share about bees and not my bees?").
+
+### Changes
+1. **Single-noun subject fix** (`ChatSession.cs:315,411`): Both unknown-word and known-noun paths now set `LastSubject` to the noun itself, not the username. No `LastObject` is set.
+2. **Garbage triple filter widened** (`ChatSession.cs:336-341`): The existing `General`-only predicate filter for function words now also covers `GeneralFact`. Object starting with/equaling "not"/"never"/"no" is skipped — triple not stored, context not updated.
+
+### Tests (5)
+- SingleNoun_SetsSubjectToNounNotUser
+- SingleNoun_DoesNotSetLastObject
+- NegatedGeneralFact_Filtered
+- TheyAreNotMyBees_ContextStaysOnPreviousTopic
+- Updated existing single-noun tests
+
+### Verify
+- `dotnet build && dotnet test` — all pass
+
+---
+
+## Phase 26: Abnormal Response Fixes ✅
+
+### Issues Fixed
+
+| # | Issue | Fix |
+|---|-------|-----|
+| 1 | **CRITICAL: `ResetAllUserData` FK crash** | Added `DELETE FROM ResponseFeedbacks`, `LearnedResponseRules`, `ConversationMetrics` before `Users` in `KnowledgeStore.cs` |
+| 2 | **Greeting during name prompt** → cold "I didn't catch your name" | `HandleNameInput` now detects greeting tokens and returns a friendly greeting + re-prompt |
+| 3 | **"your you" grammar in context follow-up** | `ObjectPronouns` set skips `context_followup_with_object_self` templates for pronoun objects |
+| 5 | **"once" missing from POS dictionary** | Added to `pos_dictionary.json` as adverb (included in Issue 12 batch) |
+| 6 | **Rename patterns too narrow** | Added `"call you"`, `"rename you"`, `"rename yourself"`, `"change your name"`, `"i want to call you"` to `bot_rename_patterns` seed data + guard against "your" false prefix matches |
+| 7 | **"something" unknown → spellcheck interruption** | Added `"something"` (pronoun) to `pos_dictionary.json` |
+| 8 | **Identity questions get generic response** | Added response rules for `who are you` / `what are you` / `do you have feelings` / `can you think` with identity-aware responses using `{BOTNAME}` replacement |
+| 9 | **"what do you know about me" gets generic response** | Added response rule for `what do you know about (me\|us)` |
+| 10 | **Summary contains garbage triples** | Added `SummaryFilters.IsGarbageFact` filtering interrogative subjects and "you be/do" question artifacts in `BuildSessionSummary` |
+| 11 | **Correction handler exact match too strict** | Changed `is` equality to `Contains` for `"not what i meant"` and `"not helpful"`; `Contains("that's better")` for positive feedback |
+| 12 | **Common words missing from POS dictionary** | Added `once` (adverb), `meaning` (noun), `met` (verb), `grammar` (noun), `something` (pronoun) |
+| 13 | **ConjugateVerb doesn't skip modal verbs** | Added `ModalVerbs` HashSet (`can`, `could`, `will`, `would`, `shall`, `should`, `may`, `might`, `must`) — returns verb unchanged |
+| 14 | **"your {1}" template prefix creates ungrammatical output** | `ObjectPronouns` check skips `context_followup_with_object_self` when object is pronoun/verb phrase, falling through to `context_followup_self` |
+
+### Infrastructure Changes
+- Added `ResponseEngine.SetBotName()` + `_botName` field for `{BOTNAME}` replacement in rule responses
+- `{BOTNAME}` replacement wired in `ResponseEngine.GenerateResponse` rule-match path
+- ChatSession propagates `SetBotName` on rename, stored name load, and initial construction
+- `SummaryFilters` internal class with `IsGarbageFact` static filter
+
+### Skipped (low priority)
+- **Issue 4** (story adjective/article quality) — nice-to-have
+- **Issue 7** (adversarial input patterns) — partially addressed by POS fix
+
+### Verify
+- `dotnet build && dotnet test` — 241/241 pass
+
+---
+
+## Phase 26 — Chat Log Bugfixes ✅
+
+11 bugs from real tester `chat.log` (507 lines).
+
+### Fixes
+
+| # | Issue | Fix |
+|---|-------|-----|
+| 1 | **7 common words missing from POS dict** | Added `fun`, `use`, `now`, `said`, `solve`, `killed`, `idiot` to `pos_dictionary.json` |
+| 2 | **SpellChecker maxDistance=2 too permissive** | Reduced `HasSuggestions` and `SuggestCorrections` default to `maxDistance=1` |
+| 3 | **Indiscriminate word learning on non-confirmation** | `HandleClarification` now returns early when suggestion is rejected instead of auto-learning |
+| 4 | **Infinite "yes i is ool" context loop (~65 turns)** | Added `TopicReferenceCount` counter (resets on SVO, checked in `GenerateResponse`, breaks after 3 consecutive topic refs) |
+| 5 | **Insults met with greeting** | Added `InsultPattern` regex + sentiment check + `direct_insult` response category (4 templates) |
+| 6 | **"your in an office" grammar** | Changed `context_followup_with_object_self` templates from `"Tell me more about your {1}."` → `"Tell me more about {1}."` |
+| 7 | **"a interesting" in story** | Added `{a_adj}` slot using `AddArticle`; updated 8 story templates to use it |
+| 8 | **Multi-operator math gives wrong partial answer** | `SimpleMath.Evaluate` returns null when trailing non-equality content exists after first binary op |
+| 9 | **Reset missing trigger phrases** | Added `"start again"`, `"restart"`, `"lets start again"`, `"let's start again"` to `ResetTriggers` |
+| 10 | **"ello" treated as name** | Added `IsCloseToGreeting()` Levenshtein check (distance ≤ 1) to `ExtractName` single-token path |
+| 11 | **"im" (no apostrophe) not expanded** | Added `"im" → "i am"` + 12 other common no-apostrophe contractions to seed data |
+
+### Files Modified
+- `Data/pos_dictionary.json` — Bug 1
+- `NLP/SpellChecker.cs` — Bug 2
+- `Core/ChatSession.cs` — Bugs 3, 4, 5, 9, 10
+- `Responses/ResponseEngine.cs` — Bug 4
+- `Data/DbSeeder.cs` — Bugs 5, 6, 7, 11
+- `Stories/StoryGenerator.cs` — Bug 7
+- `Math/SimpleMath.cs` — Bug 8
+- `tests/PokeChat.Tests/Helpers/TestDataHelper.cs` — Bugs 5, 6, 7, 11
+
+### Verify
+- `dotnet build && dotnet test` — 241/241 pass

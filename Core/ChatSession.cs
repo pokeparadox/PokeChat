@@ -29,6 +29,11 @@ public class ChatSession : IDisposable
     private string _currentUserNameLower = string.Empty;
     private Dictionary<string, List<string>>? _cachedBotResponses;
     private static readonly string[] AlternativeNames = { "Zara", "Nova", "Echo", "Pixel", "Azure", "Kai", "Rex" };
+
+    private static readonly Regex InsultPattern = new(
+        @"^(you(?:'re| are) (?:a|an) \w+|shut\s+up|shut\s+it)",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     private static readonly HashSet<string> Affirmations = new(StringComparer.OrdinalIgnoreCase)
         { "yes", "yep", "yeah", "yup", "sure", "correct", "right",
           "that's right", "that is right", "yes please", "ok", "okay" };
@@ -41,6 +46,7 @@ public class ChatSession : IDisposable
         "start fresh",
         "start afresh",
         "start over",
+        "start again",
         "reset everything",
         "reset all data",
         "forget everything",
@@ -50,6 +56,9 @@ public class ChatSession : IDisposable
         "clear everything",
         "clear all memories",
         "fresh start",
+        "restart",
+        "lets start again",
+        "let's start again",
     };
 
     public ChatSession()
@@ -81,6 +90,7 @@ public class ChatSession : IDisposable
         _botCommands = _knowledgeStore.GetBotCommands().Select(c => c.Command).ToHashSet(StringComparer.OrdinalIgnoreCase);
         _greetingWords = _knowledgeStore.GetGreetingWords().Select(gw => gw.Word.ToLowerInvariant()).ToHashSet(StringComparer.OrdinalIgnoreCase);
         _renamePatterns = _knowledgeStore.GetBotRenamePatterns();
+        _responseEngine.SetBotName(_botName);
         _currentUserNameLower = _currentUserName.ToLowerInvariant();
     }
 
@@ -119,6 +129,7 @@ public class ChatSession : IDisposable
         _renamePatterns = renamePatterns ?? new List<string>();
         if (!string.IsNullOrEmpty(sessionId))
             _sessionId = sessionId;
+        _responseEngine.SetBotName(_botName);
         _currentUserNameLower = _currentUserName.ToLowerInvariant();
     }
 
@@ -213,6 +224,9 @@ public class ChatSession : IDisposable
         }
         _context.SetContext(ContextKeys.CurrentSentiment, sentiment ?? "neutral");
         _context.SetContext(ContextKeys.LastSentimentIntensity, intensity.ToString());
+
+        if (TryHandleInsult(input, sentiment, intensity, out var insultResponse))
+            return insultResponse;
 
         var sentences = _sentenceSplitter.Split(input);
 
@@ -398,6 +412,7 @@ public class ChatSession : IDisposable
         if (triples.Count > 0)
         {
             _context.SetContext(ContextKeys.ContextFollowUpCount, "0");
+            _context.SetContext(ContextKeys.TopicReferenceCount, "0");
 
             var lastTriple = triples[^1];
             var subjCat = _nounCategoriser.CategoriseNoun(ResolveSubject(lastTriple.Subject));
@@ -524,6 +539,8 @@ public class ChatSession : IDisposable
                 _knowledgeStore.Save();
                 return $"Got it! I'll remember that '{pendingWord}' should be '{pendingSuggestion}'.";
             }
+
+            return $"OK, I'll leave '{pendingWord}' as it is.";
         }
 
         _context.UpdateLastSubject(_currentUserName);
@@ -543,9 +560,7 @@ public class ChatSession : IDisposable
             return GetClassifyResponse("word_classify_default", pendingWord);
         }
 
-        return string.IsNullOrEmpty(pendingSuggestion)
-            ? $"Thanks! I've learned the word '{pendingWord}'."
-            : $"Okay, I've learned the word '{pendingWord}'.";
+        return $"Thanks! I've learned the word '{pendingWord}'.";
     }
 
     internal string HandleClassification(string input, string word)
@@ -757,6 +772,11 @@ public class ChatSession : IDisposable
 
         if (string.IsNullOrEmpty(name))
         {
+            if (tokens.Count > 0 && tokens.Any(t => _greetingWords.Contains(t.ToLowerInvariant())))
+            {
+                var greeting = GreetingPool.GetRandomGreeting(_knowledgeStore, _botName);
+                return $"{greeting} What's your name?";
+            }
             return "I didn't catch your name. Could you tell me again?";
         }
 
@@ -767,7 +787,10 @@ public class ChatSession : IDisposable
 
         var storedName = _knowledgeStore.GetUserBotName(_currentUserId!.Value);
         if (storedName != null)
+        {
             _botName = char.ToUpper(storedName[0]) + storedName.Substring(1).ToLowerInvariant();
+            _responseEngine.SetBotName(_botName);
+        }
 
         _context.Clear();
         _context.UpdateLastSubject(_currentUserName);
@@ -798,7 +821,11 @@ public class ChatSession : IDisposable
         {
             var lowerToken = tokens[0].ToLowerInvariant();
             if (!_greetingWords.Contains(lowerToken))
+            {
+                if (IsCloseToGreeting(lowerToken))
+                    return string.Empty;
                 return tokens[0];
+            }
             return string.Empty;
         }
 
@@ -811,6 +838,35 @@ public class ChatSession : IDisposable
     internal bool IsStopWord(string word)
     {
         return StopWords.Contains(word);
+    }
+
+    private bool IsCloseToGreeting(string word)
+    {
+        return _greetingWords.Any(g =>
+        {
+            if (System.Math.Abs(g.Length - word.Length) > 2)
+                return false;
+            var distance = Levenshtein(word, g);
+            return distance <= 1;
+        });
+    }
+
+    private static int Levenshtein(string a, string b)
+    {
+        var lenA = a.Length;
+        var lenB = b.Length;
+        var matrix = new int[lenA + 1, lenB + 1];
+        for (int i = 0; i <= lenA; i++) matrix[i, 0] = i;
+        for (int j = 0; j <= lenB; j++) matrix[0, j] = j;
+        for (int i = 1; i <= lenA; i++)
+        for (int j = 1; j <= lenB; j++)
+        {
+            var cost = a[i - 1] == b[j - 1] ? 0 : 1;
+            matrix[i, j] = System.Math.Min(
+                System.Math.Min(matrix[i - 1, j] + 1, matrix[i, j - 1] + 1),
+                matrix[i - 1, j - 1] + cost);
+        }
+        return matrix[lenA, lenB];
     }
 
     internal bool ShouldExit(string input)
@@ -829,6 +885,9 @@ public class ChatSession : IDisposable
             if (idx < 0) continue;
 
             var namePart = input.Substring(idx + pattern.Length).Trim();
+            var namePartLower = namePart.ToLowerInvariant();
+            if (namePartLower.StartsWith("your"))
+                continue;
             var nameTokens = _tokeniser.Tokenise(namePart);
             var candidate = nameTokens[0];
             if (nameTokens.Count == 0 || IsStopWord(candidate) || PunctuationHelper.IsPunctuation(candidate) ||
@@ -852,6 +911,7 @@ public class ChatSession : IDisposable
             _knowledgeStore.SetUserBotName(_currentUserId!.Value, displayName);
             _knowledgeStore.Save();
             _botName = displayName;
+            _responseEngine.SetBotName(_botName);
             return GetBotRenameResponse("bot_rename_accepted", displayName);
         }
 
@@ -1006,7 +1066,8 @@ public class ChatSession : IDisposable
         var isLearned = _context.GetContext(ContextKeys.LastRuleIsLearned) == "true";
 
         var lowerInput = trimmedInput.ToLowerInvariant();
-        if (lowerInput is "that's not right" or "that is not right" or "not what i meant" or "wrong" or "not helpful")
+        if (lowerInput is "that's not right" or "that is not right" or "wrong" ||
+            lowerInput.Contains("not what i meant") || lowerInput.Contains("not helpful"))
         {
             _knowledgeStore.RecordFeedback(lastRuleId, _currentUserId!.Value, "negative", isLearned);
             _knowledgeStore.AdjustConfidence(lastRuleId, -2, isLearned);
@@ -1015,7 +1076,7 @@ public class ChatSession : IDisposable
             return GetCorrectionResponse("pattern_acknowledged", out response);
         }
 
-        if (lowerInput is "that's exactly right" or "now you've got it" or "yes, that's it" or "perfect" or "that's better")
+        if (lowerInput is "that's exactly right" or "now you've got it" or "yes, that's it" or "perfect" || lowerInput.Contains("that's better"))
         {
             _knowledgeStore.RecordFeedback(lastRuleId, _currentUserId!.Value, "positive", isLearned);
             _knowledgeStore.AdjustConfidence(lastRuleId, 1, isLearned);
@@ -1076,6 +1137,35 @@ public class ChatSession : IDisposable
             _ => string.Empty
         };
         return true;
+    }
+
+    private bool TryHandleInsult(string input, string? sentiment, int intensity, out string response)
+    {
+        if (InsultPattern.IsMatch(input.Trim()))
+        {
+            response = GetCachedBotResponses().TryGetValue("direct_insult", out var responses) && responses.Count > 0
+                ? responses[Random.Shared.Next(responses.Count)]
+                : "That's not very nice. Let's keep things friendly.";
+            return true;
+        }
+
+        if (sentiment is "anger" or "negative" && intensity >= 2)
+        {
+            var lower = input.ToLowerInvariant().Trim();
+            if (lower.Contains("you") && lower.Contains("hate") ||
+                lower.Contains("you") && lower.Contains("idiot") ||
+                lower.Contains("you") && lower.Contains("stupid") ||
+                lower.Contains("you") && lower.Contains("dumb"))
+            {
+                response = GetCachedBotResponses().TryGetValue("direct_insult", out var responses) && responses.Count > 0
+                    ? responses[Random.Shared.Next(responses.Count)]
+                    : "That's not very nice. Let's keep things friendly.";
+                return true;
+            }
+        }
+
+        response = string.Empty;
+        return false;
     }
 
     private string GenerateSessionEndSummary()
