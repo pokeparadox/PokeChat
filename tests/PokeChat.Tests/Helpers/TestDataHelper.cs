@@ -88,6 +88,8 @@ internal static class TestDataHelper
             ("topic_transition", "So changing the subject from {0} — what's on your mind about {1}?"),
             ("topic_followup_light", "You seemed interested in {0} earlier. Want to come back to that?"),
             ("topic_followup_light", "We talked about {0} a bit ago. Shall we revisit that?"),
+            ("story_response", "Here's a story just for you:\n\n{0}"),
+            ("story_response", "Let me tell you a tale:\n\n{0}"),
         };
         db.BotResponses.AddRange(responses.Select(r => new BotResponse
         {
@@ -266,6 +268,29 @@ internal static class TestDataHelper
             new ContractionEntity { Contraction = "gonna", Expansion = "going to" },
             new ContractionEntity { Contraction = "wanna", Expansion = "want to" },
             new ContractionEntity { Contraction = "gotta", Expansion = "got to" }
+        );
+        db.SaveChanges();
+    }
+
+    public static void SeedStoryTemplates(PokeChatDbContext db)
+    {
+        var now = DateTime.UtcNow.ToString("o");
+        db.StoryTemplates.AddRange(
+            new StoryTemplate
+            {
+                Template = "Once upon a time, a {adj} {noun} lived in a {place}. Every day it would {verb} through the {place}, until one day it met a {adj} {noun} and everything changed.",
+                CreatedAt = now
+            },
+            new StoryTemplate
+            {
+                Template = "In a {place} far away, {user} found a {adj} {noun}. It could {verb} and {verb}! Together, they set off to find the legendary {noun} of {place}.",
+                CreatedAt = now
+            },
+            new StoryTemplate
+            {
+                Template = "A long time ago, {character} was a {adj} {noun} who dreamed of {verb}ing. Everyone said it was impossible, but {character} didn't listen. And that's how the greatest adventure began.",
+                CreatedAt = now
+            }
         );
         db.SaveChanges();
     }

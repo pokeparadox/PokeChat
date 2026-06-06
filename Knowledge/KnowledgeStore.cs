@@ -903,4 +903,55 @@ public class KnowledgeStore(PokeChatDbContext context)
             .OrderBy(c => c.Id)
             .ToList();
     }
+
+    public string? GetRandomWord(string wordType)
+    {
+        var words = context.PosDictionary
+            .Where(p => p.WordType == wordType)
+            .Select(p => p.Word)
+            .Distinct()
+            .ToList();
+
+        if (words.Count == 0) return null;
+        return words[Random.Shared.Next(words.Count)];
+    }
+
+    public string? GetRandomNounByCategory(string category)
+    {
+        var nouns = context.NounCategories
+            .Where(n => n.Category == category)
+            .Select(n => n.Noun)
+            .Distinct()
+            .ToList();
+
+        if (nouns.Count == 0) return null;
+        return nouns[Random.Shared.Next(nouns.Count)];
+    }
+
+    public List<StoryTemplate> GetStoryTemplates()
+    {
+        return context.StoryTemplates.ToList();
+    }
+
+    public Fact? GetRandomUserFact(int userId)
+    {
+        var facts = context.Facts
+            .Where(f => f.UserId == userId)
+            .SelectFacet<Fact>()
+            .ToList();
+
+        if (facts.Count == 0) return null;
+        return facts[Random.Shared.Next(facts.Count)];
+    }
+
+    public string? GetRandomName()
+    {
+        var names = context.Users
+            .Select(u => u.Name)
+            .Distinct()
+            .ToList();
+
+        if (names.Count == 0) return null;
+        return names[Random.Shared.Next(names.Count)];
+    }
 }

@@ -215,3 +215,10 @@ CREATE TABLE IF NOT EXISTS response_effectiveness (
     follow_up_rate REAL NOT NULL DEFAULT 0.0,
     last_used TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS story_templates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    template TEXT NOT NULL,
+    category TEXT,
+    created_at TEXT NOT NULL
+);

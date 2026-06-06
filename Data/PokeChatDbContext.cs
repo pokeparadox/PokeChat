@@ -55,6 +55,7 @@ public sealed class PokeChatDbContext : DbContext
     public DbSet<ResponseFeedback> ResponseFeedbacks => Set<ResponseFeedback>();
     public DbSet<ConversationMetric> ConversationMetrics => Set<ConversationMetric>();
     public DbSet<ResponseEffectiveness> ResponseEffectiveness => Set<ResponseEffectiveness>();
+    public DbSet<StoryTemplate> StoryTemplates => Set<StoryTemplate>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -333,6 +334,14 @@ public sealed class PokeChatDbContext : DbContext
             entity.Property(e => e.UsedCount);
             entity.Property(e => e.FollowUpRate);
             entity.Property(e => e.LastUsed).IsRequired();
+        });
+
+        modelBuilder.Entity<StoryTemplate>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Template).IsRequired();
+            entity.Property(e => e.Category);
+            entity.Property(e => e.CreatedAt).IsRequired();
         });
     }
 }

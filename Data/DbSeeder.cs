@@ -22,6 +22,7 @@ public static class DbSeeder
         SeedContractions(context, now);
         SeedTemporalExpressions(context);
         SeedInferenceWordLinks(context, now);
+        SeedStoryTemplates(context, now);
         SeedBotResponses(context, now);
 
         context.SaveChanges();
@@ -615,6 +616,31 @@ public static class DbSeeder
         }));
     }
 
+    private static void SeedStoryTemplates(PokeChatDbContext context, string now)
+    {
+        if (context.StoryTemplates.Any()) return;
+
+        var templates = new[]
+        {
+            "Once upon a time, a {adj} {noun} lived in a {place}. Every day it would {verb} through the {place}, until one day it met a {adj} {noun} and everything changed.",
+            "In a {place} far away, {user} found a {adj} {noun}. It could {verb} and {verb}! Together, they set off to find the legendary {noun} of {place}.",
+            "A long time ago, {character} was a {adj} {noun} who dreamed of {verb}ing. Everyone said it was impossible, but {character} didn't listen. And that's how the greatest adventure began.",
+            "Deep in the heart of {place}, there lived a {adj} {noun} named {character}. It spent its days {verb}ing and dreaming of {noun_plural}.",
+            "Have you heard the tale of the {adj} {noun}? It could {verb} faster than any {noun} in {place}. But what it really wanted was a {noun} of its own.",
+            "In {place}, there was a {adj} {noun} that only appeared at night. {character} was the only one brave enough to {verb} it and discover its secret.",
+            "The bravest {noun} in all of {place} was a {adj} {character}. With {a_noun} in hand, {character} set out to {verb} the legendary {noun} of the ancients.",
+            "{user} loved {noun_plural}. So when a mysterious {adj} {character} offered {user} {a_noun}, of course {user} accepted! What happened next surprised everyone.",
+            "In a hidden corner of {place}, {a_noun} held the power to grant wishes. But only a {adj} {character} could {verb} it. Would anyone succeed?",
+            "Once, {user} met {a_noun} who loved {noun_plural} more than anything. Every day they would {verb} together, exploring every {place} they could find.",
+        };
+
+        context.StoryTemplates.AddRange(templates.Select(t => new StoryTemplate
+        {
+            Template = t,
+            CreatedAt = now
+        }));
+    }
+
     private static void SeedBotResponses(PokeChatDbContext context, string now)
     {
         if (context.BotResponses.Any()) return;
@@ -806,6 +832,12 @@ public static class DbSeeder
             ("metrics_improvement", "I'm getting better at this — our conversations are getting longer!"),
             ("metrics_improvement", "It feels like we're having better conversations lately!"),
             ("metrics_improvement", "I think I understand you more with each chat we have."),
+            ("story_response", "Here's a story just for you:\n\n{0}"),
+            ("story_response", "Let me tell you a tale:\n\n{0}"),
+            ("story_response", "Once upon a time...\n\n{0}"),
+            ("story_time", "Would you like to hear a story?"),
+            ("story_time", "I could tell you a story if you're interested!"),
+            ("story_time", "Do you want to hear a tale?"),
         };
 
         context.BotResponses.AddRange(responses.Select(r => new BotResponse

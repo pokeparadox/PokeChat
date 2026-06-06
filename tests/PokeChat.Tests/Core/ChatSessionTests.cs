@@ -913,5 +913,20 @@ public class ChatSessionTests
         }
     }
 
+    [Fact]
+    public void StoryRequest_ReturnsNonEmptyResponse()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedStoryTemplates(db.Context);
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("I like pizza");
 
+            var response = session.ProcessInput("tell me a story");
+
+            response.ShouldNotBeNullOrEmpty();
+            response.ShouldNotContain("{");
+        }
+    }
 }

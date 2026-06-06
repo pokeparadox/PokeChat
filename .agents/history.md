@@ -971,3 +971,49 @@ New `context_followup_self` / `context_followup_with_object_self` categories don
 
 ### Verify
 - `dotnet build && dotnet test` — 223/223 pass
+
+---
+
+## Phase 24 — Random Short Story Generation ✅
+
+A `StoryGenerator` engine that composes short stories from DB-stored templates, filling slots with random dictionary words and optionally weaving in the user's known facts. Triggerable explicitly ("tell me a story") or proactively (occasional `story_time` after the proactive question fallback).
+
+### New files
+- `Stories/StoryGenerator.cs` — core engine: picks template, resolves all `{slots}` via handler registry
+- `Data/Entities/StoryTemplate.cs` — entity (Id, Template, Category?, CreatedAt)
+
+### Slot system
+| Slot | Source | Fallback |
+|------|--------|----------|
+| `{noun}` | Random `noun` from POS dict | hardcoded set |
+| `{noun_plural}` | Pluralised `{noun}` via `Pluralise()` | same fallback pluralised |
+| `{verb}` | Random `verb` from POS dict | hardcoded set |
+| `{adj}` | Random `adjective` | hardcoded set |
+| `{adverb}` | Random `adverb` | hardcoded set |
+| `{place}` | Random noun from `noun_categories` where category="place" | hardcoded set |
+| `{character}` | Random name from `users` table | hardcoded set |
+| `{user}` | Current user's name | `"someone"` |
+| `{user_like}` | Random object from user's Preference facts | Generic noun fallback |
+| `{number}` | Random int 1–1000 | N/A |
+| `{a_noun}` | `{noun}` with "a"/"an" prefix | same fallback |
+| `{verb}ing` | Gerund form of `{verb}` (drops trailing 'e') | same logic |
+
+### Modified files
+- `Data/PokeChatDbContext.cs` — added `DbSet<StoryTemplate>`, fluent config with PK + required Template
+- `Data/Schema.sql` — DDL for `story_templates` table
+- `Knowledge/KnowledgeStore.cs` — added `GetRandomWord(type)`, `GetRandomNounByCategory(cat)`, `GetStoryTemplates()`, `GetRandomUserFact(userId)`, `GetRandomName()`
+- `Data/DbSeeder.cs` — `SeedStoryTemplates()` with 10 templates; `story_response` (3) and `story_time` (3) bot response categories
+- `Responses/ResponseEngine.cs` — added `StoryGenerator` field + constructor param (defaults to new instance), `HandleStoryRequest()` called before inference in `GenerateResponse`, proactive `story_time` at 1-in-6 chance
+- `tests/PokeChat.Tests/Helpers/TestDataHelper.cs` — `SeedStoryTemplates()` with 3 templates, 2 story response bot entries
+
+### New Tests (7 total, 230/230 pass)
+- `StoryGenerator.GenerateStory_ReturnsNonEmptyString` — basic output
+- `StoryGenerator.GenerateStory_ResolvesNounSlot` — `{noun}` not in output
+- `StoryGenerator.GenerateStory_ResolvesUserSlot` — `{user}` not in output
+- `StoryGenerator.GenerateStory_ResolvesUserLikeSlot` — `{user_like}` filled from user facts
+- `StoryGenerator.GenerateStory_FallsBackWhenNoUserFacts` — no crash with no facts
+- `StoryGenerator.GenerateStory_MultipleSlots_AllResolved` — no `{` remnants
+- `ChatSessionTests.StoryRequest_ReturnsNonEmptyResponse` — integration test
+
+### Migration
+- `20260606075805_Phase24_StoryGeneration` — adds `StoryTemplates` table

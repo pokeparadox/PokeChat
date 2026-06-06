@@ -3,6 +3,7 @@ using PokeChat.Core;
 using PokeChat.Knowledge;
 using PokeChat.Math;
 using PokeChat.NLP;
+using PokeChat.Stories;
 
 namespace PokeChat.Responses;
 
@@ -15,6 +16,7 @@ public class ResponseEngine
     private readonly ITokeniser _tokeniser;
     private readonly ISvoExtractor _svoExtractor;
     private readonly IMathEngine _mathEngine;
+    private readonly StoryGenerator _storyGenerator;
     private readonly Dictionary<string, List<string>> _botResponses;
     private string _currentUserName = string.Empty;
 
@@ -23,7 +25,7 @@ public class ResponseEngine
         _currentUserName = name;
     }
 
-    public ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker context, SpellChecker spellChecker, IPosTagger posTagger, ITokeniser tokeniser, ISvoExtractor svoExtractor, IMathEngine? mathEngine = null)
+    public ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker context, SpellChecker spellChecker, IPosTagger posTagger, ITokeniser tokeniser, ISvoExtractor svoExtractor, IMathEngine? mathEngine = null, StoryGenerator? storyGenerator = null)
     {
         _knowledgeStore = knowledgeStore;
         _context = context;
@@ -32,6 +34,7 @@ public class ResponseEngine
         _tokeniser = tokeniser;
         _svoExtractor = svoExtractor;
         _mathEngine = mathEngine ?? new SimpleMath();
+        _storyGenerator = storyGenerator ?? new StoryGenerator(knowledgeStore);
         _botResponses = knowledgeStore.GetBotResponses();
     }
 
@@ -160,6 +163,9 @@ public class ResponseEngine
         var temporalResult = HandleTemporalQuery(input, userId);
         if (temporalResult != null) return temporalResult;
 
+        var storyResult = HandleStoryRequest(input, userId);
+        if (storyResult != null) return storyResult;
+
         var inferenceResult = HandleInferenceResponse();
         if (inferenceResult != null) return inferenceResult;
 
@@ -241,6 +247,17 @@ public class ResponseEngine
             var randomFact = facts[Random.Shared.Next(facts.Count)];
             var conjVerb = ConjugateVerb(randomFact.Verb, randomFact.Subject);
             return GetRandomResponse("random_fact_followup", randomFact.Subject, conjVerb, randomFact.Object);
+        }
+
+        if (Random.Shared.Next(6) == 0)
+        {
+            var story = _storyGenerator.GenerateStory(_currentUserName, userId);
+            if (!string.IsNullOrEmpty(story))
+            {
+                var storyResponse = GetRandomResponse("story_response", story);
+                if (!string.IsNullOrEmpty(storyResponse))
+                    return storyResponse;
+            }
         }
 
         return GenerateProactiveQuestion(userId);
@@ -524,6 +541,27 @@ public class ResponseEngine
             return GetRandomResponse("session_summary_short", summary);
 
         return GetRandomResponse("session_summary_long", summary);
+    }
+
+    private string? HandleStoryRequest(string input, int? userId)
+    {
+        var lower = input.ToLowerInvariant().Trim();
+
+        var isStoryRequest = lower.Contains("tell me a story") ||
+                             lower.Contains("make up a story") ||
+                             lower.Contains("tell me a tale") ||
+                             lower.Contains("tell us a story") ||
+                             lower.Contains("story time") ||
+                             lower == "story" ||
+                             lower.StartsWith("tell me another story");
+
+        if (!isStoryRequest) return null;
+
+        var story = _storyGenerator.GenerateStory(_currentUserName, userId);
+        if (string.IsNullOrEmpty(story))
+            return GetRandomResponse("story_response", "Once upon a time, there was a curious explorer who set out to discover new things. The end.");
+
+        return GetRandomResponse("story_response", story);
     }
 
     private string? HandleLinkCreation(string input)
