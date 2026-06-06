@@ -1020,7 +1020,7 @@ A `StoryGenerator` engine that composes short stories from DB-stored templates, 
 
 ---
 
-## Phase 25 — Word Classification Follow-Up
+## Phase 25 — Word Classification Follow-Up ✅
 
 When the user teaches the bot a new word via clarification, the bot follows up with 1-2 brief classification questions to determine its type (person/place/thing/verb), enriching the POS dictionary and noun categories.
 

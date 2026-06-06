@@ -132,6 +132,7 @@ A completed improvement history is maintained in `.agents/history.md`. Active pl
 - **Phase 23:** Grammar & Natural Flow Bugs ✅ (11 bugs fixed: greeting-as-name, conjugated verb recognition, neutral sentiment followup, empathy-first flow, proactive template subject mismatch, cross-turn inference persistence, SVO gerund splitting, sentiment intensity timing, summary verb conjugation, factual "feel that way", temporal past tense)
 - **Phase 24:** Random Short Story Generation ✅ (StoryGenerator, 11-slot template system, 10 seed templates, explicit/proactive triggers, 7 tests, 230/230 pass)
 - **Fix: Context Follow-Up Natural Flow (Post-Phase 23):** 3 fixes — (1) `context_followup_self` and `context_followup_with_object_self` template categories prevent third-person reference to the user (e.g. "What else can you share about Kev and adventure games?" → "Tell me more about your adventure games"). (2) `"they"/"their"` pronoun resolution prefers LastObject to fix "They are spotty" resolving to user name instead of the actual antecedent. (3) Self-variant fallback to generic templates when new categories are missing from existing databases, preventing blank responses.
+- **Phase 25:** Word Classification ✅ (after unknown word teaching, bot asks "person/place/thing/verb?", stores in POS dict + noun_categories, place subcategory triggers visit-fact follow-up, max 2 classifications per session, 8 new bot responses, 7 tests, 237/237 pass)
 ## Known Fixes
 - **ContractionExpander:** Loaded from `contractions` table via `KnowledgeStore.GetContractions()`. Expands contracted forms before tokenisation using regex replace with `IgnoreCase`. The expander uses lowercase expansion text (`"i am"`, not `"I am"`) since the tokeniser lowercases afterward. Seeded via `DbSeeder.SeedContractions()` and `TestDataHelper.SeedContractions()`.
 - **Math operators in tokeniser:** `+`, `-`, `*`, `/`, `^` are extracted as standalone tokens by Tokeniser regex. `GetUnknownWords` in `SpellChecker` must skip math operators to prevent false unknown-word prompts before math evaluation. Fixed via `SpellChecker.MathOperators` HashSet.
@@ -174,7 +175,8 @@ A completed improvement history is maintained in `.agents/history.md`. Active pl
 
 ## Routines
 - **Code review after every change:** After each modification, review the changed code for bugs and duplicate code — refactor any duplication found.
-- **When creating a new phase plan:** Append to `.agents/history.md` (completed history), create new phase file in `.plans/`, file the plan to MemPalace (`wing: pokechat, room: plans`), and update this file's Improvement Plan section.
+- **When creating a new phase plan:** Create new phase file in `.plans/`, file the plan to MemPalace (`wing: pokechat, room: plans`), and update this file's Improvement Plan section.
+- **When a phase is completed:** Append a summarised version to `.agents/history.md`, then delete the plan file from `.plans/`.
 - **After each phase or significant milestone:** Update `README.md` to reflect current architecture, completed phases, and any relevant changes.
 
 ## Git
