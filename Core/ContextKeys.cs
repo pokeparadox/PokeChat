@@ -37,4 +37,7 @@ public static class ContextKeys
     public const string PreviousResponseCategory = "previous_response_category";
     public const string LastResponseHadSvo = "last_response_had_svo";
     public const string AdaptiveResponseWeighting = "adaptive_response_weighting";
+    public const string PendingClassificationWord = "pending_classification_word";
+    public const string PendingClassificationCount = "pending_classification_count";
+    public const string PendingPlaceWord = "pending_place_word";
 }

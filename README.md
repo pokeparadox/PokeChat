@@ -40,6 +40,7 @@ NLP/
   PunctuationHelper.cs        → shared IsPunctuation utility
   SpellChecker.cs             → Levenshtein spell correction
   Pluraliser.cs               → singularise English plural nouns
+  ContractionExpander.cs      → expands contractions before tokenisation
 Math/
   IMathEngine.cs              → math evaluation interface
   SimpleMath.cs               → binary expression evaluator (+, -, *, /, ^)
@@ -47,6 +48,8 @@ Knowledge/
   KnowledgeStore.cs           → EF Core repository layer
   Fact.cs                     → Facet model for facts
   ContextTracker.cs           → conversation context, pronoun resolution
+Stories/
+  StoryGenerator.cs           → random short story composition
 Responses/
   ResponseEngine.cs           → rule-based response generation
   ResponseRules.cs            → DB-loaded regex rules
@@ -73,8 +76,10 @@ All conversational data is persisted:
 - **Word links** — synonyms, antonyms, related words
 - **Noun categories** — person/place/thing classification
 - **Emotion keywords** — sentiment analysis with ~95 keywords across 5 sentiments
-- **Contractions** — 44 common English contractions mapped to expanded forms
+- **Contractions** — 54 common English contractions mapped to expanded forms
 - **User bot names** — per-user custom bot name assignment
+- **Story templates** — 10 slot-based templates for short story generation
+- **Learned response rules** — user-taught response patterns with confidence tracking
 
 ## Improvements (Phases)
 
@@ -103,5 +108,7 @@ All conversational data is persisted:
 | 20 | Multi-turn topic tracking (topic stack, cross-turn references) | ✅ |
 | 22 | Conversation quality metrics (per-session stats, response effectiveness) | ✅ |
 | 23 | Grammar & natural flow bugs (11 bugs fixed) | ✅ |
+| 24 | Random short story generation (11-slot templates) | ✅ |
+| 25 | Word classification (person/place/thing/verb follow-up) | ✅ |
 
 See `.agents/history.md` for completed improvements. 

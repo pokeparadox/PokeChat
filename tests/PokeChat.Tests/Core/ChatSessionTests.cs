@@ -929,4 +929,142 @@ public class ChatSessionTests
             response.ShouldNotContain("{");
         }
     }
+
+    [Fact]
+    public void ProcessInput_UnknownWord_ClassificationFires_AfterLearn()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("the xyzzy");
+
+            var response = session.ProcessInput("a made up word");
+
+            response.ShouldContain("Is it a person, place, thing, or verb");
+        }
+    }
+
+    [Fact]
+    public void ProcessInput_Classification_LearnsNoun()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("the xyzzy");
+            session.ProcessInput("a made up word");
+
+            var response = session.ProcessInput("a person");
+
+            response.ShouldBe("Got it! I'll remember 'xyzzy' as a person.");
+
+            var posEntry = db.Context.PosDictionary.FirstOrDefault(p => p.Word == "xyzzy");
+            posEntry.ShouldNotBeNull();
+            posEntry.WordType.ShouldBe("noun");
+
+            var catEntry = db.Context.NounCategories.FirstOrDefault(n => n.Noun == "xyzzy");
+            catEntry.ShouldNotBeNull();
+            catEntry.Category.ShouldBe("person");
+        }
+    }
+
+    [Fact]
+    public void ProcessInput_Classification_LearnsVerb()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("the xyzzy");
+            session.ProcessInput("a made up word");
+
+            var response = session.ProcessInput("a verb");
+
+            response.ShouldBe("Got it! I'll remember 'xyzzy' as a verb.");
+
+            var posEntry = db.Context.PosDictionary.FirstOrDefault(p => p.Word == "xyzzy");
+            posEntry.ShouldNotBeNull();
+            posEntry.WordType.ShouldBe("verb");
+        }
+    }
+
+    [Fact]
+    public void ProcessInput_Classification_LearnsPlace_AsksFollowUp()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("the xyzzy");
+            session.ProcessInput("a made up word");
+
+            var response = session.ProcessInput("a place");
+
+            response.ShouldBe("Have you ever been to xyzzy?");
+
+            var catEntry = db.Context.NounCategories.FirstOrDefault(n => n.Noun == "xyzzy");
+            catEntry.ShouldNotBeNull();
+            catEntry.Category.ShouldBe("place");
+        }
+    }
+
+    [Fact]
+    public void ProcessInput_Classification_PlaceFollowUp_Yes_StoresVisit()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("the xyzzy");
+            session.ProcessInput("a made up word");
+            session.ProcessInput("a place");
+
+            var response = session.ProcessInput("yes");
+
+            response.ShouldContain("visited xyzzy");
+
+            var facts = db.Context.Facts.ToList();
+            facts.Any(f => f.Subject == "Alice" && f.Verb == "visited" && f.Object == "xyzzy").ShouldBeTrue();
+        }
+    }
+
+    [Fact]
+    public void ProcessInput_Classification_PlaceFollowUp_No_DoesNotStore()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("the xyzzy");
+            session.ProcessInput("a made up word");
+            session.ProcessInput("a place");
+
+            var response = session.ProcessInput("no");
+
+            response.ShouldContain("I'll remember xyzzy is a place");
+
+            var facts = db.Context.Facts.ToList();
+            facts.Any(f => f.Verb == "visited").ShouldBeFalse();
+        }
+    }
+
+    [Fact]
+    public void ProcessInput_Classification_Suggestion_DoesNotFire()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("the kat");
+
+            var response = session.ProcessInput("yes");
+
+            response.ShouldContain("I'll remember that 'kat' should be 'cat'");
+
+            var misspelling = db.Context.Misspellings.FirstOrDefault(m => m.WrongWord == "kat");
+            misspelling.ShouldNotBeNull();
+            misspelling.Correction.ShouldBe("cat");
+        }
+    }
 }

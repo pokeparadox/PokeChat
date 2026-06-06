@@ -170,6 +170,18 @@ public class ChatSession : IDisposable
             return HandleClarification(input, pendingWord);
         }
 
+        var classWord = _context.GetContext(ContextKeys.PendingClassificationWord);
+        if (classWord != null)
+        {
+            return HandleClassification(input, classWord);
+        }
+
+        var placeWord = _context.GetContext(ContextKeys.PendingPlaceWord);
+        if (placeWord != null)
+        {
+            return HandlePlaceFollowUp(input, placeWord);
+        }
+
         var dictWord = _context.GetContext(ContextKeys.PendingDictionaryWord);
         if (dictWord != null)
         {
@@ -511,6 +523,7 @@ public class ChatSession : IDisposable
             {
                 _knowledgeStore.AddMisspelling(pendingWord, pendingSuggestion);
                 _spellChecker.AddToDictionary(pendingSuggestion);
+                _knowledgeStore.Save();
                 return $"Got it! I'll remember that '{pendingWord}' should be '{pendingSuggestion}'.";
             }
         }
@@ -519,9 +532,147 @@ public class ChatSession : IDisposable
         _context.UpdateLastObject(pendingWord);
         _knowledgeStore.AddLearnedWord(pendingWord);
         _spellChecker.AddToDictionary(pendingWord);
+        _knowledgeStore.Save();
+
+        var countRaw = _context.GetContext(ContextKeys.PendingClassificationCount);
+        int.TryParse(countRaw, out var count);
+        count++;
+        _context.SetContext(ContextKeys.PendingClassificationCount, count.ToString());
+
+        if (count <= 2)
+        {
+            _context.SetContext(ContextKeys.PendingClassificationWord, pendingWord);
+            return GetClassifyResponse("word_classify_default", pendingWord);
+        }
+
         return string.IsNullOrEmpty(pendingSuggestion)
             ? $"Thanks! I've learned the word '{pendingWord}'."
             : $"Okay, I've learned the word '{pendingWord}'.";
+    }
+
+    internal string HandleClassification(string input, string word)
+    {
+        _context.SetContext(ContextKeys.PendingClassificationWord, null);
+        var lower = input.ToLowerInvariant().Trim();
+
+        var wordType = ParseWordType(lower);
+
+        if (wordType is "person" or "thing")
+        {
+            _knowledgeStore.UpdateWordType(word, "noun");
+            _knowledgeStore.AddNounCategory(word, wordType, _currentUserId);
+            _knowledgeStore.Save();
+            return GetClassifyResponse("word_classify_learned_noun", word, wordType);
+        }
+
+        if (wordType == "place")
+        {
+            _knowledgeStore.UpdateWordType(word, "noun");
+            _knowledgeStore.AddNounCategory(word, "place", _currentUserId);
+            _knowledgeStore.Save();
+            _context.SetContext(ContextKeys.PendingPlaceWord, word);
+            return GetClassifyResponse("word_classify_place_ask", word);
+        }
+
+        if (wordType == "noun")
+        {
+            _knowledgeStore.UpdateWordType(word, "noun");
+            _knowledgeStore.Save();
+            return GetClassifyResponse("word_classify_learned_noun", word, "noun");
+        }
+
+        if (wordType == "verb")
+        {
+            _knowledgeStore.UpdateWordType(word, "verb");
+            _knowledgeStore.Save();
+            return GetClassifyResponse("word_classify_learned_verb", word);
+        }
+
+        if (wordType == "adjective")
+        {
+            _knowledgeStore.UpdateWordType(word, "adjective");
+            _knowledgeStore.Save();
+            return GetClassifyResponse("word_classify_learned_adj", word);
+        }
+
+        _knowledgeStore.Save();
+        return GetClassifyResponse("word_classify_learned_unknown", word);
+    }
+
+    internal string HandlePlaceFollowUp(string input, string word)
+    {
+        _context.SetContext(ContextKeys.PendingPlaceWord, null);
+        var lower = input.ToLowerInvariant().Trim();
+
+        if (Affirmations.Contains(lower) || lower.Contains("been there") || lower.Contains("visited"))
+        {
+            var fact = new Fact
+            {
+                UserId = _currentUserId,
+                Subject = _currentUserName,
+                Verb = "visited",
+                Object = word,
+                PredicateType = PredicateType.General.ToString(),
+                CreatedAt = DateTime.UtcNow.ToString("o")
+            };
+            _knowledgeStore.StoreFact(fact);
+            _knowledgeStore.Save();
+            return GetClassifyResponse("word_classify_place_yes", word);
+        }
+
+        _knowledgeStore.Save();
+        return GetClassifyResponse("word_classify_place_no", word);
+    }
+
+    private static string? ParseWordType(string input)
+    {
+        var lower = input.ToLowerInvariant();
+
+        if (lower.Contains("person") || lower.Contains("someone") || lower.Contains("somebody"))
+            return "person";
+        if (lower.Contains("place") || lower.Contains("location") || lower.Contains("somewhere"))
+            return "place";
+        if (lower.Contains("thing") || lower.Contains("object") || lower.Contains("item") ||
+            lower.Contains("concept") || lower.Contains("idea"))
+            return "thing";
+        if (lower.Contains("verb") || lower.Contains("action") || lower.Contains("doing word"))
+            return "verb";
+        if (lower.Contains("adjective") || lower.Contains("describing word") || lower.Contains("describes"))
+            return "adjective";
+        if (lower.Contains("noun") || lower.Contains("naming word"))
+            return "noun";
+
+        return null;
+    }
+
+    private string GetClassifyResponse(string category, params object[] args)
+    {
+        var botResponses = GetCachedBotResponses();
+        if (botResponses.TryGetValue(category, out var responses) && responses.Count > 0)
+        {
+            var template = responses[Random.Shared.Next(responses.Count)];
+            return args.Length > 0 ? string.Format(template, args) : template;
+        }
+
+        var fallbacks = new Dictionary<string, List<string>>
+        {
+            ["word_classify_default"] = new() { $"Thanks! I've learned the word '{{0}}'. Is it a person, place, thing, or verb?" },
+            ["word_classify_learned_noun"] = new() { $"Got it! I'll remember '{{0}}' as a {{1}}." },
+            ["word_classify_learned_verb"] = new() { $"Got it! I'll remember '{{0}}' as a verb." },
+            ["word_classify_learned_adj"] = new() { $"Got it! I'll remember '{{0}}' as an adjective." },
+            ["word_classify_learned_unknown"] = new() { $"Okay, I've learned the word '{{0}}'." },
+            ["word_classify_place_ask"] = new() { $"Have you ever been to {{0}}?" },
+            ["word_classify_place_yes"] = new() { $"Nice! I'll remember that you've visited {{0}}." },
+            ["word_classify_place_no"] = new() { $"No problem, I'll remember {{0}} is a place." },
+        };
+
+        if (fallbacks.TryGetValue(category, out var fb) && fb.Count > 0)
+        {
+            var template = fb[Random.Shared.Next(fb.Count)];
+            return args.Length > 0 ? string.Format(template, args) : template;
+        }
+
+        return string.Empty;
     }
 
     internal string HandleDictionaryDefinition(string input, string word)

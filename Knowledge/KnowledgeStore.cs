@@ -299,6 +299,17 @@ public class KnowledgeStore(PokeChatDbContext context)
         context.PosDictionary.Add(entry);
     }
 
+    public void UpdateWordType(string word, string wordType)
+    {
+        var lower = word.ToLowerInvariant();
+        var entry = context.PosDictionary.Local.FirstOrDefault(e => e.Word == lower)
+                    ?? context.PosDictionary.FirstOrDefault(e => e.Word == lower);
+        if (entry != null)
+        {
+            entry.WordType = wordType;
+        }
+    }
+
     public List<WordDefinition> GetDefinitions(string word)
     {
         return context.WordDefinitions

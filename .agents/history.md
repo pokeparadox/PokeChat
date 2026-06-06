@@ -1017,3 +1017,36 @@ A `StoryGenerator` engine that composes short stories from DB-stored templates, 
 
 ### Migration
 - `20260606075805_Phase24_StoryGeneration` — adds `StoryTemplates` table
+
+---
+
+## Phase 25 — Word Classification Follow-Up
+
+When the user teaches the bot a new word via clarification, the bot follows up with 1-2 brief classification questions to determine its type (person/place/thing/verb), enriching the POS dictionary and noun categories.
+
+### Files modified
+- `Core/ContextKeys.cs` — added `PendingClassificationWord`, `PendingClassificationCount`, `PendingPlaceWord`
+- `Knowledge/KnowledgeStore.cs` — added `UpdateWordType(string word, string wordType)`
+- `Core/ChatSession.cs` — modified `HandleClarification` to set pending classification, new `HandleClassification` and `HandlePlaceFollowUp` methods, wired into `ProcessInput`
+- `Data/DbSeeder.cs` — 8 new bot response categories for word classification
+- `tests/PokeChat.Tests/Helpers/TestDataHelper.cs` — matching seed data
+- `tests/PokeChat.Tests/Core/ChatSessionTests.cs` — 7 new tests
+
+### Key details
+- **Limit:** Only asks classification for the first 2 unknown words per session (`PendingClassificationCount`)
+- **Suggestion path:** If user affirms a spelling suggestion, classification is skipped (the word is already known)
+- **Classification parsing:** Keyword matching (person/place/thing/verb/action/adjective/noun) + pattern matching ("it's a X", "it is a X")
+- **Place follow-up:** If classified as "place", one extra turn asks "Have you ever been to {word}?" and stores a visit fact if affirmed
+- **Fallback:** If classification can't be determined, word stays as "unknown" type — no further questions
+
+### New tests (7)
+1. `ProcessInput_UnknownWord_ClassificationFires_AfterLearn`
+2. `ProcessInput_Classification_LearnsNoun`
+3. `ProcessInput_Classification_LearnsVerb`
+4. `ProcessInput_Classification_LearnsPlace_AsksFollowUp`
+5. `ProcessInput_Classification_PlaceFollowUp_Yes_StoresVisit`
+6. `ProcessInput_Classification_PlaceFollowUp_No_DoesNotStore`
+7. `ProcessInput_Classification_Suggestion_DoesNotFire`
+
+### Verify
+- `dotnet build && dotnet test` — all pass
