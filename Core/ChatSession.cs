@@ -312,9 +312,7 @@ public class ChatSession : IDisposable
             _spellChecker.AddToDictionary(word);
             _knowledgeStore.AddLearnedWord(word);
             unknownWords.Remove(word);
-            if (_currentUserName != null)
-                _context.UpdateLastSubject(_currentUserName);
-            _context.UpdateLastObject(word);
+            _context.UpdateLastSubject(word);
         }
 
         if (unknownWords.Count > 0)
@@ -335,10 +333,10 @@ public class ChatSession : IDisposable
             if (timeContext != null)
                 _context.SetContext(ContextKeys.CurrentTimeContext, timeContext);
 
-            if (predicateType == PredicateType.General)
+            if (predicateType is PredicateType.General or PredicateType.GeneralFact)
             {
-                var resolvedObjWords = resolvedObject.Split(' ');
-                if (resolvedObjWords.Length == 1 && FunctionWords.Contains(resolvedObjWords[0]))
+                var lowerObj = resolvedObject.ToLowerInvariant();
+                if (FunctionWords.Any(w => lowerObj.StartsWith(w + " ") || lowerObj.Equals(w)))
                     continue;
             }
 
@@ -410,9 +408,7 @@ public class ChatSession : IDisposable
         else if (correctedTokens.Count == 1 && tags[0] == PosTag.Noun)
         {
             var noun = correctedTokens[0];
-            if (_currentUserName != null)
-                _context.UpdateLastSubject(_currentUserName);
-            _context.UpdateLastObject(noun);
+            _context.UpdateLastSubject(noun);
             var cat = _nounCategoriser.CategoriseNoun(noun);
             _context.SetContext(ContextKeys.ObjectCategory, cat);
         }
@@ -444,6 +440,8 @@ public class ChatSession : IDisposable
         };
     }
 
+    internal string? LastSubject => _context.LastSubject;
+    internal string? LastObject => _context.LastObject;
     internal IReadOnlyList<TopicEntry> TopicStack => _context.TopicStack;
 
     internal static string StemVerb(string verb)

@@ -1067,4 +1067,65 @@ public class ChatSessionTests
             misspelling.Correction.ShouldBe("cat");
         }
     }
+
+    [Fact]
+    public void SingleUnknownNoun_SetsLastSubjectToWord_NotUserName()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("gobbledygook");
+
+            session.LastSubject.ShouldBe("gobbledygook");
+            session.LastObject.ShouldBeNull();
+        }
+    }
+
+    [Fact]
+    public void SingleKnownNoun_SetsLastSubjectToWord_NotUserName()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("pizza");
+
+            session.LastSubject.ShouldBe("pizza");
+            session.LastObject.ShouldBeNull();
+        }
+    }
+
+    [Fact]
+    public void NegatedGeneralFact_Filtered_ContextUnchanged()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("gobbledygook");
+
+            session.LastSubject.ShouldBe("gobbledygook");
+
+            var response = session.ProcessInput("they are not my food");
+
+            session.LastSubject.ShouldBe("gobbledygook");
+            response.ShouldNotContain("not my food");
+        }
+    }
+
+    [Fact]
+    public void SingleNoun_ContextFollowUp_DoesNotUsePossessive()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            var response = session.ProcessInput("gobbledygook");
+
+            response.ShouldContain("gobbledygook");
+            response.ShouldNotContain("your gobbledygook");
+            response.ShouldNotContain("Alice and gobbledygook");
+        }
+    }
 }
