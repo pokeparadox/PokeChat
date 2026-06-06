@@ -55,7 +55,7 @@ public class ContextTracker
             "it" or "this" or "that" => _lastObject ?? _lastSubject ?? string.Empty,
             "he" or "his" => _lastSubject ?? string.Empty,
             "she" => _lastSubject ?? string.Empty,
-            "they" or "their" => _lastSubject ?? string.Empty,
+            "they" or "their" => _lastObject ?? _lastSubject ?? string.Empty,
             "him" or "her" or "them" => _lastObject ?? _lastSubject ?? string.Empty,
             _ => pronoun
         };

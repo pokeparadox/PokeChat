@@ -937,3 +937,37 @@ Track per-session metrics (turn count, facts learned, sentiment trend, topics, r
 
 ### Verify
 - `dotnet build && dotnet test` — 223/223 pass
+
+---
+
+## Fix: Context Follow-Up Natural Flow ✅
+
+Two bugs in context-follow-up responses when the bot explicitly references the user by name as a third-person subject.
+
+### Bug 1 — "Kev and adventure games" / "What else do you know about Clive?"
+When the user says "I play adventure games", LastSubject = user name + LastObject = object. `context_followup_with_object` templates produced "What else can you share about Kev and adventure games?" `context_followup` templates produced "What else do you know about Clive?" — unnatural third-person reference to the person being addressed.
+
+**Fix:** Added `_currentUserName` tracking to `ResponseEngine` (`SetCurrentUserName()`). When the context follow-up subject matches `_currentUserName`, uses new template categories:
+- `context_followup_self` — "Tell me about yourself, {0}."
+- `context_followup_with_object_self` — "Tell me more about your {1}."
+
+### Bug 2 — "Tell me more about your spotty" via pronoun resolution
+User: "Frogs" → "They are spotty". "they" resolved to LastSubject (user name) instead of LastObject (frogs). Combined with isSelf detection, produced "Tell me more about your spotty."
+
+**Fix:** `ContextTracker.ResolvePronoun` — `"they"/"their"` now prefers `LastObject` over `LastSubject` (matching `"them"` behavior).
+
+### Bug 3 — Blank response on existing databases
+New `context_followup_self` / `context_followup_with_object_self` categories don't exist in databases seeded before this change. `GetRandomResponse` returns `string.Empty` for missing categories, producing blank bot response.
+
+**Fix:** Fallback checks in `ResponseEngine` context-follow-up code — if the self variant returns empty, falls through to the generic template category.
+
+### Files modified
+- `Responses/ResponseEngine.cs` — `_currentUserName` field, `SetCurrentUserName()`, isSelf detection with fallback to generic templates
+- `Knowledge/ContextTracker.cs` — `"they"/"their"` resolve to LastObject first
+- `Core/ChatSession.cs` — calls `SetCurrentUserName` when name established or reset
+- `Data/DbSeeder.cs` — new template categories (5 entries)
+- `tests/PokeChat.Tests/Helpers/TestDataHelper.cs` — matching test seed data
+- `AGENTS.md` — pronoun resolution, new Known Fixes
+
+### Verify
+- `dotnet build && dotnet test` — 223/223 pass

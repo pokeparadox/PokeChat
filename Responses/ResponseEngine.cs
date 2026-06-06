@@ -16,6 +16,12 @@ public class ResponseEngine
     private readonly ISvoExtractor _svoExtractor;
     private readonly IMathEngine _mathEngine;
     private readonly Dictionary<string, List<string>> _botResponses;
+    private string _currentUserName = string.Empty;
+
+    public void SetCurrentUserName(string name)
+    {
+        _currentUserName = name;
+    }
 
     public ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker context, SpellChecker spellChecker, IPosTagger posTagger, ITokeniser tokeniser, ISvoExtractor svoExtractor, IMathEngine? mathEngine = null)
     {
@@ -193,10 +199,18 @@ public class ResponseEngine
             {
                 var subject = _context.LastSubject;
                 var subjCat = _context.GetContext(ContextKeys.SubjectCategory);
+                var isSelf = !string.IsNullOrEmpty(_currentUserName) &&
+                    string.Equals(subject, _currentUserName, StringComparison.OrdinalIgnoreCase);
 
                 if (!string.IsNullOrEmpty(_context.LastObject))
                 {
                     var obj = _context.LastObject;
+                    if (isSelf)
+                    {
+                        var selfResponse = GetRandomResponse("context_followup_with_object_self", subject, obj);
+                        if (!string.IsNullOrEmpty(selfResponse))
+                            return selfResponse;
+                    }
                     return GetRandomResponse("context_followup_with_object", subject, obj);
                 }
 
@@ -207,6 +221,12 @@ public class ResponseEngine
                         return catResponse;
                 }
 
+                if (isSelf)
+                {
+                    var selfResponse = GetRandomResponse("context_followup_self", subject);
+                    if (!string.IsNullOrEmpty(selfResponse))
+                        return selfResponse;
+                }
                 return GetRandomResponse("context_followup", subject);
             }
 

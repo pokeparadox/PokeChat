@@ -614,6 +614,7 @@ public class ChatSession : IDisposable
         _currentUserName = char.ToUpper(name[0]) + name.Substring(1).ToLowerInvariant();
         _currentUserNameLower = _currentUserName.ToLowerInvariant();
         _currentUserId = _knowledgeStore.GetOrCreateUser(_currentUserName);
+        _responseEngine.SetCurrentUserName(_currentUserName);
 
         var storedName = _knowledgeStore.GetUserBotName(_currentUserId!.Value);
         if (storedName != null)
@@ -754,6 +755,7 @@ public class ChatSession : IDisposable
                 _currentUserName = string.Empty;
                 _currentUserNameLower = string.Empty;
                 _currentUserId = null;
+                _responseEngine.SetCurrentUserName(string.Empty);
                 response = GetResetResponse("bot_reset_confirmed");
                 return true;
             }
