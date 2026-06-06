@@ -2,6 +2,7 @@ using Facet.Extensions;
 using Microsoft.EntityFrameworkCore;
 using PokeChat.Data;
 using PokeChat.Data.Entities;
+using PokeChat.Responses;
 
 namespace PokeChat.Knowledge;
 
@@ -90,6 +91,21 @@ public class KnowledgeStore(PokeChatDbContext context)
             BotResponse = botResponse,
             Timestamp = DateTime.UtcNow.ToString("o"),
             SessionId = sessionId
+        };
+
+        context.Conversations.Add(conversation);
+    }
+
+    public void StoreConversation(int userId, string userInput, string botResponse, string? sessionId, string? responseCategory)
+    {
+        var conversation = new Conversation
+        {
+            UserId = userId,
+            UserInput = userInput,
+            BotResponse = botResponse,
+            Timestamp = DateTime.UtcNow.ToString("o"),
+            SessionId = sessionId,
+            ResponseCategory = responseCategory
         };
 
         context.Conversations.Add(conversation);
@@ -649,7 +665,7 @@ public class KnowledgeStore(PokeChatDbContext context)
                 (lowerInput.Contains(f.Subject.ToLowerInvariant()) ||
                  lowerInput.Contains(f.Verb.ToLowerInvariant())));
             foreach (var f in matchingFacts)
-                sessionFactSignatures.Add($"{f.Subject} {f.Verb} {f.Object}");
+                sessionFactSignatures.Add(FormatFact(f));
         }
 
         if (sessionFactSignatures.Count == 0)
@@ -660,7 +676,7 @@ public class KnowledgeStore(PokeChatDbContext context)
                 var objectMatches = facts.Where(f =>
                     lowerInput.Contains(f.Object.ToLowerInvariant()));
                 foreach (var f in objectMatches)
-                    sessionFactSignatures.Add($"{f.Subject} {f.Verb} {f.Object}");
+                    sessionFactSignatures.Add(FormatFact(f));
             }
         }
 
@@ -674,6 +690,12 @@ public class KnowledgeStore(PokeChatDbContext context)
 
         var numbered = factList.Select((f, i) => $"{i + 1}) {f}");
         return string.Join(". ", numbered);
+    }
+
+    private static string FormatFact(Fact fact)
+    {
+        var conjVerb = ResponseEngine.ConjugateVerb(fact.Verb, fact.Subject);
+        return $"{fact.Subject} {conjVerb} {fact.Object}";
     }
 
     public int GetFactCountAboutSubject(int userId, string subject)
@@ -740,5 +762,145 @@ public class KnowledgeStore(PokeChatDbContext context)
             CreatedAt = DateTime.UtcNow.ToString("o")
         };
         context.ResponseFeedbacks.Add(entry);
+    }
+
+    public void RecordSessionMetrics(string sessionId)
+    {
+        var conversations = context.Conversations
+            .Where(c => c.SessionId == sessionId)
+            .OrderBy(c => c.Id)
+            .ToList();
+        if (conversations.Count == 0) return;
+
+        var userId = conversations[0].UserId;
+        var turnCount = conversations.Count;
+
+        var userIdVal = userId ?? 0;
+        var factsLearned = context.Facts.Count(f => f.UserId == userIdVal);
+
+        var sentiments = context.Facts
+            .Where(f => f.UserId == userIdVal && f.Sentiment != null)
+            .Select(f => f.Sentiment)
+            .ToList();
+        var dominantSentiment = sentiments
+            .GroupBy(s => s)
+            .OrderByDescending(g => g.Count())
+            .FirstOrDefault()?.Key;
+
+        var sentimentTrend = "stable";
+        if (sentiments.Count >= 3)
+        {
+            var half = sentiments.Count / 2;
+            var firstHalf = sentiments.Take(half).ToList();
+            var secondHalf = sentiments.Skip(half).ToList();
+            var firstPos = firstHalf.Count(s => s == "positive");
+            var secondPos = secondHalf.Count(s => s == "positive");
+            var firstNeg = firstHalf.Count(s => s is "negative" or "anger" or "fear");
+            var secondNeg = secondHalf.Count(s => s is "negative" or "anger" or "fear");
+            if (secondPos > firstPos) sentimentTrend = "improving";
+            else if (secondNeg > firstNeg) sentimentTrend = "declining";
+        }
+
+        var topicsDiscussed = context.Facts
+            .Where(f => f.UserId == userIdVal)
+            .Select(f => f.Subject)
+            .Distinct()
+            .Count();
+
+        var responseGroups = conversations
+            .Where(c => !string.IsNullOrEmpty(c.ResponseCategory))
+            .GroupBy(c => c.ResponseCategory!)
+            .ToDictionary(g => g.Key, g => g.Count());
+        var responseStats = System.Text.Json.JsonSerializer.Serialize(responseGroups);
+
+        var avgResponseLength = conversations.Count > 0
+            ? (int)conversations.Average(c => c.BotResponse.Length)
+            : 0;
+
+        var startedAtStr = conversations[0].Timestamp;
+        var endedAtStr = conversations[^1].Timestamp;
+        var sessionLength = 0;
+        if (DateTime.TryParse(startedAtStr, out var started) && DateTime.TryParse(endedAtStr, out var ended))
+            sessionLength = (int)(ended - started).TotalSeconds;
+
+        var metric = new ConversationMetric
+        {
+            SessionId = sessionId,
+            UserId = userId,
+            TurnCount = turnCount,
+            FactsLearned = factsLearned,
+            DominantSentiment = dominantSentiment,
+            SentimentTrend = sentimentTrend,
+            TopicsDiscussed = topicsDiscussed,
+            BotResponseStats = responseStats,
+            AvgResponseLength = avgResponseLength,
+            SessionLength = sessionLength,
+            StartedAt = startedAtStr,
+            EndedAt = endedAtStr
+        };
+        context.ConversationMetrics.Add(metric);
+    }
+
+    public void UpdateResponseEffectiveness(string category, bool hadFollowUp)
+    {
+        var existing = context.ResponseEffectiveness.Local
+            .FirstOrDefault(e => e.Category == category)
+            ?? context.ResponseEffectiveness
+            .FirstOrDefault(e => e.Category == category);
+        if (existing == null)
+        {
+            existing = new ResponseEffectiveness
+            {
+                Category = category,
+                AvgSessionLengthAfter = 1,
+                UsedCount = 1,
+                FollowUpRate = hadFollowUp ? 1.0 : 0.0,
+                LastUsed = DateTime.UtcNow.ToString("o")
+            };
+            context.ResponseEffectiveness.Add(existing);
+        }
+        else
+        {
+            var total = existing.UsedCount + 1;
+            var newFollowUpCount = (int)(existing.FollowUpRate * existing.UsedCount) + (hadFollowUp ? 1 : 0);
+            existing.FollowUpRate = (double)newFollowUpCount / total;
+            existing.UsedCount = total;
+            existing.AvgSessionLengthAfter = (existing.AvgSessionLengthAfter + 1) / 2;
+            existing.LastUsed = DateTime.UtcNow.ToString("o");
+        }
+    }
+
+    public double? GetEffectiveness(string category)
+    {
+        var existing = context.ResponseEffectiveness
+            .FirstOrDefault(e => e.Category == category);
+        return existing?.FollowUpRate;
+    }
+
+    public List<ConversationMetric> GetMetricsForUser(int userId)
+    {
+        return context.ConversationMetrics
+            .Where(m => m.UserId == userId)
+            .OrderByDescending(m => m.Id)
+            .ToList();
+    }
+
+    public List<string> GetBestPerformingCategories(int topN)
+    {
+        return context.ResponseEffectiveness
+            .Where(e => e.UsedCount >= 2)
+            .OrderByDescending(e => e.FollowUpRate)
+            .ThenByDescending(e => e.UsedCount)
+            .Take(topN)
+            .Select(e => e.Category)
+            .ToList();
+    }
+
+    public List<Conversation> GetConversationsBySession(string sessionId)
+    {
+        return context.Conversations
+            .Where(c => c.SessionId == sessionId)
+            .OrderBy(c => c.Id)
+            .ToList();
     }
 }

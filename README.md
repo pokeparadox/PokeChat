@@ -99,5 +99,9 @@ All conversational data is persisted:
 |   | Temporal knowledge (yesterday, last week query support) | ✅ |
 | 17 | Inference / simple reasoning (contradiction, generalisation, category chains) | ✅ |
 | 18 | Session summarisation (per-session summaries, end-of-session recap) | ✅ |
+| 19 | Self-learning response patterns (user corrections, confidence system) | ✅ |
+| 20 | Multi-turn topic tracking (topic stack, cross-turn references) | ✅ |
+| 22 | Conversation quality metrics (per-session stats, response effectiveness) | ✅ |
+| 23 | Grammar & natural flow bugs (11 bugs fixed) | ✅ |
 
 See `.agents/history.md` for completed improvements. 

@@ -8,4 +8,5 @@ public class Conversation
     public string BotResponse { get; set; } = string.Empty;
     public string Timestamp { get; set; } = string.Empty;
     public string? SessionId { get; set; }
+    public string? ResponseCategory { get; set; }
 }

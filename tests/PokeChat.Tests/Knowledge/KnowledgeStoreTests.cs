@@ -655,4 +655,74 @@ public class KnowledgeStoreTests
         result.ShouldContain("likes");
         result.ShouldContain("pizza");
     }
+
+    [Fact]
+    public void RecordSessionMetrics_StoresCorrectly()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var user = new User { Name = "Alice", FirstSeen = DateTime.UtcNow.ToString("o"), LastSeen = DateTime.UtcNow.ToString("o") };
+        db.Context.Users.Add(user);
+        db.Context.SaveChanges();
+        var userId = user.Id;
+        var sessionId = "metric-session";
+
+        store.StoreConversation(userId, "hi", "hello", sessionId, "greeting");
+        store.StoreConversation(userId, "I like pizza", "Nice!", sessionId, "existing_fact");
+        store.StoreFact(new Fact { UserId = userId, Subject = "Alice", Verb = "likes", Object = "pizza", PredicateType = "preference", Sentiment = "positive", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.Save();
+
+        store.RecordSessionMetrics(sessionId);
+        store.Save();
+
+        var metrics = db.Context.ConversationMetrics.ToList();
+        metrics.Count.ShouldBe(1);
+        metrics[0].SessionId.ShouldBe(sessionId);
+        metrics[0].UserId.ShouldBe(userId);
+        metrics[0].TurnCount.ShouldBe(2);
+        metrics[0].FactsLearned.ShouldBe(1);
+        metrics[0].DominantSentiment.ShouldBe("positive");
+        metrics[0].TopicsDiscussed.ShouldBe(1);
+        metrics[0].BotResponseStats.ShouldNotBeNull();
+        metrics[0].BotResponseStats!.ShouldContain("existing_fact");
+        metrics[0].AvgResponseLength.ShouldBeGreaterThan(0);
+    }
+
+    [Fact]
+    public void UpdateResponseEffectiveness_IncrementsCount()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+
+        store.UpdateResponseEffectiveness("context_followup", true);
+        store.Save();
+        var first = db.Context.ResponseEffectiveness.First();
+        first.Category.ShouldBe("context_followup");
+        first.UsedCount.ShouldBe(1);
+        first.FollowUpRate.ShouldBe(1.0);
+
+        store.UpdateResponseEffectiveness("context_followup", false);
+        store.Save();
+        var updated = db.Context.ResponseEffectiveness.First();
+        updated.UsedCount.ShouldBe(2);
+        updated.FollowUpRate.ShouldBe(0.5);
+    }
+
+    [Fact]
+    public void GetBestPerformingCategories_ReturnsOrdered()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+
+        store.UpdateResponseEffectiveness("rule_match", true);
+        store.UpdateResponseEffectiveness("rule_match", true);
+        store.UpdateResponseEffectiveness("context_followup", false);
+        store.UpdateResponseEffectiveness("context_followup", false);
+        store.Save();
+
+        var best = store.GetBestPerformingCategories(5);
+        best.Count.ShouldBe(2);
+        best[0].ShouldBe("rule_match");
+        best[1].ShouldBe("context_followup");
+    }
 }

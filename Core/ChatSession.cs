@@ -142,6 +142,8 @@ public class ChatSession : IDisposable
 
             if (ShouldExit(input))
             {
+                _knowledgeStore.RecordSessionMetrics(_sessionId);
+                _knowledgeStore.Save();
                 var sessionSummary = GenerateSessionEndSummary();
                 if (!string.IsNullOrEmpty(sessionSummary))
                     Console.WriteLine($"{_botName}: {sessionSummary}");
@@ -210,9 +212,23 @@ public class ChatSession : IDisposable
         _context.SetContext(ContextKeys.SessionId, _sessionId);
         _context.SetContext(ContextKeys.LastUserInput, input);
 
+        var prevCategory = _context.GetContext(ContextKeys.CurrentResponseCategory);
+        if (prevCategory != null)
+            _context.SetContext(ContextKeys.PreviousResponseCategory, prevCategory);
+
         var response = _responseEngine.GenerateResponse(input, _currentUserId);
-        _knowledgeStore.StoreConversation(_currentUserId!.Value, input, response, _sessionId);
+        var responseCategory = _context.GetContext(ContextKeys.CurrentResponseCategory);
+        _knowledgeStore.StoreConversation(_currentUserId!.Value, input, response, _sessionId, responseCategory);
         _knowledgeStore.Save();
+
+        var hadTriples = _context.GetContext(ContextKeys.ContextFollowUpCount) == "0";
+        _context.SetContext(ContextKeys.LastResponseHadSvo, hadTriples ? "true" : "false");
+
+        if (prevCategory != null)
+        {
+            _knowledgeStore.UpdateResponseEffectiveness(prevCategory, hadTriples);
+        }
+
         return response;
     }
 
@@ -240,6 +256,8 @@ public class ChatSession : IDisposable
 
     internal void ProcessSentence(string sentence, string? sentiment = null, int intensity = 0)
     {
+        _context.SetContext(ContextKeys.InferredGeneralisation, null);
+
         var tokens = _tokeniser.Tokenise(sentence);
         var correctedTokens = _spellChecker.AutoCorrect(tokens);
 
@@ -274,6 +292,17 @@ public class ChatSession : IDisposable
                     }
                 }
             }
+        }
+
+        if (unknownWords.Count > 0 && correctedTokens.Count == 1 && triples.Count == 0)
+        {
+            var word = unknownWords[0];
+            _spellChecker.AddToDictionary(word);
+            _knowledgeStore.AddLearnedWord(word);
+            unknownWords.Remove(word);
+            if (_currentUserName != null)
+                _context.UpdateLastSubject(_currentUserName);
+            _context.UpdateLastObject(word);
         }
 
         if (unknownWords.Count > 0)
@@ -366,6 +395,15 @@ public class ChatSession : IDisposable
             _context.SetContext(ContextKeys.SubjectCategory, subjCat);
             _context.SetContext(ContextKeys.ObjectCategory, objCat);
         }
+        else if (correctedTokens.Count == 1 && tags[0] == PosTag.Noun)
+        {
+            var noun = correctedTokens[0];
+            if (_currentUserName != null)
+                _context.UpdateLastSubject(_currentUserName);
+            _context.UpdateLastObject(noun);
+            var cat = _nounCategoriser.CategoriseNoun(noun);
+            _context.SetContext(ContextKeys.ObjectCategory, cat);
+        }
 
     }
 
@@ -376,6 +414,7 @@ public class ChatSession : IDisposable
         {
             "i" or "me" or "my" or "myself" => _currentUserName,
             "we" or "us" or "our" => _currentUserName,
+            "it" or "its" or "itself" => _context.ResolvePronoun(lower),
             "he" or "him" or "his" => _context.ResolvePronoun(lower),
             "she" or "her" => _context.ResolvePronoun(lower),
             "they" or "them" or "their" => _context.ResolvePronoun(lower),
@@ -395,9 +434,35 @@ public class ChatSession : IDisposable
 
     internal IReadOnlyList<TopicEntry> TopicStack => _context.TopicStack;
 
+    internal static string StemVerb(string verb)
+    {
+        var lower = verb.ToLowerInvariant();
+        return lower switch
+        {
+            "has" => "have",
+            "does" => "do",
+            "goes" => "go",
+            "says" => "say",
+            "makes" => "make",
+            "takes" => "take",
+            "comes" => "come",
+            "gives" => "give",
+            "lives" => "live",
+            "plays" => "play",
+            "works" => "work",
+            "thinks" => "think",
+            "tells" => "tell",
+            "gets" => "get",
+            _ when lower.Length > 3 && lower.EndsWith("ies") => lower[..^3] + "y",
+            _ when lower.Length > 2 && lower.EndsWith("es") => lower[..^2],
+            _ when lower.Length > 3 && lower.EndsWith("s") && !lower.EndsWith("ss") => lower[..^1],
+            _ => lower
+        };
+    }
+
     internal PredicateType ClassifyPredicate(string subject, string verb, string obj)
     {
-        var lowerVerb = verb.ToLowerInvariant();
+        var lowerVerb = StemVerb(verb);
         var lowerSubject = subject.ToLowerInvariant();
 
             if (lowerVerb is "is" or "am" or "are" or "was" or "were")
@@ -555,6 +620,7 @@ public class ChatSession : IDisposable
             _botName = char.ToUpper(storedName[0]) + storedName.Substring(1).ToLowerInvariant();
 
         _context.Clear();
+        _context.UpdateLastSubject(_currentUserName);
         _context.SetContext(ContextKeys.UserName, _currentUserName);
 
         return GetNameIntroResponse(_currentUserName);
@@ -580,7 +646,10 @@ public class ChatSession : IDisposable
 
         if (tokens.Count == 1 && !IsStopWord(tokens[0]))
         {
-            return tokens[0];
+            var lowerToken = tokens[0].ToLowerInvariant();
+            if (!_greetingWords.Contains(lowerToken))
+                return tokens[0];
+            return string.Empty;
         }
 
         return string.Empty;

@@ -53,6 +53,8 @@ public sealed class PokeChatDbContext : DbContext
     public DbSet<ConversationSession> ConversationSessions => Set<ConversationSession>();
     public DbSet<LearnedResponseRule> LearnedResponseRules => Set<LearnedResponseRule>();
     public DbSet<ResponseFeedback> ResponseFeedbacks => Set<ResponseFeedback>();
+    public DbSet<ConversationMetric> ConversationMetrics => Set<ConversationMetric>();
+    public DbSet<ResponseEffectiveness> ResponseEffectiveness => Set<ResponseEffectiveness>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -97,6 +99,7 @@ public sealed class PokeChatDbContext : DbContext
             entity.Property(e => e.BotResponse).IsRequired();
             entity.Property(e => e.Timestamp).IsRequired();
             entity.Property(e => e.SessionId);
+            entity.Property(e => e.ResponseCategory);
             entity.HasOne<User>()
                 .WithMany()
                 .HasForeignKey(e => e.UserId);
@@ -301,6 +304,35 @@ public sealed class PokeChatDbContext : DbContext
             entity.HasOne<User>()
                 .WithMany()
                 .HasForeignKey(e => e.UserId);
+        });
+
+        modelBuilder.Entity<ConversationMetric>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.SessionId).IsRequired();
+            entity.Property(e => e.TurnCount);
+            entity.Property(e => e.FactsLearned);
+            entity.Property(e => e.DominantSentiment);
+            entity.Property(e => e.SentimentTrend);
+            entity.Property(e => e.TopicsDiscussed);
+            entity.Property(e => e.BotResponseStats);
+            entity.Property(e => e.AvgResponseLength);
+            entity.Property(e => e.SessionLength);
+            entity.Property(e => e.StartedAt).IsRequired();
+            entity.Property(e => e.EndedAt).IsRequired();
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => e.UserId);
+        });
+
+        modelBuilder.Entity<ResponseEffectiveness>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Category).IsRequired();
+            entity.Property(e => e.AvgSessionLengthAfter);
+            entity.Property(e => e.UsedCount);
+            entity.Property(e => e.FollowUpRate);
+            entity.Property(e => e.LastUsed).IsRequired();
         });
     }
 }

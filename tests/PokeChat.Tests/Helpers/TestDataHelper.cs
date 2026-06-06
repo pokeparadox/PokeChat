@@ -14,7 +14,7 @@ internal static class TestDataHelper
             ("default_response", "I see."),
             ("existing_fact", "I already know that {0} {1} {2}."),
             ("context_followup", "Tell me more about {0}."),
-            ("context_followup_with_object", "Tell me more about {0} and {1}."),
+            ("context_followup_with_object", "Tell me more about your {1}."),
             ("random_fact_followup", "You told me {0} {1} {2}. Tell me more!"),
             ("dictionary_query_found", "A {0} is {1}."),
             ("dictionary_query_not_found", "I don't know what {0} means."),

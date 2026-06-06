@@ -881,7 +881,7 @@ public class ChatSessionTests
     }
 
     [Fact]
-    public void ProcessInput_DoesNotAutoLearnUnknownWord_OutsideSvo()
+    public void ProcessInput_SingleUnknownWord_AutoLearnedAsTopic()
     {
         var (session, db) = CreateSessionAndDb();
         using (db)
@@ -890,6 +890,28 @@ public class ChatSessionTests
             var response = session.ProcessInput("gobbledygook");
 
             response.ShouldContain("gobbledygook");
+            response.ShouldNotContain("I don't know the word");
         }
     }
+
+    [Fact]
+    public void ResponseCategory_TrackedPerTurn()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("I like pizza");
+
+            var convs = db.Context.Conversations.ToList();
+            convs.Count.ShouldBeGreaterThan(0);
+            foreach (var conv in convs)
+            {
+                conv.ResponseCategory.ShouldNotBeNull();
+                conv.ResponseCategory.ShouldNotBeEmpty();
+            }
+        }
+    }
+
+
 }

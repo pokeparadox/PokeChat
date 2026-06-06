@@ -857,3 +857,83 @@ After fixing "ok" and the sentiment flow, conversation testing revealed two bloc
 
 ### Verify
 - `dotnet build && dotnet test` — 219/219 pass
+
+---
+
+## Phase 22 — Conversation Quality Metrics ✅
+
+Track per-session metrics (turn count, facts learned, sentiment trend, topics, response stats) and per-category response effectiveness (follow-up rates).
+
+### New entities
+- `ConversationMetric` (session-level: TurnCount, FactsLearned, DominantSentiment, SentimentTrend, TopicsDiscussed, BotResponseStats, AvgResponseLength, SessionLength, StartedAt, EndedAt)
+- `ResponseEffectiveness` (per-category: Category, AvgSessionLengthAfter, UsedCount, FollowUpRate, LastUsed)
+- `ResponseCategory` column on `Conversation`
+
+### Modified files
+- `Data/PokeChatDbContext.cs` — added `DbSet<ConversationMetric>` and `DbSet<ResponseEffectiveness>`, fluent config for both
+- `Data/Schema.sql` — DDL for `conversation_metrics` and `response_effectiveness` tables, `response_category` column on conversations
+- `Core/ContextKeys.cs` — added `CurrentResponseCategory`, `PreviousResponseCategory`, `LastResponseHadSvo`, `AdaptiveResponseWeighting`
+- `Knowledge/KnowledgeStore.cs` — `RecordSessionMetrics(sessionId)`, `UpdateResponseEffectiveness(category, hadFollowUp)`, `GetEffectiveness(category)`, `GetMetricsForUser(userId)`, `GetBestPerformingCategories(topN)`, `GetConversationsBySession(sessionId)`, overloaded `StoreConversation` with `responseCategory`
+- `Responses/ResponseEngine.cs` — `GetRandomResponse` sets `CurrentResponseCategory`; rule-match path sets `"rule_match"`
+- `Core/ChatSession.cs` — calls `RecordSessionMetrics(_sessionId)` before exit summary; saves `PreviousResponseCategory`/`CurrentResponseCategory` per turn; passes category to `StoreConversation`; calls `UpdateResponseEffectiveness` for previous turn if SVO-bearing
+- `Data/DbSeeder.cs` — seeded `metrics_insight` (4) and `metrics_improvement` (3) response templates
+- `tests/PokeChat.Tests/Helpers/TestDataHelper.cs` — matching seed data
+- Migration: `Phase22_ConversationMetrics`
+
+### Key Details
+- Metrics are recorded at session end (before goodbye/summary)
+- `UpdateResponseEffectiveness` uses `.Local` + DB fallback for duplicate detection
+- `GetBestPerformingCategories` requires min 2 uses, ordered by FollowUpRate DESC then UsedCount DESC
+
+### New Tests (4 total, 223/223 pass)
+- `KnowledgeStoreTests.RecordSessionMetrics_StoresCorrectly` — all fields verified
+- `KnowledgeStoreTests.UpdateResponseEffectiveness_IncrementsCount` — UsedCount + FollowUpRate tracking
+- `KnowledgeStoreTests.GetBestPerformingCategories_ReturnsOrdered` — ordering by FollowUpRate
+- `ChatSessionTests.ResponseCategory_TrackedPerTurn` — all conversations have non-null ResponseCategory
+
+---
+
+## Phase 23 — Grammar & Natural Flow Bugs ✅
+
+11 bugs found by running the bot through realistic conversations. Fixed across 6 files.
+
+### B1 — Greeting word accepted as user name (Critical)
+`Core/ChatSession.cs:ExtractName` — Single-token fallback now checks `_greetingWords` before accepting as name. If greeting, returns empty string (re-ask).
+
+### B2 — Conjugated verb forms not recognised in ClassifyPredicate (High)
+`Core/ChatSession.cs:StemVerb` — New static method reverses 3rd-person singular conjugation. e.g. `"loves"`→`"love"`, `"has"`→`"have"`, `"likes"`→`"like"`. Used in `ClassifyPredicate` so preference/belief/possession verbs are correctly classified.
+
+### B3/B4 — Emotion followup with neutral sentiment (High)
+`Responses/ResponseEngine.cs:HandleSentiment` — Skips `emotion_followup` when previous sentiment is `"neutral"` (unnatural: "You seemed neutral earlier"). First emotional expression now receives direct empathy, not follow-up question. `PendingSentimentFollowUp` set after empathy for next-turn check-in.
+
+### B5 — Proactive templates hardcode "you"/"your" (Medium)
+`Responses/ResponseEngine.cs:BuildProactiveQuestion` — All categories now pass `conjVerb` (conjugated verb) instead of raw verb. `DbSeeder.cs` — 10 new subject-aware templates added across 5 categories using `{1}` (subject) and `{2}` (conjugated verb).
+
+### B6 — Inference generalisation persists across turns (Medium)
+`Core/ChatSession.cs:ProcessSentence` — Clear `InferredGeneralisation` context key at start of each call. Key no longer carries over to unrelated turns when the 50% display chance misses.
+
+### B7 — SVO splits on gerund verbs (Medium)
+`NLP/SvoExtractor.cs` — Skip triples where extracted subject is `"a"`, `"an"`, or `"the"`. Fixes triple corruption when `-ing` words are mis-tagged as verbs (e.g. "programming"→"a programming language").
+
+### B8 — PendingSentimentFollowUp reads overwritten intensity (Medium)
+`Core/ContextKeys.cs` + `ResponseEngine.cs` — New `PendingSentimentIntensity` context key stores the emotion intensity at the time `PendingSentimentFollowUp` is set. `GenerateResponse` reads from this key instead of `LastSentimentIntensity` (which gets overwritten by the next turn's `ProcessSentence`).
+
+### B9 — Session summary uses un-conjugated verbs (Low)
+`Knowledge/KnowledgeStore.cs:BuildSessionSummary` — New `FormatFact` helper applies `ResponseEngine.ConjugateVerb` to each fact's verb. `ConjugateVerb` made public.
+
+### B10 — "Do you still feel that way?" for factual refs (Low)
+`Data/DbSeeder.cs` — Changed `topic_reference_fact` template: "Do you still feel that way?" → "Is that still true?" (facts aren't feelings).
+
+### B11 — Temporal confirmation uses future tense for past events (Low)
+`Data/DbSeeder.cs` — Added 2 past-referencing `temporal_confirmation` templates: "I'll remember you mentioned that {0}." / "Noted — you said that {0}."
+
+### Files modified
+- `Core/ChatSession.cs` — B1, B2, B6
+- `Core/ContextKeys.cs` — B8
+- `Data/DbSeeder.cs` — B5, B10, B11
+- `Knowledge/KnowledgeStore.cs` — B9
+- `NLP/SvoExtractor.cs` — B7
+- `Responses/ResponseEngine.cs` — B3, B4, B5, B8, B9
+
+### Verify
+- `dotnet build && dotnet test` — 223/223 pass

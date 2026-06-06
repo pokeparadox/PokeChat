@@ -55,7 +55,8 @@ Responses/
     Schema.sql                  → all tables
     Entities/                   → entity classes: User, FactEntity, Conversation, Greeting, GreetingWord,
                                   ResponseRule, ResponseRuleResponse, PosDictionaryEntry, NamePattern,
-                                  BotCommand, Misspelling, BotResponse, WordDefinition, WordLink, NounCategory
+                                  BotCommand, Misspelling, BotResponse, WordDefinition, WordLink, NounCategory,
+                                  ConversationMetric, ResponseEffectiveness
 ```
 
 ## Key Details
@@ -79,7 +80,7 @@ Responses/
 ## DB Schema
 - `users` — id, name (unique), first_seen, last_seen
 - `facts` — id, user_id (nullable FK→users), subject, verb, object, predicate_type, created_at
-- `conversations` — id, user_id (nullable FK→users), user_input, bot_response, timestamp
+- `conversations` — id, user_id (nullable FK→users), user_input, bot_response, timestamp, session_id, response_category
 - `greetings` — id, text, is_system, created_at
 - `greeting_words` — id, word (unique), learned_from_user_id (nullable FK→users), created_at
 - `response_rules` — id, pattern, input_type, is_active, created_at
@@ -96,9 +97,14 @@ Responses/
 - `response_feedback` — id, rule_id, is_learned_rule, user_id (FK→users), feedback, correction_text, created_at
 - `word_definitions` — id, word, definition, defined_by_user_id (nullable FK→users), created_at
 - `word_links` — id, source_word, target_word, link_type, created_by_user_id (nullable FK→users), created_at
+- `conversation_metrics` — id, user_id, session_id, turn_count, facts_learned, dominant_sentiment, sentiment_trend, topics_discussed, bot_response_stats, avg_response_length, session_length, started_at, ended_at
+- `response_effectiveness` — id, category (unique), avg_session_length_after, used_count, follow_up_rate, last_used
+
+## Skills
+- `.skills/grammar-bot-testing.md` — reusable script for running the bot through conversation scenarios and analysing responses for grammar/natural flow bugs.
 
 ## Improvement Plan
-A completed improvement history is maintained in `.agents/history.md`. A phased improvement plan is maintained in `.agents/plan.md`, ordered by priority:
+A completed improvement history is maintained in `.agents/history.md`. Active plans are in `.plans/`; deferred plans in `.backlog/`, ordered by priority:
 - **Phase 1:** Critical bug fixes ✅ (GetFact client-side filtering, proper noun dead code, abbreviation detection, pronoun resolution, empty bot responses)
 - **Phase 2:** High priority ✅ (batch SaveChanges, PosTagger static state, schema-entity mismatch, duplicate POS entries, predicate enum, context key constants)
 - **Phase 3:** Medium priority ✅ (tag duplicate handling, IsPunctuation dedup, test helper consolidation, NLP interfaces, test coverage, POS data file extraction, ResponseEngine strings to DB)
@@ -122,6 +128,8 @@ A completed improvement history is maintained in `.agents/history.md`. A phased 
 - **Phase 19:** Self-Learning Response Patterns ✅ (learned_response_rules + response_feedback tables, correction detection in ChatSession, confidence-based rule selection in ResponseRules, duplicate check via Local+DB, fix pre-existing bug in "not what I meant" feedback pattern not matching)
 - **Fix: Broken Conversation Flow (Post-Phase 19):** Dead `if` block removed from `HandleClarification`, context set after clarification (learned word becomes active topic), garbage SVO triple filter for General predicates with function-word objects ("not", "never", "no")
 - **Fix: Missing Contractions (Post-Phase 20):** Added 9 missing `'s` contractions (`that's`, `there's`, `here's`, `what's`, `who's`, `where's`, `why's`, `how's`, `when's`) to seed data (45→54). Added `SpellChecker.IsContractionOfKnownWord` for dynamic detection — checks if unknown words match contraction patterns `'s`, `n't`, `'ll`, `'ve`, `'re`, `'m`, `'d` where root is a known dictionary word. Works for all databases, existing and new.
+- **Phase 22:** Conversation Quality Metrics ✅ (ConversationMetric/ResponseEffectiveness entities, session-level metrics recorded on exit, per-category response effectiveness tracking with FollowUpRate, `GetBestPerformingCategories` for adaptive response weighting, 4 new tests, 223/223 pass)
+- **Phase 23:** Grammar & Natural Flow Bugs ✅ (11 bugs fixed: greeting-as-name, conjugated verb recognition, neutral sentiment followup, empathy-first flow, proactive template subject mismatch, cross-turn inference persistence, SVO gerund splitting, sentiment intensity timing, summary verb conjugation, factual "feel that way", temporal past tense)
 ## Known Fixes
 - **ContractionExpander:** Loaded from `contractions` table via `KnowledgeStore.GetContractions()`. Expands contracted forms before tokenisation using regex replace with `IgnoreCase`. The expander uses lowercase expansion text (`"i am"`, not `"I am"`) since the tokeniser lowercases afterward. Seeded via `DbSeeder.SeedContractions()` and `TestDataHelper.SeedContractions()`.
 - **Math operators in tokeniser:** `+`, `-`, `*`, `/`, `^` are extracted as standalone tokens by Tokeniser regex. `GetUnknownWords` in `SpellChecker` must skip math operators to prevent false unknown-word prompts before math evaluation. Fixed via `SpellChecker.MathOperators` HashSet.

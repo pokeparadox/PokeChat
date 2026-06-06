@@ -25,6 +25,10 @@ public class SvoExtractor : ISvoExtractor
 
             if (!string.IsNullOrEmpty(subject) && !string.IsNullOrEmpty(obj))
             {
+                var subjLower = subject.ToLowerInvariant();
+                if (subjLower is "a" or "an" or "the")
+                    continue;
+
                 triples.Add(new SvoTriple(subject, verb, obj));
             }
         }

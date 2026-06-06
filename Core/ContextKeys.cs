@@ -17,6 +17,7 @@ public static class ContextKeys
     public const string LastSentimentIntensity = "last_sentiment_intensity";
     public const string PreviousSentiment = "previous_sentiment";
     public const string PendingSentimentFollowUp = "pending_sentiment_followup";
+    public const string PendingSentimentIntensity = "pending_sentiment_intensity";
     public const string SentimentTurnCount = "sentiment_turn_count";
     public const string CurrentTimeContext = "current_time_context";
     public const string InferenceDepth = "inference_depth";
@@ -32,4 +33,8 @@ public static class ContextKeys
     public const string LastTopicSubject = "last_topic_subject";
     public const string LastTopicObject = "last_topic_object";
     public const string TopicReferenceCount = "topic_reference_count";
+    public const string CurrentResponseCategory = "current_response_category";
+    public const string PreviousResponseCategory = "previous_response_category";
+    public const string LastResponseHadSvo = "last_response_had_svo";
+    public const string AdaptiveResponseWeighting = "adaptive_response_weighting";
 }

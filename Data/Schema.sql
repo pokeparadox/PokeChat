@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS conversations (
     bot_response TEXT NOT NULL,
     timestamp TEXT NOT NULL,
     session_id TEXT,
+    response_category TEXT,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
@@ -187,4 +188,30 @@ CREATE TABLE IF NOT EXISTS response_feedback (
     correction_text TEXT,
     created_at TEXT NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS conversation_metrics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL,
+    user_id INTEGER,
+    turn_count INTEGER NOT NULL DEFAULT 0,
+    facts_learned INTEGER NOT NULL DEFAULT 0,
+    dominant_sentiment TEXT,
+    sentiment_trend TEXT,
+    topics_discussed INTEGER NOT NULL DEFAULT 0,
+    bot_response_stats TEXT,
+    avg_response_length INTEGER NOT NULL DEFAULT 0,
+    session_length INTEGER NOT NULL DEFAULT 0,
+    started_at TEXT NOT NULL,
+    ended_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS response_effectiveness (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category TEXT NOT NULL,
+    avg_session_length_after INTEGER NOT NULL DEFAULT 0,
+    used_count INTEGER NOT NULL DEFAULT 0,
+    follow_up_rate REAL NOT NULL DEFAULT 0.0,
+    last_used TEXT NOT NULL
 );

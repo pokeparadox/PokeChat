@@ -29,7 +29,7 @@ public class ResponseEngine
         _botResponses = knowledgeStore.GetBotResponses();
     }
 
-    internal static string ConjugateVerb(string verb, string subject)
+    public static string ConjugateVerb(string verb, string subject)
     {
         var lowerVerb = verb.ToLowerInvariant();
         var lowerSubject = subject.ToLowerInvariant();
@@ -58,6 +58,7 @@ public class ResponseEngine
 
     private string GetRandomResponse(string category, params object[] args)
     {
+        _context.SetContext(ContextKeys.CurrentResponseCategory, category);
         if (_botResponses.TryGetValue(category, out var responses) && responses.Count > 0)
         {
             var template = responses[Random.Shared.Next(responses.Count)];
@@ -109,7 +110,8 @@ public class ResponseEngine
         if (!string.IsNullOrEmpty(pendingSentiment))
         {
             _context.SetContext(ContextKeys.PendingSentimentFollowUp, null);
-            var intensityRaw = _context.GetContext(ContextKeys.LastSentimentIntensity);
+            var intensityRaw = _context.GetContext(ContextKeys.PendingSentimentIntensity);
+            _context.SetContext(ContextKeys.PendingSentimentIntensity, null);
             if (int.TryParse(intensityRaw, out var intensity) && intensity >= 1)
             {
                 var currentSentiment = _context.GetContext(ContextKeys.CurrentSentiment);
@@ -159,6 +161,7 @@ public class ResponseEngine
 
         if (rule != null && rule.Responses.Count > 0)
         {
+            _context.SetContext(ContextKeys.CurrentResponseCategory, "rule_match");
             _context.SetContext(ContextKeys.LastRuleId, rule.RuleId.ToString());
             _context.SetContext(ContextKeys.LastRuleIsLearned, rule.IsLearned ? "true" : "false");
             return rule.Responses[Random.Shared.Next(rule.Responses.Count)];
@@ -291,11 +294,11 @@ public class ResponseEngine
 
         return fact.PredicateType switch
         {
-            nameof(PredicateType.Preference) => ("proactive_preference", new object[] { obj, subj, verb }),
-            nameof(PredicateType.Dislike) => ("proactive_dislike", new object[] { obj, subj, verb }),
-            nameof(PredicateType.Possession) => ("proactive_possession", new object[] { obj, subj, verb }),
-            nameof(PredicateType.Belief) => ("proactive_belief", new object[] { obj, subj, verb }),
-            nameof(PredicateType.PersonalAttribute) => ("proactive_personal", new object[] { obj, subj, verb }),
+            nameof(PredicateType.Preference) => ("proactive_preference", new object[] { obj, subj, conjVerb }),
+            nameof(PredicateType.Dislike) => ("proactive_dislike", new object[] { obj, subj, conjVerb }),
+            nameof(PredicateType.Possession) => ("proactive_possession", new object[] { obj, subj, conjVerb }),
+            nameof(PredicateType.Belief) => ("proactive_belief", new object[] { obj, subj, conjVerb }),
+            nameof(PredicateType.PersonalAttribute) => ("proactive_personal", new object[] { obj, subj, conjVerb }),
             nameof(PredicateType.GeneralFact) => ("proactive_general_fact", new object[] { subj, conjVerb, obj }),
             _ => ("proactive_general", new object[] { obj, subj, verb })
         };
@@ -314,9 +317,10 @@ public class ResponseEngine
 
         var previousSentiment = _context.GetContext(ContextKeys.PreviousSentiment);
 
-        if (previousSentiment != null && previousSentiment != currentSentiment)
+        if (previousSentiment != null && previousSentiment != currentSentiment && previousSentiment != "neutral")
         {
             _context.SetContext(ContextKeys.PendingSentimentFollowUp, "true");
+            _context.SetContext(ContextKeys.PendingSentimentIntensity, intensityRaw);
             return GetRandomResponse("emotion_followup", previousSentiment);
         }
 
@@ -329,6 +333,9 @@ public class ResponseEngine
             "surprise" => "empathy_surprised",
             _ => "emotion_unknown"
         };
+
+        _context.SetContext(ContextKeys.PendingSentimentFollowUp, "true");
+        _context.SetContext(ContextKeys.PendingSentimentIntensity, intensityRaw);
 
         var response = GetRandomResponse(category);
         if (!string.IsNullOrEmpty(response))
