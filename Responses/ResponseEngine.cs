@@ -4,6 +4,7 @@ using PokeChat.Knowledge;
 using PokeChat.Math;
 using PokeChat.NLP;
 using PokeChat.Stories;
+using PokeChat.Tools;
 
 namespace PokeChat.Responses;
 
@@ -17,6 +18,7 @@ public class ResponseEngine
     private readonly ISvoExtractor _svoExtractor;
     private readonly IMathEngine _mathEngine;
     private readonly StoryGenerator _storyGenerator;
+    private readonly ToolRegistry? _toolRegistry;
     private readonly Dictionary<string, List<string>> _botResponses;
     private string _currentUserName = string.Empty;
     private string _botName = "PokeChat";
@@ -34,7 +36,7 @@ public class ResponseEngine
         _botName = name;
     }
 
-    public ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker context, SpellChecker spellChecker, IPosTagger posTagger, ITokeniser tokeniser, ISvoExtractor svoExtractor, IMathEngine? mathEngine = null, StoryGenerator? storyGenerator = null)
+    public ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker context, SpellChecker spellChecker, IPosTagger posTagger, ITokeniser tokeniser, ISvoExtractor svoExtractor, IMathEngine? mathEngine = null, StoryGenerator? storyGenerator = null, ToolRegistry? toolRegistry = null)
     {
         _knowledgeStore = knowledgeStore;
         _context = context;
@@ -44,6 +46,7 @@ public class ResponseEngine
         _svoExtractor = svoExtractor;
         _mathEngine = mathEngine ?? new SimpleMath();
         _storyGenerator = storyGenerator ?? new StoryGenerator(knowledgeStore);
+        _toolRegistry = toolRegistry;
         _botResponses = knowledgeStore.GetBotResponses();
     }
 
@@ -192,7 +195,14 @@ public class ResponseEngine
             _context.SetContext(ContextKeys.LastRuleId, rule.RuleId.ToString());
             _context.SetContext(ContextKeys.LastRuleIsLearned, rule.IsLearned ? "true" : "false");
             var response = rule.Responses[Random.Shared.Next(rule.Responses.Count)];
-            return response.Replace("{BOTNAME}", _botName);
+            var match = Regex.Match(input.ToLowerInvariant(), rule.Pattern, RegexOptions.IgnoreCase);
+            if (match.Success)
+            {
+                for (int i = 1; i < match.Groups.Count; i++)
+                    response = response.Replace("{$" + i + "}", match.Groups[i].Value);
+            }
+            var withBotName = response.Replace("{BOTNAME}", _botName);
+            return ProcessToolMarkers(withBotName);
         }
 
         var tokens = _tokeniser.Tokenise(input);
@@ -586,6 +596,31 @@ public class ResponseEngine
             return GetRandomResponse("story_response", "Once upon a time, there was a curious explorer who set out to discover new things. The end.");
 
         return GetRandomResponse("story_response", story);
+    }
+
+    private static readonly Regex ToolMarkerRegex = new(@"\{tool:(\w+)(?::([^}]+))?\}", RegexOptions.Compiled);
+
+    private string ProcessToolMarkers(string response)
+    {
+        if (_toolRegistry == null)
+            return ToolMarkerRegex.Replace(response, "");
+
+        return ToolMarkerRegex.Replace(response, match =>
+        {
+            var toolName = match.Groups[1].Value;
+            var argsRaw = match.Groups[2].Success ? match.Groups[2].Value : "";
+            var args = string.IsNullOrEmpty(argsRaw) ? Array.Empty<string>() : new[] { argsRaw };
+
+            var result = _toolRegistry.TryExecute(toolName, args);
+            if (result == null || !result.Success)
+            {
+                if (result?.ErrorMessage == "timeout")
+                    return GetRandomResponse("tool_timeout");
+                return GetRandomResponse("tool_unavailable");
+            }
+
+            return result.Output;
+        });
     }
 
     private string? HandleLinkCreation(string input)

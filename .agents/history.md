@@ -334,15 +334,8 @@ Private (internal) static method applying English 3rd-person singular present te
 ---
 ---
 
-## Maintenance & Cleanup (Post-Phase 11) ✅
+## Phase 11 — Plural Handling ✅
 
-Review-driven fixes applied alongside Phase 11.
-
-- [x] **C1:** `ConjugateVerb` handles `was`/`were` (past tense verbs no longer corrupted to `"wases"`/`"weres"`)
-- [x] **C2:** Exit commands reduced from 6 to 2 (`quit`, `exit` only); `bye`/`goodbye`/`see you`/`good night` now trigger farewell response rules instead of silent exit
-- [x] **C3:** `dictionary_definition_saved` seed data now wired into `ChatSession.HandleDictionaryDefinition` via `KnowledgeStore.GetBotResponses()` (was using hardcoded list)
-- [x] **D1:** Deleted unused `InMemoryDbFixture` (only `FreshDbContext` was referenced by tests)
-- [x] **A2:** `POKECHAT_DB_PATH` environment variable overrides DB location
 Add a `Pluraliser` utility that singularises English plural nouns, integrated into the NLP pipeline to prevent plural words from being treated as unknown or mis-tagged.
 
 ### 11.1 Create NLP/Pluraliser.cs
@@ -392,23 +385,9 @@ After `GetUnknownWords`, auto-learn any unknown word that is a plural of a known
 
 ## Maintenance & Cleanup (Post-Phase 11) ✅
 
-Review-driven fixes applied across multiple sessions.
-
-- [x] **C1:** `ConjugateVerb` handles `was`/`were` (past tense verbs no longer corrupted to `"wases"`/`"weres"`)
-- [x] **C2:** Exit commands reduced from 6 to 2 (`quit`, `exit` only); `bye`/`goodbye`/`see you`/`good night` now trigger farewell response rules instead of silent exit
-- [x] **C3:** `dictionary_definition_saved` seed data now wired into `ChatSession.HandleDictionaryDefinition` via `KnowledgeStore.GetBotResponses()` (was using hardcoded list)
-- [x] **D1:** Deleted unused `InMemoryDbFixture` (only `FreshDbContext` was referenced by tests)
-- [x] **A2:** `POKECHAT_DB_PATH` environment variable overrides DB location
-- [x] **CR1:** NounCategoriser eager `Save()` removed — callers own the save boundary
-- [x] **CR2:** Duplicated path resolution (`ResolveDbPath`/`ResolveDataFilePath`) replaced with single `ResolveProjectRoot()`
-- [x] **CR3:** Dead `ProperNoun` enum value removed from `PosTagger`
-- [x] **CR4:** `GetResponsesForRule` N+1 query fixed with `.Include(r => r.Responses)`
-- [x] **CR5:** `HandleNameInput` hardcoded greeting fallback replaced with DB-driven `greeting_words` lookup
-- [x] **CR6:** `HandleClarification` redundant else-if collapsed into null-coalescing chain
-- [x] **CR7:** Private `IsPunctuation` wrappers in `PosTagger`/`SpellChecker` replaced with direct `PunctuationHelper` calls
-- [x] **CR8:** Test `SeedBotResponses` duplication extracted to shared `TestDataHelper`
-- [x] **CR9:** Unused `Moq` dependency removed from test `.csproj`
-- [x] **CR10:** Double-dispose pattern in `Dispose_DoesNotThrow` fixed
+Review-driven fixes applied alongside Phase 11:
+- ConjugateVerb handles was/were, exit commands reduced to 2, dictionary_definition_saved wired from DB, InMemoryDbFixture deleted, POKECHAT_DB_PATH env var
+- **Code review batch:** NounCategoriser eager Save removed, path resolution dedup, dead ProperNoun enum removed, GetResponsesForRule N+1 fixed, HandleNameInput DB-driven greetings, HandleClarification collapsed, IsPunctuation wrappers removed, shared TestDataHelper, Moq removed, double-dispose fixed
 
 ---
 
@@ -586,7 +565,7 @@ Enable the bot to understand common English contractions (e.g. "I'm", "they're",
 
 ---
 
-## Phase 16 — Temporal Knowledge ✅
+## Phase 17 — Temporal Knowledge ✅
 
 Give the bot a sense of time. Facts are stored with temporal context so the bot can answer "what did I do yesterday?" and reference when things happened.
 
@@ -619,7 +598,7 @@ Give the bot a sense of time. Facts are stored with temporal context so the bot 
 - `dotnet build` — succeeds
 - `dotnet test` — 164/164 pass
 
-## Phase 17 — Inference / Simple Reasoning ✅
+## Phase 18 — Inference / Simple Reasoning ✅
 
 Bot moves from fact-recording to fact-connecting. Syllogistic reasoning, category generalisation, and contradiction detection over known facts and WordLinks.
 
@@ -658,7 +637,7 @@ Bot moves from fact-recording to fact-connecting. Syllogistic reasoning, categor
 
 ---
 
-## Phase 18 — Session Summarisation ✅
+## Phase 19 — Session Summarisation ✅
 
 ### Files Changed
 - `Data/Entities/Conversation.cs` — added `SessionId` (string?) property
@@ -698,7 +677,7 @@ Bot moves from fact-recording to fact-connecting. Syllogistic reasoning, categor
 
 ---
 
-## Phase 19 — Self-Learning Response Patterns ✅
+## Phase 20 — Self-Learning Response Patterns ✅
 
 Bot learns new response patterns from user corrections and rephrasings. Moves beyond fact-learning into behavioural adaptation.
 
@@ -748,7 +727,7 @@ Bot learns new response patterns from user corrections and rephrasings. Moves be
 
 ---
 
-## Phase 20 — Multi-Turn Topic Tracking ✅
+## Phase 21 — Multi-Turn Topic Tracking ✅
 
 Topic stack across 5 turns so the bot can reference older topics when context follow-up is exhausted.
 
@@ -769,96 +748,16 @@ Topic stack across 5 turns so the bot can reference older topics when context fo
 
 ---
 
-## Fix: Broken Conversation Flow (Post-Phase 20) ✅
+## Maintenance & Cleanup ✅
 
-Three-turn breakdown where clarification, question, and multi-verb sentences produce garbled context follow-ups.
+Bugfix batch between major phases:
 
-### Changes
-- **Remove dead empty `if` block** in `ChatSession.HandleClarification` (`ChatSession.cs:416-419`) — no-op code that did nothing
-- **Set context after clarification** — `_context.UpdateLastSubject(_currentUserName)` + `_context.UpdateLastObject(pendingWord)` in `HandleClarification` so learned word becomes active topic
-- **Filter garbage SVO triples** — `FunctionWords` HashSet (`"not"`, `"never"`, `"no"`) skips triples where `predicateType == PredicateType.General` and `resolvedObject` is a single function word. Prevents "(you, do, not)" from becoming last context, replacing "What else can you share about you and not?" with sensible follow-ups
-
-### Files modified
-- `Core/ChatSession.cs` — 3 changes (dead if removal, context after clarification, FunctionWords filter)
-
-### Verify
-- `dotnet build && dotnet test` — 207/207 pass
-
----
-
-## Fix: Missing Contractions (Post-Phase 20) ✅
-
-`"that's"` was not in the contractions table (45 seed entries covered pronoun+is but not demonstrative/WH-word+is). This caused `"That's nice!"` to tokenise to `["that's", "nice", "!"]` with `PosTag.Unknown`, which triggered the unknown-word handler before any SVO extraction could run.
-
-### Changes
-- **`NLP/SpellChecker.cs`** — Added `IsContractionOfKnownWord()`: dynamically detects unknown words matching contraction patterns (`'s`, `n't`, `'ll`, `'ve`, `'re`, `'m`, `'d`) where the root is a known dictionary word. Wired into `GetUnknownWords` so `"that's"`, `"who's"` etc. are never flagged as unknown. Works for all databases, existing and new, without requiring reseeding.
-- **`Data/DbSeeder.cs`** — Added 9 missing `'s` contractions: `that's`, `there's`, `here's`, `what's`, `who's`, `where's`, `why's`, `how's`, `when's` (all → `"is"`). Total: 45→54.
-- **`tests/PokeChat.Tests/Helpers/TestDataHelper.cs`** — Same 9 contractions added to test seed data.
-- **`tests/PokeChat.Tests/NLP/SpellCheckerTests.cs`** — 7 new tests for `IsContractionOfKnownWord` + `GetUnknownWords` integration. Also fixed pre-existing broken test `IsPluralOfKnownWord_ReturnsFalse` (asserted `"cats"` was not a known plural, but `"cat"` is in the dictionary).
-
-### Files modified
-- `NLP/SpellChecker.cs`
-- `Data/DbSeeder.cs`
-- `tests/PokeChat.Tests/Helpers/TestDataHelper.cs`
-- `tests/PokeChat.Tests/NLP/SpellCheckerTests.cs`
-- `AGENTS.md` (contraction count 44→54, new Known Fixes entry)
-
-### Verify
-- `dotnet build && dotnet test` — 214/214 pass
-
----
-
-## Fix: "ok" unknown + sentiment question ignored ✅
-
-Two bugs: (1) `"ok"` missing from POS dictionary caused Levenshtein to suggest `"of"` instead. (2) After `emotion_followup` asked about a sentiment change, the answer was ignored — `HandleSentiment()` skipped mild emotions (intensity < 2), so the bot fell through to context follow-up: "Tell me more about Bob and fine."
-
-### Changes
-- **`Data/pos_dictionary.json`** — Added `{"Word": "ok", "Type": "adjective"}` after `"okay"`
-- **`Core/ContextKeys.cs`** — Added `PendingSentimentFollowUp` constant
-- **`Responses/ResponseEngine.cs`** — Two changes:
-  - `GenerateResponse()`: between unknown word check and `HandleSentiment()`, checks `PendingSentimentFollowUp`. If set + intensity ≥ 1, returns sentiment-aware acknowledgement (positive/negative/fallback templates), clears flag.
-  - `HandleSentiment()`: when `emotion_followup` fires (sentiment change detected), sets `PendingSentimentFollowUp = "true"`
-- **`Data/DbSeeder.cs`** + **`tests/PokeChat.Tests/Helpers/TestDataHelper.cs`** — Seeded `sentiment_ack_positive` (×2), `sentiment_ack_negative` (×1), `sentiment_ack` (×1)
-- **`tests/PokeChat.Tests/Core/ChatSessionTests.cs`** — Integration test: emotional → emotion_followup → sentiment acknowledgement, verify response is not context follow-up
-
-### Files modified
-- `Data/pos_dictionary.json`
-- `Core/ContextKeys.cs`
-- `Responses/ResponseEngine.cs`
-- `Data/DbSeeder.cs`
-- `tests/PokeChat.Tests/Helpers/TestDataHelper.cs`
-- `tests/PokeChat.Tests/Core/ChatSessionTests.cs`
-
-### Verify
-- `dotnet build && dotnet test` — 215/215 pass
-
----
-
-## Fix: SVO Auto-Learn Unknown Words + Missing POS Words ✅
-
-After fixing "ok" and the sentiment flow, conversation testing revealed two blockers: (1) `"yes"`, `"yeah"`, `"yep"`, `"yup"`, `"nope"`, `"nah"` missing from POS dictionary caused them to be flagged as unknown during name confirmation. (2) Any noun like `"pizza"` or `"steak"` in an SVO position (e.g. "I love pizza") triggered the unknown-word handler before the sentiment/rule engine could run, breaking both sentiment detection and normal conversation flow.
-
-### Changes
-- **`Data/pos_dictionary.json`** — Added 7 missing words: `"yes"`(adverb), `"yeah"`(adverb), `"yep"`(adverb), `"yup"`(adverb), `"nope"`(adverb), `"nah"`(adverb), `"ok"`(adjective)
-- **`Core/ChatSession.cs`** — Modified `ProcessSentence()` to extract SVO triples BEFORE setting unknown words on context, then auto-learn any unknown word that appears as a subject or object token within any valid triple (split by space). `AddToDictionary` + `AddLearnedWord` for each match; only set unknown words context for remaining words.
-- **`tests/PokeChat.Tests/Helpers/TestDataHelper.cs`** — Added same 6 affirmation words to `SeedPosDictionary`
-
-### New Tests (4)
-- `ProcessInput_AutoLearnsUnknownWordInSvoObject` — "I love steak" → no unknown word response, fact stored
-- `ProcessInput_AutoLearnsUnknownWordInSvoSubject` — "steak is tasty" → both unknown words auto-learned
-- `ProcessInput_AutoLearnsUnknownWordInCompoundObject` — "I like pizza and steak" → "steak" auto-learned from compound object token match
-- `ProcessInput_DoesNotAutoLearnUnknownWord_OutsideSvo` — "gobbledygook" → clarification still triggered
-
-### Files modified
-- `Data/pos_dictionary.json`
-- `Core/ChatSession.cs`
-- `tests/PokeChat.Tests/Helpers/TestDataHelper.cs`
-- `tests/PokeChat.Tests/Core/ChatSessionTests.cs`
-
-### Verify
-- `dotnet build && dotnet test` — 219/219 pass
-
----
+- **Broken Conversation Flow** — Removed dead `if` in `HandleClarification`. Context now set after clarification (learned word becomes active topic). Garbage SVO filter for `General` predicates with function-word objects ("not"/"never"/"no").
+- **Missing Contractions** — `IsContractionOfKnownWord()` in SpellChecker for dynamic detection. 9 missing `'s` contractions added to seed (45→54). 7 new tests.
+- **"ok" unknown + sentiment question ignored** — `"ok"` added to POS dict. `PendingSentimentFollowUp` context key prevents ignored sentiment check-ins. 4 new response templates.
+- **SVO Auto-Learn Unknown Words** — SVO extraction runs before unknown-word detection; tokens in valid triples auto-learned. 7 affirmation words added to POS dict.
+- **Context Follow-Up Natural Flow** — `context_followup_self`/`context_followup_with_object_self` categories prevent third-person user reference. `"they"/"their"` pronoun resolution prefers `LastObject`. Fallback for missing DB categories.
+- **Negated Context Follow-Up** — Single-noun input sets `LastSubject` to the noun (not username). Garbage triple filter widened to cover `GeneralFact` function words.
 
 ## Phase 22 — Conversation Quality Metrics ✅
 
@@ -934,40 +833,6 @@ Track per-session metrics (turn count, facts learned, sentiment trend, topics, r
 - `Knowledge/KnowledgeStore.cs` — B9
 - `NLP/SvoExtractor.cs` — B7
 - `Responses/ResponseEngine.cs` — B3, B4, B5, B8, B9
-
-### Verify
-- `dotnet build && dotnet test` — 223/223 pass
-
----
-
-## Fix: Context Follow-Up Natural Flow ✅
-
-Two bugs in context-follow-up responses when the bot explicitly references the user by name as a third-person subject.
-
-### Bug 1 — "Kev and adventure games" / "What else do you know about Clive?"
-When the user says "I play adventure games", LastSubject = user name + LastObject = object. `context_followup_with_object` templates produced "What else can you share about Kev and adventure games?" `context_followup` templates produced "What else do you know about Clive?" — unnatural third-person reference to the person being addressed.
-
-**Fix:** Added `_currentUserName` tracking to `ResponseEngine` (`SetCurrentUserName()`). When the context follow-up subject matches `_currentUserName`, uses new template categories:
-- `context_followup_self` — "Tell me about yourself, {0}."
-- `context_followup_with_object_self` — "Tell me more about your {1}."
-
-### Bug 2 — "Tell me more about your spotty" via pronoun resolution
-User: "Frogs" → "They are spotty". "they" resolved to LastSubject (user name) instead of LastObject (frogs). Combined with isSelf detection, produced "Tell me more about your spotty."
-
-**Fix:** `ContextTracker.ResolvePronoun` — `"they"/"their"` now prefers `LastObject` over `LastSubject` (matching `"them"` behavior).
-
-### Bug 3 — Blank response on existing databases
-New `context_followup_self` / `context_followup_with_object_self` categories don't exist in databases seeded before this change. `GetRandomResponse` returns `string.Empty` for missing categories, producing blank bot response.
-
-**Fix:** Fallback checks in `ResponseEngine` context-follow-up code — if the self variant returns empty, falls through to the generic template category.
-
-### Files modified
-- `Responses/ResponseEngine.cs` — `_currentUserName` field, `SetCurrentUserName()`, isSelf detection with fallback to generic templates
-- `Knowledge/ContextTracker.cs` — `"they"/"their"` resolve to LastObject first
-- `Core/ChatSession.cs` — calls `SetCurrentUserName` when name established or reset
-- `Data/DbSeeder.cs` — new template categories (5 entries)
-- `tests/PokeChat.Tests/Helpers/TestDataHelper.cs` — matching test seed data
-- `AGENTS.md` — pronoun resolution, new Known Fixes
 
 ### Verify
 - `dotnet build && dotnet test` — 223/223 pass
@@ -1053,136 +918,79 @@ When the user teaches the bot a new word via clarification, the bot follows up w
 
 ---
 
-## Bugfix: Negated Context Follow-Up ✅
 
-### Problem
-1. Single-noun input (e.g. "Bees") → bot assumed user ownership ("your bees") because `LastSubject` was set to username.
-2. Negated sentences ("They are not my bees") → `GeneralFact` triples with function-word objects ("not my bees") were stored and used in follow-ups ("What else can you share about bees and not my bees?").
-
-### Changes
-1. **Single-noun subject fix** (`ChatSession.cs:315,411`): Both unknown-word and known-noun paths now set `LastSubject` to the noun itself, not the username. No `LastObject` is set.
-2. **Garbage triple filter widened** (`ChatSession.cs:336-341`): The existing `General`-only predicate filter for function words now also covers `GeneralFact`. Object starting with/equaling "not"/"never"/"no" is skipped — triple not stored, context not updated.
-
-### Tests (5)
-- SingleNoun_SetsSubjectToNounNotUser
-- SingleNoun_DoesNotSetLastObject
-- NegatedGeneralFact_Filtered
-- TheyAreNotMyBees_ContextStaysOnPreviousTopic
-- Updated existing single-noun tests
-
-### Verify
-- `dotnet build && dotnet test` — all pass
 
 ---
 
-## Phase 26: Abnormal Response Fixes ✅
+## Phase 26 — Chat Log & Session Improvements ✅
 
-### Issues Fixed
+24 bugs from real tester chat logs plus session logging infrastructure.
+
+### Issue Fixes
 
 | # | Issue | Fix |
-|---|-------|-----|
-| 1 | **CRITICAL: `ResetAllUserData` FK crash** | Added `DELETE FROM ResponseFeedbacks`, `LearnedResponseRules`, `ConversationMetrics` before `Users` in `KnowledgeStore.cs` |
-| 2 | **Greeting during name prompt** → cold "I didn't catch your name" | `HandleNameInput` now detects greeting tokens and returns a friendly greeting + re-prompt |
-| 3 | **"your you" grammar in context follow-up** | `ObjectPronouns` set skips `context_followup_with_object_self` templates for pronoun objects |
-| 5 | **"once" missing from POS dictionary** | Added to `pos_dictionary.json` as adverb (included in Issue 12 batch) |
-| 6 | **Rename patterns too narrow** | Added `"call you"`, `"rename you"`, `"rename yourself"`, `"change your name"`, `"i want to call you"` to `bot_rename_patterns` seed data + guard against "your" false prefix matches |
-| 7 | **"something" unknown → spellcheck interruption** | Added `"something"` (pronoun) to `pos_dictionary.json` |
-| 8 | **Identity questions get generic response** | Added response rules for `who are you` / `what are you` / `do you have feelings` / `can you think` with identity-aware responses using `{BOTNAME}` replacement |
-| 9 | **"what do you know about me" gets generic response** | Added response rule for `what do you know about (me\|us)` |
-| 10 | **Summary contains garbage triples** | Added `SummaryFilters.IsGarbageFact` filtering interrogative subjects and "you be/do" question artifacts in `BuildSessionSummary` |
-| 11 | **Correction handler exact match too strict** | Changed `is` equality to `Contains` for `"not what i meant"` and `"not helpful"`; `Contains("that's better")` for positive feedback |
-| 12 | **Common words missing from POS dictionary** | Added `once` (adverb), `meaning` (noun), `met` (verb), `grammar` (noun), `something` (pronoun) |
-| 13 | **ConjugateVerb doesn't skip modal verbs** | Added `ModalVerbs` HashSet (`can`, `could`, `will`, `would`, `shall`, `should`, `may`, `might`, `must`) — returns verb unchanged |
-| 14 | **"your {1}" template prefix creates ungrammatical output** | `ObjectPronouns` check skips `context_followup_with_object_self` when object is pronoun/verb phrase, falling through to `context_followup_self` |
+|---|-------|------|
+| 1 | **CRITICAL: ResetAllUserData FK crash** | Added DELETE for ResponseFeedbacks, LearnedResponseRules, ConversationMetrics before Users |
+| 2 | **Greeting during name prompt** → cold re-ask | HandleNameInput detects greeting tokens, returns friendly greeting + re-prompt |
+| 3 | **"your you" grammar in follow-up** | ObjectPronouns skips `context_followup_with_object_self` for pronoun objects |
+| 4 | **Rename patterns too narrow** | Added `"call you"`, `"rename you"`, `"rename yourself"`, `"change your name"`, `"i want to call you"` + guard against "your" false prefix |
+| 5 | **"something" causes spellcheck interruption** | Added `"something"` (pronoun) to POS dict |
+| 6 | **Identity questions get generic response** | Added identity-aware rules with `{BOTNAME}` replacement |
+| 7 | **"what do you know about me" generic** | Added response rule |
+| 8 | **Summary has garbage triples** | `SummaryFilters.IsGarbageFact` for interrogative subjects / question artifacts |
+| 9 | **Correction handler exact match too strict** | Changed `==` to `Contains` for `"not what i meant"`, `"not helpful"`, `"that's better"` |
+| 10 | **7 common words missing from POS** | Added `fun`, `use`, `now`, `said`, `solve`, `killed`, `idiot`, `once`, `meaning`, `met`, `grammar` |
+| 11 | **ConjugateVerb doesn't skip modals** | ModalVerbs HashSet: can/could/will/would/shall/should/may/might/must |
+| 12 | **"your {1}" creates ungrammatical output** | ObjectPronouns check skips prefix for pronoun/verb objects |
+| 13 | **SpellChecker maxDistance=2 too permissive** | Reduced default to `maxDistance=1` |
+| 14 | **Indiscriminate word learning on rejection** | HandleClarification returns early when suggestion is rejected |
+| 15 | **Infinite context loop (~65 turns)** | TopicReferenceCount counter, breaks after 3 consecutive topic refs |
+| 16 | **Insults met with greeting** | InsultPattern regex + sentiment check + `direct_insult` category (4 templates) |
+| 17 | **"your in an office" grammar** | Changed templates from `"Tell me more about your {1}."` → `"Tell me more about {1}."` |
+| 18 | **"a interesting" in story** | Added `{a_adj}` slot with `AddArticle`; updated 8 story templates |
+| 19 | **Multi-operator math wrong partial answer** | `SimpleMath.Evaluate` returns null on trailing content after first binary op |
+| 20 | **Reset missing trigger phrases** | Added `"start again"`, `"restart"`, `"lets start again"`, `"let's start again"` |
+| 21 | **"ello" treated as name** | `IsCloseToGreeting()` Levenshtein check (dist ≤ 1) in ExtractName |
+| 22 | **"im" (no apostrophe) not expanded** | Added `"im" → "i am"` + 12 other no-apostrophe contractions to seed |
+| 23 | **"once" missing from POS dict** | Added to `pos_dictionary.json` as adverb |
+| 24 | **"something" unknown → spellcheck** | Added `"something"` (pronoun) to `pos_dictionary.json` |
 
-### Infrastructure Changes
-- Added `ResponseEngine.SetBotName()` + `_botName` field for `{BOTNAME}` replacement in rule responses
-- `{BOTNAME}` replacement wired in `ResponseEngine.GenerateResponse` rule-match path
-- ChatSession propagates `SetBotName` on rename, stored name load, and initial construction
-- `SummaryFilters` internal class with `IsGarbageFact` static filter
+### Infrastructure
+- `ResponseEngine.SetBotName()` + `_botName` for `{BOTNAME}` replacement in rule responses
+- `SummaryFilters.IsGarbageFact` static filter
 
-### Skipped (low priority)
-- **Issue 4** (story adjective/article quality) — nice-to-have
-- **Issue 7** (adversarial input patterns) — partially addressed by POS fix
+### Chat Session Logging
+Per-session log files at `logs/session_{sessionId}_{timestamp}.log`:
+- `SessionLogger` — basic/verbose modes, log rotation
+- `SessionLogConfig` — JSON config loader
+- `LogTurn` after each `GenerateResponse`, `LogSystem` for welcome/greeting/exit
 
-### Verify
-- `dotnet build && dotnet test` — 241/241 pass
-
----
-
-## Phase 26 — Chat Log Bugfixes ✅
-
-11 bugs from real tester `chat.log` (507 lines).
-
-### Fixes
-
-| # | Issue | Fix |
-|---|-------|-----|
-| 1 | **7 common words missing from POS dict** | Added `fun`, `use`, `now`, `said`, `solve`, `killed`, `idiot` to `pos_dictionary.json` |
-| 2 | **SpellChecker maxDistance=2 too permissive** | Reduced `HasSuggestions` and `SuggestCorrections` default to `maxDistance=1` |
-| 3 | **Indiscriminate word learning on non-confirmation** | `HandleClarification` now returns early when suggestion is rejected instead of auto-learning |
-| 4 | **Infinite "yes i is ool" context loop (~65 turns)** | Added `TopicReferenceCount` counter (resets on SVO, checked in `GenerateResponse`, breaks after 3 consecutive topic refs) |
-| 5 | **Insults met with greeting** | Added `InsultPattern` regex + sentiment check + `direct_insult` response category (4 templates) |
-| 6 | **"your in an office" grammar** | Changed `context_followup_with_object_self` templates from `"Tell me more about your {1}."` → `"Tell me more about {1}."` |
-| 7 | **"a interesting" in story** | Added `{a_adj}` slot using `AddArticle`; updated 8 story templates to use it |
-| 8 | **Multi-operator math gives wrong partial answer** | `SimpleMath.Evaluate` returns null when trailing non-equality content exists after first binary op |
-| 9 | **Reset missing trigger phrases** | Added `"start again"`, `"restart"`, `"lets start again"`, `"let's start again"` to `ResetTriggers` |
-| 10 | **"ello" treated as name** | Added `IsCloseToGreeting()` Levenshtein check (distance ≤ 1) to `ExtractName` single-token path |
-| 11 | **"im" (no apostrophe) not expanded** | Added `"im" → "i am"` + 12 other common no-apostrophe contractions to seed data |
-
-### Files Modified
-- `Data/pos_dictionary.json` — Bug 1
-- `NLP/SpellChecker.cs` — Bug 2
-- `Core/ChatSession.cs` — Bugs 3, 4, 5, 9, 10
-- `Responses/ResponseEngine.cs` — Bug 4
-- `Data/DbSeeder.cs` — Bugs 5, 6, 7, 11
-- `Stories/StoryGenerator.cs` — Bug 7
-- `Math/SimpleMath.cs` — Bug 8
-- `tests/PokeChat.Tests/Helpers/TestDataHelper.cs` — Bugs 5, 6, 7, 11
+### New Tests
+- Tool layer: 15 tests (ToolRegistry 9, ResponseEngineToolTests 4, WebSearchTool 2)
+- Chat logging: 13 tests (SessionLogger write/rotation, SessionLogConfig loading)
 
 ### Verify
-- `dotnet build && dotnet test` — 241/241 pass
+- `dotnet build && dotnet test` — 267/267 pass
 
 ---
 
-## Phase 26 — Chat Session Logging ✅
+## Phase 27 — Built-in Tool Layer ✅
 
-Per-session log files for debugging abnormal responses. Logs each turn's user input, bot response, and verbose context data to `logs/session_{sessionId}_{timestamp}.log`.
+Lightweight tool system for response rules. Tools invoked via `{tool:name}` markers in rule response templates.
 
-### Files changed
-- `Core/SessionLogger.cs` — new: logging class with basic/verbose modes, log rotation (configurable via `POKECHAT_VERBOSE_LOG` and `POKECHAT_LOG_RETENTION` env vars, default 50 logs kept)
-- `Core/ChatSession.cs` — added `_sessionLogger` field (nullable, null for tests), instantiated in public constructor, `LogTurn` called after each `GenerateResponse` in `ProcessInput`, `BuildLogContext()` method for verbose context data, `_sessionLogger.Dispose()` in `Dispose()`
+### New Files
+- `Tools/ITool.cs` — `ITool` interface + `ToolResult` class
+- `Tools/ToolRegistry.cs` — loads `tools/tools.json` config (disabled by default), `TryExecute(toolName, args)`, timeout via `CancellationTokenSource`, `${VAR}` env var resolution
+- `Tools/BuiltIn/WebSearchTool.cs` — HTTP GET to DuckDuckGo API, returns AbstractText snippet or RelatedTopics fallback
+- `Tools/BuiltIn/ReadUrlTool.cs` — HTTP GET, strips HTML tags, returns first 1000 chars
+- `Tools/tools.json.example` — committed template without secrets
 
-### Log format
-```
-# Chat Session Log
-- Session ID: {guid}
-- Started: {ISO 8601}
-- Mode: Basic | Verbose
----
-## Turn {N}
-- Timestamp: {ISO 8601}
-- Session: {guid}
-### User
-{input}
-### Bot
-{response}
-### Context          (verbose only)
-- sentiment: positive
-- response_category: rule_match
-- last_rule_id: 42
-...
----
-```
+### Modified Files
+- `Responses/ResponseEngine.cs` — `_toolRegistry`, `ProcessToolMarkers()`, `ToolMarkerRegex`. Replaces `{tool:name:args}` with tool output or fallback.
+- `Core/ChatSession.cs` — creates `ToolRegistry`, passes to `ResponseEngine`
+- `Data/DbSeeder.cs` — 2 response rules with `{tool:web_search}`; 4 tool response categories (7 entries)
+- `.gitignore` — added `tools/tools.json`
 
-### New Tests (10 total, 251/251 pass)
-- `SessionLogger_CreatesLogFile` — file exists with header
-- `SessionLogger_WritesUserAndBotContent` — content includes user/bot sections
-- `SessionLogger_WritesMultipleTurns` — sequential turn numbering
-- `SessionLogger_VerboseMode_IncludesContextData` — context dict rendered
-- `SessionLogger_BasicMode_OmitsContextData` — no context section in basic mode
-- `SessionLogger_LogRotation_RemovesOldest` — exceeds maxLogs deletes oldest
-- `SessionLogger_LogRotation_KeepsNewestWithinLimit` — within maxLogs keeps all
-- `SessionLogger_VerboseProperty_ReflectsConstructorParam` — Verbose property matches constructor arg
-- `SessionLogger_LogPath_IsInExpectedDirectory` — path format verified
-- `SessionLogger_LogDirectory_MatchesOverride` — matches provided temp dir
+### New Tests (15 total, 267/267 pass)
+- `ToolRegistryTests` (9): disabled/unknown/enabled tool, config loading, empty query, bad URL
+- `ResponseEngineToolTests` (4): no marker, no registry, disabled tool, unknown tool

@@ -161,6 +161,14 @@ public static class DbSeeder
                 "Let me think about what I've learned from our conversations...",
                 "I've picked up a few things about you from our chats!"
             }),
+            (@"^(search|look up|find|google)\s+(.+)", "Statement", new[]
+            {
+                "Let me search for that. {tool:web_search:{$2}}"
+            }),
+            (@"^(what is|who is|tell me about)\s+(.+)\s+(on the web|online|from the internet)", "Question", new[]
+            {
+                "Let me look that up. {tool:web_search:{$2}}"
+            }),
         };
 
         foreach (var (pattern, inputType, responses) in rules)
@@ -881,6 +889,13 @@ public static class DbSeeder
             ("direct_insult", "I'm here to chat, not to fight. Let's talk about something else."),
             ("direct_insult", "Let's keep our conversation respectful, please."),
             ("direct_insult", "That's a bit harsh. What's really on your mind?"),
+            ("tool_unavailable", "I don't have a way to search right now."),
+            ("tool_unavailable", "I can't look that up at the moment."),
+            ("tool_unavailable", "That tool isn't available right now."),
+            ("tool_timeout", "That search took too long. Let's try something else."),
+            ("tool_timeout", "I couldn't get an answer in time. What else can I help with?"),
+            ("tool_error", "I tried looking that up but got an error."),
+            ("tool_error", "Something went wrong when I tried that."),
         };
 
         context.BotResponses.AddRange(responses.Select(r => new BotResponse

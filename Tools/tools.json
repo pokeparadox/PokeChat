@@ -1,0 +1,12 @@
+{
+  "web_search": {
+    "enabled": true,
+    "timeoutMs": 10000,
+    "apiKey": "${WEB_SEARCH_API_KEY}",
+    "endpoint": "https://api.duckduckgo.com/?q={query}&format=json"
+  },
+  "read_url": {
+    "enabled": true,
+    "timeoutMs": 15000
+  }
+}

@@ -295,6 +295,18 @@ internal static class TestDataHelper
         db.SaveChanges();
     }
 
+    public static void SeedBotResponsesWithToolCategories(PokeChatDbContext db)
+    {
+        var now = DateTime.UtcNow.ToString("o");
+        db.BotResponses.AddRange(
+            new BotResponse { Category = "tool_unavailable", ResponseText = "I don't have a way to search right now.", CreatedAt = now },
+            new BotResponse { Category = "tool_unavailable", ResponseText = "I can't look that up at the moment.", CreatedAt = now },
+            new BotResponse { Category = "tool_timeout", ResponseText = "That search took too long.", CreatedAt = now },
+            new BotResponse { Category = "tool_error", ResponseText = "I tried that but got an error.", CreatedAt = now }
+        );
+        db.SaveChanges();
+    }
+
     public static void SeedStoryTemplates(PokeChatDbContext db)
     {
         var now = DateTime.UtcNow.ToString("o");

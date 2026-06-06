@@ -3,6 +3,7 @@ using PokeChat.Data;
 using PokeChat.Knowledge;
 using PokeChat.NLP;
 using PokeChat.Responses;
+using PokeChat.Tools;
 
 namespace PokeChat.Core;
 
@@ -83,7 +84,8 @@ public class ChatSession : IDisposable
         var posEntries = _knowledgeStore.GetPosDictionary();
         _posTagger = new PosTagger(posEntries);
         _nounCategoriser = new NounCategoriser(_knowledgeStore);
-        _responseEngine = new ResponseEngine(_knowledgeStore, _context, _spellChecker, _posTagger, _tokeniser, _svoExtractor);
+        var toolRegistry = new ToolRegistry();
+        _responseEngine = new ResponseEngine(_knowledgeStore, _context, _spellChecker, _posTagger, _tokeniser, _svoExtractor, toolRegistry: toolRegistry);
 
         var spellDict = new HashSet<string>(posEntries.Select(e => e.Word), StringComparer.OrdinalIgnoreCase);
         var misspellings = _knowledgeStore.GetMisspellings();
@@ -114,7 +116,8 @@ public class ChatSession : IDisposable
         string botName = "PokeChat",
         List<string>? renamePatterns = null,
         string sessionId = "",
-        SessionLogger? sessionLogger = null)
+        SessionLogger? sessionLogger = null,
+        ToolRegistry? toolRegistry = null)
     {
         _dbContext = dbContext;
         _sessionLogger = sessionLogger;
