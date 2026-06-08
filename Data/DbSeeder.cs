@@ -909,6 +909,14 @@ public static class DbSeeder
             ("tool_timeout", "I couldn't get an answer in time. What else can I help with?"),
             ("tool_error", "I tried looking that up but got an error."),
             ("tool_error", "Something went wrong when I tried that."),
+            ("llm_offer", "I don't know how to answer that. Should I use my AI to respond?"),
+            ("llm_offer", "I'm not sure what to say. Would you like me to ask my AI?"),
+            ("llm_thinking", "Let me check with my AI..."),
+            ("llm_thinking", "Let me ask my AI for help with that."),
+            ("llm_unavailable", "My AI isn't responding right now. Let's try something else."),
+            ("llm_unavailable", "I can't reach my AI at the moment."),
+            ("llm_declined", "No problem, I'll keep learning!"),
+            ("llm_declined", "That's OK! I'll try to figure it out on my own."),
         };
 
         context.BotResponses.AddRange(responses.Select(r => new BotResponse

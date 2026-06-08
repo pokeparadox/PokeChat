@@ -100,6 +100,14 @@ internal static class TestDataHelper
             ("story_response", "Let me tell you a tale:\n\n{0}"),
             ("direct_insult", "That's not very nice. Let's keep things friendly."),
             ("direct_insult", "I'm here to chat, not to fight. Let's talk about something else."),
+            ("llm_offer", "I don't know how to answer that. Should I use my AI to respond?"),
+            ("llm_offer", "I'm not sure what to say. Would you like me to ask my AI?"),
+            ("llm_thinking", "Let me check with my AI..."),
+            ("llm_thinking", "Let me ask my AI for help with that."),
+            ("llm_unavailable", "My AI isn't responding right now. Let's try something else."),
+            ("llm_unavailable", "I can't reach my AI at the moment."),
+            ("llm_declined", "No problem, I'll keep learning!"),
+            ("llm_declined", "That's OK! I'll try to figure it out on my own."),
         };
         db.BotResponses.AddRange(responses.Select(r => new BotResponse
         {

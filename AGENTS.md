@@ -133,8 +133,8 @@ A completed improvement history is maintained in `.agents/history.md`. Active pl
 - **Phase 25:** Word Classification ✅ (after unknown word teaching, bot asks "person/place/thing/verb?", stores in POS dict + noun_categories, place subcategory triggers visit-fact follow-up, max 2 classifications per session, 8 new bot responses, 7 tests, 237/237 pass)
 - **Phase 26:** Chat Log & Session Improvements ✅ (24 bug fixes from chat logs, session logging infrastructure, 28 new tests, 267/267 pass)
 - **Phase 27:** Built-in Tool Layer ✅ (ITool/ToolRegistry interface, WebSearchTool/ReadUrlTool, `{tool:name}` markers in response rules, 15 new tests)
-- **Phase 28:** Full MCP Protocol 📝 (upgrade built-in tools to MCP stdio protocol; `McpClient`/`McpRegistry` manage subprocesses via JSON-RPC; tool discovery on connect; see `.backlog/phase28-mcp-protocol.md`)
-- **Phase 29:** Optional LLM Support 📝 (Ollama-backed optional LLM; triggered only after capabilities exhausted; user prompts once per session; pattern learning from LLM responses; see `.backlog/phase29-llm-support.md`)
+- **Phase 28:** Full MCP Protocol ✅ (upgrade built-in tools to MCP stdio protocol; `McpClient`/`McpRegistry` manage subprocesses via JSON-RPC; tool discovery on connect; `mcp.json` config; 19 new tests, 286/286 pass)
+- **Phase 29:** Optional LLM Support ✅ (Ollama-backed optional LLM; triggered only after capabilities exhausted; user prompts once per session; pattern learning from LLM responses; see `.agents/history.md`)
 - **Phase 29b:** Data-Driven MCP Tool Triggers 📝 (tool triggers defined in `mcp.json`; zero-code MCP tool addition; auto-generated catch-all triggers; POS auto-seeding; removes hardcoded tool rules; see `.backlog/phase29b-mcp-tool-triggers.md`)
 ## Known Fixes
 - **ContractionExpander:** Loaded from `contractions` table via `KnowledgeStore.GetContractions()`. Expands contracted forms before tokenisation using regex replace with `IgnoreCase`. The expander uses lowercase expansion text (`"i am"`, not `"I am"`) since the tokeniser lowercases afterward. Seeded via `DbSeeder.SeedContractions()` and `TestDataHelper.SeedContractions()`.

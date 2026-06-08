@@ -36,6 +36,19 @@ public class ResponseEngine
         _botName = name;
     }
 
+    public static bool IsDefaultCategory(string category)
+    {
+        return category == "default_response";
+    }
+
+    public static bool IsDeadEndCategory(string category)
+    {
+        return category == "default_response"
+            || category == "story_response"
+            || category == "random_fact_followup"
+            || (category != null && category.StartsWith("proactive_"));
+    }
+
     public ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker context, SpellChecker spellChecker, IPosTagger posTagger, ITokeniser tokeniser, ISvoExtractor svoExtractor, IMathEngine? mathEngine = null, StoryGenerator? storyGenerator = null, ToolRegistry? toolRegistry = null)
     {
         _knowledgeStore = knowledgeStore;

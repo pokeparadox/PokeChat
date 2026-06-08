@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using PokeChat.Data;
 using PokeChat.Knowledge;
+using PokeChat.LLM;
 using PokeChat.Mcp;
 using PokeChat.NLP;
 using PokeChat.Responses;
@@ -34,6 +35,7 @@ public class ChatSession : IDisposable
 
     private readonly SessionLogger? _sessionLogger;
     private readonly McpRegistry? _mcpRegistry;
+    private readonly LLMOrchestrator? _llmOrchestrator;
 
     private static readonly Regex InsultPattern = new(
         @"^(you(?:'re| are) (?:a|an) \w+|shut\s+up|shut\s+it)",
@@ -42,6 +44,9 @@ public class ChatSession : IDisposable
     private static readonly HashSet<string> Affirmations = new(StringComparer.OrdinalIgnoreCase)
         { "yes", "yep", "yeah", "yup", "sure", "correct", "right",
           "that's right", "that is right", "yes please", "ok", "okay" };
+
+    private static readonly HashSet<string> Denials = new(StringComparer.OrdinalIgnoreCase)
+        { "no", "nope", "nah", "no thanks", "no thank you" };
 
     private static readonly HashSet<string> FunctionWords = new(StringComparer.OrdinalIgnoreCase)
         { "not", "never", "no" };
@@ -89,6 +94,7 @@ public class ChatSession : IDisposable
         _mcpRegistry = new McpRegistry();
         var toolRegistry = new ToolRegistry(mcpRegistry: _mcpRegistry);
         _responseEngine = new ResponseEngine(_knowledgeStore, _context, _spellChecker, _posTagger, _tokeniser, _svoExtractor, toolRegistry: toolRegistry);
+        _llmOrchestrator = new LLMOrchestrator();
 
         var spellDict = new HashSet<string>(posEntries.Select(e => e.Word), StringComparer.OrdinalIgnoreCase);
         var misspellings = _knowledgeStore.GetMisspellings();
@@ -120,7 +126,8 @@ public class ChatSession : IDisposable
         List<string>? renamePatterns = null,
         string sessionId = "",
         SessionLogger? sessionLogger = null,
-        ToolRegistry? toolRegistry = null)
+        ToolRegistry? toolRegistry = null,
+        LLMOrchestrator? llmOrchestrator = null)
     {
         _dbContext = dbContext;
         _sessionLogger = sessionLogger;
@@ -142,6 +149,7 @@ public class ChatSession : IDisposable
             _sessionId = sessionId;
         _responseEngine.SetBotName(_botName);
         _currentUserNameLower = _currentUserName.ToLowerInvariant();
+        _llmOrchestrator = llmOrchestrator;
     }
 
     public void Start()
@@ -204,6 +212,39 @@ public class ChatSession : IDisposable
         if (pendingWord != null)
         {
             return HandleClarification(input, pendingWord);
+        }
+
+        var pendingLlmOffer = _context.GetContext(ContextKeys.PendingLLMOffer);
+        if (pendingLlmOffer != null)
+        {
+            var originalInput = _context.GetContext(ContextKeys.LLMOriginalInput);
+            var lower = input.Trim().ToLowerInvariant();
+
+            if (_llmOrchestrator != null && Affirmations.Contains(lower))
+            {
+                _context.SetContext(ContextKeys.PendingLLMOffer, null);
+                _context.SetContext(ContextKeys.LLMOriginalInput, null);
+                _llmOrchestrator.MarkAccepted();
+                var llmResult = _llmOrchestrator.GenerateResponse(originalInput ?? input);
+                if (llmResult != null)
+                {
+                    LearnFromLLMResponse(originalInput ?? input, llmResult);
+                    _knowledgeStore.StoreConversation(_currentUserId!.Value, originalInput ?? input, llmResult, _sessionId, "llm_response");
+                    _knowledgeStore.Save();
+                    return llmResult;
+                }
+                return GetLLMResponse("llm_unavailable");
+            }
+
+            if (_llmOrchestrator != null && Denials.Contains(lower))
+            {
+                _context.SetContext(ContextKeys.PendingLLMOffer, null);
+                _context.SetContext(ContextKeys.LLMOriginalInput, null);
+                _llmOrchestrator.MarkDeclined();
+                return GetLLMResponse("llm_declined");
+            }
+
+            return GetLLMResponse("llm_offer");
         }
 
         var classWord = _context.GetContext(ContextKeys.PendingClassificationWord);
@@ -269,6 +310,32 @@ public class ChatSession : IDisposable
 
         var response = _responseEngine.GenerateResponse(input, _currentUserId);
         var responseCategory = _context.GetContext(ContextKeys.CurrentResponseCategory);
+
+        if (_llmOrchestrator?.IsAvailable == true && !_llmOrchestrator.UserDeclined
+            && ResponseEngine.IsDeadEndCategory(responseCategory ?? ""))
+        {
+            if (_llmOrchestrator.IsAccepted)
+            {
+                var llmResult = _llmOrchestrator.GenerateResponse(input);
+                if (llmResult != null)
+                {
+                    LearnFromLLMResponse(input, llmResult);
+                    response = llmResult;
+                    responseCategory = "llm_response";
+                }
+                else
+                {
+                    response = GetLLMResponse("llm_unavailable");
+                    responseCategory = "llm_unavailable";
+                }
+            }
+            else if (_context.GetContext(ContextKeys.PendingLLMOffer) == null)
+            {
+                _context.SetContext(ContextKeys.PendingLLMOffer, "true");
+                _context.SetContext(ContextKeys.LLMOriginalInput, input);
+            }
+        }
+
         _knowledgeStore.StoreConversation(_currentUserId!.Value, input, response, _sessionId, responseCategory);
         _knowledgeStore.Save();
 
@@ -489,6 +556,12 @@ public class ChatSession : IDisposable
     internal string? LastSubject => _context.LastSubject;
     internal string? LastObject => _context.LastObject;
     internal IReadOnlyList<TopicEntry> TopicStack => _context.TopicStack;
+
+    internal void SetLLMOfferState(string originalInput)
+    {
+        _context.SetContext(ContextKeys.PendingLLMOffer, "true");
+        _context.SetContext(ContextKeys.LLMOriginalInput, originalInput);
+    }
 
     internal static string StemVerb(string verb)
     {
@@ -1054,6 +1127,57 @@ public class ChatSession : IDisposable
         return string.Empty;
     }
 
+    private string GetLLMResponse(string category)
+    {
+        var botResponses = GetCachedBotResponses();
+        if (botResponses.TryGetValue(category, out var responses) && responses.Count > 0)
+            return responses[Random.Shared.Next(responses.Count)];
+
+        var fallbacks = new Dictionary<string, List<string>>
+        {
+            ["llm_offer"] = new() { "I don't know how to answer that. Should I use my AI to respond?" },
+            ["llm_declined"] = new() { "No problem, I'll keep learning!" },
+            ["llm_unavailable"] = new() { "My AI isn't responding right now." },
+            ["llm_thinking"] = new() { "Let me check with my AI..." },
+        };
+
+        if (fallbacks.TryGetValue(category, out var fb) && fb.Count > 0)
+            return fb[Random.Shared.Next(fb.Count)];
+
+        return string.Empty;
+    }
+
+    private void LearnFromLLMResponse(string input, string llmResponse)
+    {
+        var tokens = _tokeniser.Tokenise(input);
+        var correctedTokens = _spellChecker.AutoCorrect(tokens);
+        var tags = _posTagger.Tag(correctedTokens);
+        var triples = _svoExtractor.Extract(correctedTokens, tags);
+
+        string pattern;
+
+        if (triples.Count > 0)
+        {
+            var obj = triples[0].Object;
+            if (string.IsNullOrEmpty(obj) || obj.Length < 2)
+                obj = triples[0].Subject;
+
+            var patternTokens = correctedTokens.Select(t =>
+                string.Equals(t, obj, StringComparison.OrdinalIgnoreCase) ? @"(\w+)" : Regex.Escape(t));
+            pattern = @"\b" + string.Join(@"\b \b", patternTokens) + @"\b";
+        }
+        else
+        {
+            pattern = @"\b" + string.Join(@"\b \b", correctedTokens.Select(Regex.Escape)) + @"\b";
+        }
+
+        if (!_knowledgeStore.IsLearnedRuleKnown(pattern))
+        {
+            _knowledgeStore.LearnResponseRule(pattern, llmResponse, "Statement", _currentUserId);
+            _knowledgeStore.Save();
+        }
+    }
+
     internal bool TryHandleCorrection(string input, out string response)
     {
         var trimmedInput = input.Trim();
@@ -1238,6 +1362,7 @@ public class ChatSession : IDisposable
     {
         _sessionLogger?.Dispose();
         _mcpRegistry?.Dispose();
+        _llmOrchestrator?.Dispose();
         _dbContext.Dispose();
     }
 }

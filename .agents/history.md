@@ -1018,3 +1018,37 @@ Upgraded built-in tool layer to Model Context Protocol (MCP) over stdio transpor
 - `McpToolAdapterTests` (4): name/description storage, no-connection failure, empty args, shared client
 - `McpIntegrationTests` (6): mock MCP bash server — connect, discover tools, execute, before-connect failure, full registry flow, adapter full flow
 - `ToolRegistryMcpIntegrationTests` (3): merged tools, MCP tool execution, no-registry regression
+
+---
+
+## Phase 29 — Optional LLM Support ✅
+
+Ollama-backed optional LLM fallback when the bot exhausts all rule-based capabilities. The LLM is offered once per session; if accepted, all subsequent dead-end responses come from the LLM.
+
+### New files
+- `LLM/ILLMProvider.cs` — interface: `string? GenerateResponse(string input, string? userName)`
+- `LLM/OllamaProvider.cs` — HTTP POST to Ollama's OpenAI-compatible endpoint, configurable model/timeout/URL, error returns null
+- `LLM/LLMOrchestrator.cs` — wraps config + provider + state; per-session call counter; `IsAvailable`, `IsAccepted`, `UserDeclined` state management; implements `IDisposable`
+- `tools/llm.json.example` — config template with `enabled: false`
+
+### Modified files
+- `Core/ContextKeys.cs` — added `PendingLLMOffer`, `LLMOriginalInput`
+- `Data/DbSeeder.cs` — seeded `llm_offer` (2), `llm_thinking` (2), `llm_unavailable` (2), `llm_declined` (2) bot response categories
+- `tests/PokeChat.Tests/Helpers/TestDataHelper.cs` — matching seed data
+- `tests/PokeChat.Tests/LLM/StubLLMProvider.cs` — test stub for deterministic LLM response injection
+- `Core/ChatSession.cs` — added optional `llmOrchestrator` constructor parameter; LLM flow: pending offer handler at top of `ProcessInput`, post-`GenerateResponse` check for `default_response` category to offer/use LLM; `GetLLMResponse()` with hardcoded fallback templates
+- `Responses/ResponseEngine.cs` — added `IsDefaultCategory(string)` public static method
+- `.gitignore` — added `tools/llm.json`
+
+### New Tests (14 total, 300/300 pass)
+- `LLMOrchestratorTests` (7): available/not-available, accept/decline, can-use, call-count limits, dispose
+- `ChatSessionLLMTests` (7): pending offer yes/no/unavailable, accepted-LM used on subsequent fallback, declined not offered again, offer fires on default_response, no-LLM fallback
+
+### Architecture
+- **Config path:** `tools/llm.json`
+- **Flow:** `ProcessInput` → pending offer handler (check for yes/no) → normal flow → `GenerateResponse` → if `default_response` category → offer (if available, not accepted, not declined) → prompt user → if accepted → LLM directly → learn from LLM response
+- **Acceptance:** After acceptance, LLM is called directly on any future input that reaches `default_response`
+- **Persistence:** One offer per session; declined = never offered again
+
+### Verify
+- `dotnet build && dotnet test` — 300/300 pass

@@ -40,4 +40,6 @@ public static class ContextKeys
     public const string PendingClassificationWord = "pending_classification_word";
     public const string PendingClassificationCount = "pending_classification_count";
     public const string PendingPlaceWord = "pending_place_word";
+    public const string PendingLLMOffer = "pending_llm_offer";
+    public const string LLMOriginalInput = "llm_original_input";
 }
