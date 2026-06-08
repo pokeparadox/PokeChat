@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using PokeChat.Data;
 using PokeChat.Knowledge;
+using PokeChat.Mcp;
 using PokeChat.NLP;
 using PokeChat.Responses;
 using PokeChat.Tools;
@@ -32,6 +33,7 @@ public class ChatSession : IDisposable
     private static readonly string[] AlternativeNames = { "Zara", "Nova", "Echo", "Pixel", "Azure", "Kai", "Rex" };
 
     private readonly SessionLogger? _sessionLogger;
+    private readonly McpRegistry? _mcpRegistry;
 
     private static readonly Regex InsultPattern = new(
         @"^(you(?:'re| are) (?:a|an) \w+|shut\s+up|shut\s+it)",
@@ -84,7 +86,8 @@ public class ChatSession : IDisposable
         var posEntries = _knowledgeStore.GetPosDictionary();
         _posTagger = new PosTagger(posEntries);
         _nounCategoriser = new NounCategoriser(_knowledgeStore);
-        var toolRegistry = new ToolRegistry();
+        _mcpRegistry = new McpRegistry();
+        var toolRegistry = new ToolRegistry(mcpRegistry: _mcpRegistry);
         _responseEngine = new ResponseEngine(_knowledgeStore, _context, _spellChecker, _posTagger, _tokeniser, _svoExtractor, toolRegistry: toolRegistry);
 
         var spellDict = new HashSet<string>(posEntries.Select(e => e.Word), StringComparer.OrdinalIgnoreCase);
@@ -1234,6 +1237,7 @@ public class ChatSession : IDisposable
     public void Dispose()
     {
         _sessionLogger?.Dispose();
+        _mcpRegistry?.Dispose();
         _dbContext.Dispose();
     }
 }

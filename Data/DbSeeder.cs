@@ -169,6 +169,19 @@ public static class DbSeeder
             {
                 "Let me look that up. {tool:web_search:{$2}}"
             }),
+            (@"(search|ask|check) (your )?(memory|memories|palace) for (.+)", "Statement", new[]
+            {
+                "Let me search my memories for that. {tool:mempalace_search:{$4}}",
+                "I'll check what I remember about that. {tool:mempalace_search:{$4}}"
+            }),
+            (@"what do you (remember|know) about (.+)", "Question", new[]
+            {
+                "Let me check my memories about that. {tool:mempalace_search:{$2}}"
+            }),
+            (@"(check|query|search) (your )?(facts|knowledge) about (.+)", "Statement", new[]
+            {
+                "Let me look up what I know about that. {tool:mempalace_search:{$4}}"
+            }),
         };
 
         foreach (var (pattern, inputType, responses) in rules)

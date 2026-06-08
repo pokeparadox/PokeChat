@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Data.Sqlite;
+using PokeChat.Data.Entities;
 
 namespace PokeChat.Data;
 
@@ -29,6 +30,87 @@ public class DatabaseInitializer(PokeChatDbContext context)
         }
 
         DbSeeder.Seed(context);
+        SeedMempalaceRules(context);
+        SeedMempalaceDictionary(context);
+    }
+
+    private static void SeedMempalaceDictionary(PokeChatDbContext context)
+    {
+        var missingWords = new (string Word, string Type, string NounCategory)[]
+        {
+            ("memory", "noun", "thing"),
+            ("memories", "noun", "thing"),
+            ("palace", "noun", "thing"),
+            ("knowledge", "noun", "thing"),
+            ("facts", "noun", "thing"),
+        };
+
+        foreach (var (word, type, nounCategory) in missingWords)
+        {
+            if (!context.PosDictionary.Any(e => e.Word == word))
+            {
+                context.PosDictionary.Add(new PosDictionaryEntry
+                {
+                    Word = word,
+                    WordType = type,
+                    CreatedAt = DateTime.UtcNow.ToString("o"),
+                });
+            }
+
+            if (!context.NounCategories.Any(c => c.Noun == word))
+            {
+                context.NounCategories.Add(new NounCategory
+                {
+                    Noun = word,
+                    Category = nounCategory,
+                    CreatedAt = DateTime.UtcNow.ToString("o"),
+                });
+            }
+        }
+
+        context.SaveChanges();
+    }
+
+    private static void SeedMempalaceRules(PokeChatDbContext context)
+    {
+        var now = DateTime.UtcNow.ToString("o");
+        var mempalaceRules = new (string Pattern, string InputType, string[] Responses)[]
+        {
+            (@"(search|ask|check) (your )?(memory|memories|palace) for (.+)", "Statement", new[]
+            {
+                "Let me search my memories for that. {tool:mempalace_search:{$4}}",
+                "I'll check what I remember about that. {tool:mempalace_search:{$4}}"
+            }),
+            (@"what do you (remember|know) about (.+)", "Question", new[]
+            {
+                "Let me check my memories about that. {tool:mempalace_search:{$2}}"
+            }),
+            (@"(check|query|search) (your )?(facts|knowledge) about (.+)", "Statement", new[]
+            {
+                "Let me look up what I know about that. {tool:mempalace_search:{$4}}"
+            }),
+        };
+
+        foreach (var (pattern, inputType, responses) in mempalaceRules)
+        {
+            var existing = context.ResponseRules.Any(r => r.Pattern == pattern);
+            if (existing) continue;
+
+            var rule = new ResponseRule
+            {
+                Pattern = pattern,
+                InputType = inputType,
+                IsActive = true,
+                CreatedAt = now,
+                Responses = responses.Select(r => new ResponseRuleResponse
+                {
+                    ResponseText = r,
+                }).ToList(),
+            };
+            context.ResponseRules.Add(rule);
+        }
+
+        context.SaveChanges();
     }
 
     private bool HasTables()

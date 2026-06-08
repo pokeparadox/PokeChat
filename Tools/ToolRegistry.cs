@@ -1,4 +1,5 @@
 using System.Text.Json;
+using PokeChat.Mcp;
 
 namespace PokeChat.Tools;
 
@@ -15,16 +16,28 @@ public class ToolRegistry
     private readonly Dictionary<string, ITool> _tools = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, ToolConfig> _configs;
 
-    public ToolRegistry(string configPath = "Tools/tools.json")
+    public ToolRegistry(string configPath = "Tools/tools.json", McpRegistry? mcpRegistry = null)
     {
         _configs = LoadConfig(configPath);
         RegisterBuiltIn();
+        RegisterMcpTools(mcpRegistry);
     }
 
-    internal ToolRegistry(Dictionary<string, ToolConfig> configs)
+    internal ToolRegistry(Dictionary<string, ToolConfig> configs, McpRegistry? mcpRegistry = null)
     {
         _configs = configs ?? new Dictionary<string, ToolConfig>();
         RegisterBuiltIn();
+        RegisterMcpTools(mcpRegistry);
+    }
+
+    private void RegisterMcpTools(McpRegistry? mcpRegistry)
+    {
+        if (mcpRegistry == null) return;
+
+        foreach (var (name, tool) in mcpRegistry.DiscoveredTools)
+        {
+            _tools[name] = tool;
+        }
     }
 
     private static Dictionary<string, ToolConfig> LoadConfig(string path)
@@ -65,17 +78,19 @@ public class ToolRegistry
 
     public ToolResult? TryExecute(string toolName, string[] args)
     {
-        if (!_configs.TryGetValue(toolName, out var config) || !config.Enabled)
-            return null;
-
         if (!_tools.TryGetValue(toolName, out var tool))
             return null;
 
+        if (!IsEnabled(toolName))
+            return null;
+
+        var timeoutMs = _configs.TryGetValue(toolName, out var config) ? config.TimeoutMs : 10000;
+
         try
         {
-            using var cts = new CancellationTokenSource(config.TimeoutMs);
+            using var cts = new CancellationTokenSource(timeoutMs);
             var task = Task.Run(() => tool.Execute(args), cts.Token);
-            if (!task.Wait(config.TimeoutMs, cts.Token))
+            if (!task.Wait(timeoutMs, cts.Token))
             {
                 return new ToolResult
                 {
@@ -109,7 +124,10 @@ public class ToolRegistry
 
     public bool IsEnabled(string toolName)
     {
-        return _configs.TryGetValue(toolName, out var config) && config.Enabled;
+        if (_configs.TryGetValue(toolName, out var config))
+            return config.Enabled;
+
+        return _tools.ContainsKey(toolName);
     }
 
     public ToolConfig? GetConfig(string toolName)

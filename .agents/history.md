@@ -994,3 +994,27 @@ Lightweight tool system for response rules. Tools invoked via `{tool:name}` mark
 ### New Tests (15 total, 267/267 pass)
 - `ToolRegistryTests` (9): disabled/unknown/enabled tool, config loading, empty query, bad URL
 - `ResponseEngineToolTests` (4): no marker, no registry, disabled tool, unknown tool
+
+---
+
+## Phase 28 — Full MCP Protocol ✅
+
+Upgraded built-in tool layer to Model Context Protocol (MCP) over stdio transport. Any MCP-compliant server process can register tools with the bot via `mcp.json`.
+
+### New Files
+- `MCP/McpModels.cs` — JSON-RPC 2.0 request/response models + MCP protocol types (`McpToolSchema`, `McpServerConfig`, `McpConfig`)
+- `MCP/McpClient.cs` — stdio subprocess manager, sends `initialize` → `tools/list` → `tools/call` via JSON-RPC, timeout handling, crash recovery, auto-kill on dispose
+- `MCP/McpToolAdapter.cs` — `ITool` adapter wrapping an MCP-discovered tool, delegates `Execute()` to `McpClient.ExecuteTool()`
+- `MCP/McpRegistry.cs` — loads `mcp.json`, spawns enabled MCP server processes, discovers tools, merges into unified dictionary
+- `mcp.json.example` — template with disabled `docs-search` server example
+
+### Modified Files
+- `Tools/ToolRegistry.cs` — optional `McpRegistry` parameter, `RegisterMcpTools()` merges discovered tools; `IsEnabled` returns true for tools without explicit config (MCP tools are pre-filtered by `mcp.json`)
+- `Core/ChatSession.cs` — creates `McpRegistry`, passes to `ToolRegistry`; disposes `_mcpRegistry` in `Dispose()`
+- `.gitignore` — added `mcp.json`
+
+### New Tests (19 total, 286/286 pass)
+- `McpRegistryTests` (6): missing/invalid/empty config, pre-built tools, disabled servers, dispose
+- `McpToolAdapterTests` (4): name/description storage, no-connection failure, empty args, shared client
+- `McpIntegrationTests` (6): mock MCP bash server — connect, discover tools, execute, before-connect failure, full registry flow, adapter full flow
+- `ToolRegistryMcpIntegrationTests` (3): merged tools, MCP tool execution, no-registry regression

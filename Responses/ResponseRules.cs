@@ -32,41 +32,44 @@ public static class ResponseRules
 
         foreach (var rule in learnedRules)
         {
-            if (rule.Pattern.Length > 0 && Regex.IsMatch(lowerInput, rule.Pattern))
+            if (rule.Pattern.Length <= 0) continue;
+            if (!Regex.IsMatch(lowerInput, rule.Pattern)) continue;
+
+            if (bestLearned == null || rule.Confidence > bestLearned.Confidence)
             {
-                if (bestLearned == null || rule.Confidence > bestLearned.Confidence)
+                bestLearned = new ResponseRuleRecord
                 {
-                    bestLearned = new ResponseRuleRecord
-                    {
-                        Pattern = rule.Pattern,
-                        InputType = ParseInputType(rule.InputType),
-                        Responses = new List<string> { rule.ResponseTemplate },
-                        RuleId = rule.Id,
-                        IsLearned = true,
-                        Confidence = rule.Confidence
-                    };
-                }
+                    Pattern = rule.Pattern,
+                    InputType = ParseInputType(rule.InputType),
+                    Responses = new List<string> { rule.ResponseTemplate },
+                    RuleId = rule.Id,
+                    IsLearned = true,
+                    Confidence = rule.Confidence
+                };
             }
         }
 
         var seededRules = knowledgeStore.GetResponseRules();
         ResponseRuleRecord? bestSeeded = null;
+        var bestSeededLength = 0;
 
         foreach (var rule in seededRules)
         {
-            if (rule.Pattern.Length > 0 && Regex.IsMatch(lowerInput, rule.Pattern))
+            if (rule.Pattern.Length <= 0) continue;
+            var match = Regex.Match(lowerInput, rule.Pattern);
+            if (!match.Success) continue;
+            if (match.Length <= bestSeededLength) continue;
+
+            bestSeededLength = match.Length;
+            bestSeeded = new ResponseRuleRecord
             {
-                bestSeeded = new ResponseRuleRecord
-                {
-                    Pattern = rule.Pattern,
-                    InputType = ParseInputType(rule.InputType),
-                    Responses = rule.Responses.Select(r => r.ResponseText).ToList(),
-                    RuleId = rule.Id,
-                    IsLearned = false,
-                    Confidence = 8
-                };
-                break;
-            }
+                Pattern = rule.Pattern,
+                InputType = ParseInputType(rule.InputType),
+                Responses = rule.Responses.Select(r => r.ResponseText).ToList(),
+                RuleId = rule.Id,
+                IsLearned = false,
+                Confidence = 8
+            };
         }
 
         if (bestLearned == null) return bestSeeded;

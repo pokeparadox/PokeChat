@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "docs-search": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@anthropic/mcp-docs-search"],
+      "enabled": false
+    },
+    "mempalace": {
+      "transport": "stdio",
+      "command": "mempalace-mcp",
+      "args": [],
+      "enabled": true
+    }
+  }
+}
