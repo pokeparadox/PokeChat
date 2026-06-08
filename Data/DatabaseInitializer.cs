@@ -43,6 +43,7 @@ public class DatabaseInitializer(PokeChatDbContext context)
             ("palace", "noun", "thing"),
             ("knowledge", "noun", "thing"),
             ("facts", "noun", "thing"),
+            ("phase", "noun", "thing"),
         };
 
         foreach (var (word, type, nounCategory) in missingWords)

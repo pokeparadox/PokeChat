@@ -181,6 +181,7 @@ internal static class TestDataHelper
             new PosDictionaryEntry { Word = "conversation", WordType = "noun", CreatedAt = now },
             new PosDictionaryEntry { Word = "today", WordType = "noun", CreatedAt = now },
             new PosDictionaryEntry { Word = "chess", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "phase", WordType = "noun", CreatedAt = now },
             new PosDictionaryEntry { Word = "yes", WordType = "adverb", CreatedAt = now },
             new PosDictionaryEntry { Word = "yeah", WordType = "adverb", CreatedAt = now },
             new PosDictionaryEntry { Word = "yep", WordType = "adverb", CreatedAt = now },
