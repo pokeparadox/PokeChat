@@ -89,6 +89,11 @@ public class SpellChecker
         _dictionary.Add(word.ToLowerInvariant());
     }
 
+    public void RemoveFromDictionary(string word)
+    {
+        _dictionary.Remove(word.ToLowerInvariant());
+    }
+
     public List<string> AutoCorrect(List<string> tokens)
     {
         var corrected = new List<string>(tokens.Count);

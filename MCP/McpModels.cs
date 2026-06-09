@@ -35,6 +35,7 @@ public class McpServerConfig
     public string Command { get; set; } = "";
     public string[] Args { get; set; } = Array.Empty<string>();
     public bool Enabled { get; set; } = true;
+    public List<McpToolTrigger> ToolTriggers { get; set; } = new();
 }
 
 public class McpToolSchema

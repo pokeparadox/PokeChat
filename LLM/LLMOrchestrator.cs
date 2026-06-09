@@ -5,10 +5,13 @@ namespace PokeChat.LLM;
 public class LLMConfig
 {
     public bool Enabled { get; set; }
+    public bool AlwaysOn { get; set; }
     public string Endpoint { get; set; } = "http://localhost:11434";
     public string Model { get; set; } = "llama3.2";
     public int TimeoutMs { get; set; } = 30000;
     public int MaxCallsPerSession { get; set; }
+    public bool SummariseToolResults { get; set; } = true;
+    public List<string> EnhancedCategories { get; set; } = new();
     public string SystemPrompt { get; set; } = string.Empty;
 }
 
@@ -47,7 +50,7 @@ public class LLMOrchestrator : IDisposable
     public string? GenerateResponse(string input)
     {
         if (_provider == null || UserDeclined) return null;
-        if (Config.MaxCallsPerSession > 0 && CallsThisSession >= Config.MaxCallsPerSession)
+        if (!Config.AlwaysOn && Config.MaxCallsPerSession > 0 && CallsThisSession >= Config.MaxCallsPerSession)
             return null;
 
         CallsThisSession++;

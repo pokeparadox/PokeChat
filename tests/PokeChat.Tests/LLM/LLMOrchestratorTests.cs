@@ -91,4 +91,41 @@ public class LLMOrchestratorTests
         orchestrator.MarkAccepted();
         orchestrator.GenerateResponse("hello").ShouldBe("accepted response");
     }
+
+    [Fact]
+    public void AlwaysOn_IsAvailable_WithoutAccept()
+    {
+        var config = new LLMConfig { Enabled = true, AlwaysOn = true };
+        var provider = new StubLLMProvider { Response = "always on response" };
+        var orchestrator = new LLMOrchestrator(provider, config);
+
+        orchestrator.IsAccepted.ShouldBeFalse();
+        orchestrator.IsAvailable.ShouldBeTrue();
+        var result = orchestrator.GenerateResponse("hello");
+        result.ShouldBe("always on response");
+    }
+
+    [Fact]
+    public void AlwaysOn_IgnoresMaxCalls()
+    {
+        var config = new LLMConfig { Enabled = true, AlwaysOn = true, MaxCallsPerSession = 1 };
+        var provider = new StubLLMProvider { Response = "ok" };
+        var orchestrator = new LLMOrchestrator(provider, config);
+
+        orchestrator.GenerateResponse("first").ShouldBe("ok");
+        orchestrator.CallsThisSession.ShouldBe(1);
+        orchestrator.GenerateResponse("second").ShouldBe("ok");
+        orchestrator.CallsThisSession.ShouldBe(2);
+    }
+
+    [Fact]
+    public void AlwaysOn_RespectsUserDeclined()
+    {
+        var config = new LLMConfig { Enabled = true, AlwaysOn = true };
+        var provider = new StubLLMProvider { Response = "should not see this" };
+        var orchestrator = new LLMOrchestrator(provider, config);
+
+        orchestrator.MarkDeclined();
+        orchestrator.GenerateResponse("hello").ShouldBeNull();
+    }
 }

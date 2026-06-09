@@ -169,19 +169,6 @@ public static class DbSeeder
             {
                 "Let me look that up. {tool:web_search:{$2}}"
             }),
-            (@"(search|ask|check) (your )?(memory|memories|palace) for (.+)", "Statement", new[]
-            {
-                "Let me search my memories for that. {tool:mempalace_search:{$4}}",
-                "I'll check what I remember about that. {tool:mempalace_search:{$4}}"
-            }),
-            (@"what do you (remember|know) about (.+)", "Question", new[]
-            {
-                "Let me check my memories about that. {tool:mempalace_search:{$2}}"
-            }),
-            (@"(check|query|search) (your )?(facts|knowledge) about (.+)", "Statement", new[]
-            {
-                "Let me look up what I know about that. {tool:mempalace_search:{$4}}"
-            }),
         };
 
         foreach (var (pattern, inputType, responses) in rules)
@@ -709,6 +696,8 @@ public static class DbSeeder
             ("word_classify_place_ask", "Have you ever been to {0}?"),
             ("word_classify_place_yes", "Nice! I'll remember that you've visited {0}."),
             ("word_classify_place_no", "No problem, I'll remember {0} is a place."),
+            ("word_learn_cancelled", "No problem, I won't remember that!"),
+            ("word_learn_cancelled", "Got it, I'll forget about that word."),
             ("existing_fact", "I already know that {0} {1} {2}."),
             ("existing_fact", "That's already in my memory. Tell me something new!"),
             ("existing_fact", "I know that already. What else can I learn?"),

@@ -25,19 +25,25 @@ public static class ResponseRules
 {
     public static ResponseRuleRecord? MatchRule(string input, KnowledgeStore knowledgeStore)
     {
+        return MatchRule(input, knowledgeStore, null);
+    }
+
+    public static ResponseRuleRecord? MatchRule(string input, KnowledgeStore knowledgeStore, List<ResponseRuleRecord>? toolTriggers)
+    {
         var lowerInput = input.ToLowerInvariant();
 
         var learnedRules = knowledgeStore.GetLearnedRules();
-        ResponseRuleRecord? bestLearned = null;
+        ResponseRuleRecord? bestLearnedHigh = null;
+        ResponseRuleRecord? bestLearnedLow = null;
 
         foreach (var rule in learnedRules)
         {
             if (rule.Pattern.Length <= 0) continue;
             if (!Regex.IsMatch(lowerInput, rule.Pattern)) continue;
 
-            if (bestLearned == null || rule.Confidence > bestLearned.Confidence)
+            if (bestLearnedHigh == null && rule.Confidence >= 7)
             {
-                bestLearned = new ResponseRuleRecord
+                bestLearnedHigh = new ResponseRuleRecord
                 {
                     Pattern = rule.Pattern,
                     InputType = ParseInputType(rule.InputType),
@@ -47,21 +53,36 @@ public static class ResponseRules
                     Confidence = rule.Confidence
                 };
             }
+            else if (bestLearnedLow == null || rule.Confidence > (bestLearnedLow?.Confidence ?? 0))
+            {
+                if (rule.Confidence < 7)
+                {
+                    bestLearnedLow = new ResponseRuleRecord
+                    {
+                        Pattern = rule.Pattern,
+                        InputType = ParseInputType(rule.InputType),
+                        Responses = new List<string> { rule.ResponseTemplate },
+                        RuleId = rule.Id,
+                        IsLearned = true,
+                        Confidence = rule.Confidence
+                    };
+                }
+            }
         }
 
         var seededRules = knowledgeStore.GetResponseRules();
-        ResponseRuleRecord? bestSeeded = null;
-        var bestSeededLength = 0;
+        ResponseRuleRecord? bestSeededOrTrigger = null;
+        var bestSeededOrTriggerLength = 0;
 
         foreach (var rule in seededRules)
         {
             if (rule.Pattern.Length <= 0) continue;
             var match = Regex.Match(lowerInput, rule.Pattern);
             if (!match.Success) continue;
-            if (match.Length <= bestSeededLength) continue;
+            if (match.Length <= bestSeededOrTriggerLength) continue;
 
-            bestSeededLength = match.Length;
-            bestSeeded = new ResponseRuleRecord
+            bestSeededOrTriggerLength = match.Length;
+            bestSeededOrTrigger = new ResponseRuleRecord
             {
                 Pattern = rule.Pattern,
                 InputType = ParseInputType(rule.InputType),
@@ -72,13 +93,28 @@ public static class ResponseRules
             };
         }
 
-        if (bestLearned == null) return bestSeeded;
-        if (bestSeeded == null) return bestLearned;
+        if (toolTriggers != null)
+        {
+            foreach (var trigger in toolTriggers)
+            {
+                if (trigger.Pattern.Length <= 0) continue;
+                var match = Regex.Match(lowerInput, trigger.Pattern);
+                if (!match.Success) continue;
+                if (match.Length < bestSeededOrTriggerLength) continue;
+                if (match.Length == bestSeededOrTriggerLength && bestSeededOrTrigger != null &&
+                    trigger.Pattern.Length <= bestSeededOrTrigger.Pattern.Length) continue;
 
-        return bestLearned.Confidence >= 7 ? bestLearned : bestSeeded;
+                bestSeededOrTriggerLength = match.Length;
+                bestSeededOrTrigger = trigger;
+            }
+        }
+
+        if (bestLearnedHigh != null) return bestLearnedHigh;
+        if (bestSeededOrTrigger != null) return bestSeededOrTrigger;
+        return bestLearnedLow;
     }
 
-    private static InputType ParseInputType(string inputType)
+    internal static InputType ParseInputType(string inputType)
     {
         return inputType.ToLowerInvariant() switch
         {

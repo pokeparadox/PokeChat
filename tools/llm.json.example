@@ -1,8 +1,20 @@
 {
   "enabled": false,
+  "alwaysOn": false,
   "endpoint": "http://localhost:11434",
   "model": "llama3.2",
   "timeoutMs": 30000,
   "maxCallsPerSession": 10,
+  "summariseToolResults": true,
+  "enhancedCategories": [
+    "existing_fact", "context_followup", "context_followup_with_object",
+    "random_fact_followup",
+    "proactive_preference", "proactive_dislike", "proactive_possession",
+    "proactive_belief", "proactive_personal", "proactive_general_fact",
+    "story_response",
+    "session_summary_short", "session_summary_long",
+    "empathy_happy", "empathy_sad", "empathy_angry",
+    "empathy_afraid", "empathy_surprised"
+  ],
   "systemPrompt": "You are a friendly chat companion. Keep your responses brief and conversational, like a text message. Ask questions to keep the conversation going."
 }

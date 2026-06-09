@@ -179,4 +179,147 @@ public class ChatSessionLLMTests
         var response = session.ProcessInput("right");
         response.ShouldNotContain("AI");
     }
+
+    // --- Part A: AlwaysOn integration ---
+
+    [Fact]
+    public void AlwaysOn_UsesLLM_WithoutOffer()
+    {
+        using var db = new FreshDbContext();
+        TestDataHelper.SeedBotResponses(db.Context);
+        TestDataHelper.SeedPosDictionary(db.Context);
+        var store = new KnowledgeStore(db.Context);
+        var context = new ContextTracker();
+
+        var spellChecker = new SpellChecker();
+        var posEntries = store.GetPosDictionary();
+        var posTagger = new PosTagger(posEntries);
+        var spellDict = new HashSet<string>(posEntries.Select(e => e.Word), StringComparer.OrdinalIgnoreCase);
+        var misspellings = store.GetMisspellings();
+        spellChecker.Initialise(spellDict, misspellings);
+
+        var tokeniser = new Tokeniser();
+        var sentenceSplitter = new SentenceSplitter();
+        var svoExtractor = new SvoExtractor();
+        var nounCategoriser = new NounCategoriser(store);
+
+        var llmConfig = new LLMConfig { Enabled = true, AlwaysOn = true };
+        var llmProvider = new StubLLMProvider { Response = "Always-on response." };
+        var llmOrchestrator = new LLMOrchestrator(llmProvider, llmConfig);
+
+        var llmGenerator = new Func<string, string?>(prompt => llmOrchestrator.GenerateResponse(prompt));
+        var enhancedCats = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var responseEngine = new ResponseEngine(store, context, spellChecker, posTagger, tokeniser, svoExtractor,
+            llmGenerator: llmGenerator, enhancedCategories: enhancedCats);
+
+        var session = new ChatSession(
+            db.Context, store, responseEngine, spellChecker, posTagger,
+            tokeniser, sentenceSplitter, svoExtractor, context, nounCategoriser,
+            new List<string> { "my name is", "i am", "i'm", "call me" },
+            new List<string> { "quit", "exit" }.ToHashSet(StringComparer.OrdinalIgnoreCase),
+            new List<string> { "hi", "hello" }.ToHashSet(StringComparer.OrdinalIgnoreCase),
+            llmOrchestrator: llmOrchestrator);
+
+        session.HandleNameInput("my name is Alice");
+
+        ExhaustFollowUps(session);
+        var response = session.ProcessInput("hmm");
+
+        // Should have triggered LLM directly (not offer) since AlwaysOn
+        response.ShouldBe("Always-on response.");
+    }
+
+    // --- Part G: Correction LLM reflection ---
+
+    [Fact]
+    public void AlwaysOn_LearnedCorrection_UsesLLMReflection()
+    {
+        using var db = new FreshDbContext();
+        TestDataHelper.SeedBotResponses(db.Context);
+        TestDataHelper.SeedPosDictionary(db.Context);
+        var store = new KnowledgeStore(db.Context);
+        var context = new ContextTracker();
+        context.SetContext(ContextKeys.LastRuleId, "999");
+        context.SetContext(ContextKeys.LastRuleIsLearned, "true");
+
+        var spellChecker = new SpellChecker();
+        var posEntries = store.GetPosDictionary();
+        var posTagger = new PosTagger(posEntries);
+        var spellDict = new HashSet<string>(posEntries.Select(e => e.Word), StringComparer.OrdinalIgnoreCase);
+        var misspellings = store.GetMisspellings();
+        spellChecker.Initialise(spellDict, misspellings);
+
+        var tokeniser = new Tokeniser();
+        var sentenceSplitter = new SentenceSplitter();
+        var svoExtractor = new SvoExtractor();
+        var nounCategoriser = new NounCategoriser(store);
+
+        var llmConfig = new LLMConfig { Enabled = true, AlwaysOn = true };
+        var llmProvider = new StubLLMProvider { Response = "LLM understands the correction." };
+        var llmOrchestrator = new LLMOrchestrator(llmProvider, llmConfig);
+        var responseEngine = new ResponseEngine(store, context, spellChecker, posTagger, tokeniser, svoExtractor);
+
+        var session = new ChatSession(
+            db.Context, store, responseEngine, spellChecker, posTagger,
+            tokeniser, sentenceSplitter, svoExtractor, context, nounCategoriser,
+            new List<string> { "my name is", "i am", "i'm", "call me" },
+            new List<string> { "quit", "exit" }.ToHashSet(StringComparer.OrdinalIgnoreCase),
+            new List<string> { "hi", "hello" }.ToHashSet(StringComparer.OrdinalIgnoreCase),
+            llmOrchestrator: llmOrchestrator);
+
+        session.HandleNameInput("my name is Alice");
+
+        // Set correction context AFTER HandleNameInput (which clears context)
+        context.SetContext(ContextKeys.LastRuleId, "999");
+        context.SetContext(ContextKeys.LastRuleIsLearned, "true");
+
+        // "that's not right" triggers negative feedback — should use LLM
+        var response = session.ProcessInput("that's not right");
+        response.ShouldBe("LLM understands the correction.");
+    }
+
+    [Fact]
+    public void NonAlwaysOn_LearnedCorrection_UsesTemplateFallback()
+    {
+        using var db = new FreshDbContext();
+        TestDataHelper.SeedBotResponses(db.Context);
+        TestDataHelper.SeedPosDictionary(db.Context);
+        var store = new KnowledgeStore(db.Context);
+        var context = new ContextTracker();
+
+        var spellChecker = new SpellChecker();
+        var posEntries = store.GetPosDictionary();
+        var posTagger = new PosTagger(posEntries);
+        var spellDict = new HashSet<string>(posEntries.Select(e => e.Word), StringComparer.OrdinalIgnoreCase);
+        var misspellings = store.GetMisspellings();
+        spellChecker.Initialise(spellDict, misspellings);
+
+        var tokeniser = new Tokeniser();
+        var sentenceSplitter = new SentenceSplitter();
+        var svoExtractor = new SvoExtractor();
+        var nounCategoriser = new NounCategoriser(store);
+
+        var llmConfig = new LLMConfig { Enabled = true, AlwaysOn = false };
+        var llmProvider = new StubLLMProvider { Response = "LLM text." };
+        var llmOrchestrator = new LLMOrchestrator(llmProvider, llmConfig);
+        var responseEngine = new ResponseEngine(store, context, spellChecker, posTagger, tokeniser, svoExtractor);
+
+        var session = new ChatSession(
+            db.Context, store, responseEngine, spellChecker, posTagger,
+            tokeniser, sentenceSplitter, svoExtractor, context, nounCategoriser,
+            new List<string> { "my name is", "i am", "i'm", "call me" },
+            new List<string> { "quit", "exit" }.ToHashSet(StringComparer.OrdinalIgnoreCase),
+            new List<string> { "hi", "hello" }.ToHashSet(StringComparer.OrdinalIgnoreCase),
+            llmOrchestrator: llmOrchestrator);
+
+        session.HandleNameInput("my name is Alice");
+
+        // Set correction context AFTER HandleNameInput (which clears context)
+        context.SetContext(ContextKeys.LastRuleId, "999");
+        context.SetContext(ContextKeys.LastRuleIsLearned, "true");
+
+        // Without AlwaysOn, uses template fallback, not LLM
+        var response = session.ProcessInput("that's not right");
+        response.ShouldNotBe("LLM text.");
+    }
 }

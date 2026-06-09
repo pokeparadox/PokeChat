@@ -42,4 +42,5 @@ public static class ContextKeys
     public const string PendingPlaceWord = "pending_place_word";
     public const string PendingLLMOffer = "pending_llm_offer";
     public const string LLMOriginalInput = "llm_original_input";
+    public const string PendingDictionarySave = "pending_dictionary_save";
 }

@@ -19,9 +19,14 @@ public class ResponseEngine
     private readonly IMathEngine _mathEngine;
     private readonly StoryGenerator _storyGenerator;
     private readonly ToolRegistry? _toolRegistry;
+    private readonly List<ResponseRuleRecord>? _toolTriggers;
     private readonly Dictionary<string, List<string>> _botResponses;
+    private readonly Func<string, string?>? _llmGenerator;
+    private readonly HashSet<string> _enhancedCategories;
+    private readonly bool _summariseToolResults;
     private string _currentUserName = string.Empty;
     private string _botName = "PokeChat";
+    private string? _currentUserInput;
 
     private static readonly HashSet<string> ObjectPronouns = new(StringComparer.OrdinalIgnoreCase)
         { "you", "me", "him", "her", "them", "it", "us", "this", "that" };
@@ -49,7 +54,7 @@ public class ResponseEngine
             || (category != null && category.StartsWith("proactive_"));
     }
 
-    public ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker context, SpellChecker spellChecker, IPosTagger posTagger, ITokeniser tokeniser, ISvoExtractor svoExtractor, IMathEngine? mathEngine = null, StoryGenerator? storyGenerator = null, ToolRegistry? toolRegistry = null)
+    public ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker context, SpellChecker spellChecker, IPosTagger posTagger, ITokeniser tokeniser, ISvoExtractor svoExtractor, IMathEngine? mathEngine = null, StoryGenerator? storyGenerator = null, ToolRegistry? toolRegistry = null, List<ResponseRuleRecord>? toolTriggers = null, Func<string, string?>? llmGenerator = null, HashSet<string>? enhancedCategories = null, bool summariseToolResults = false)
     {
         _knowledgeStore = knowledgeStore;
         _context = context;
@@ -60,7 +65,11 @@ public class ResponseEngine
         _mathEngine = mathEngine ?? new SimpleMath();
         _storyGenerator = storyGenerator ?? new StoryGenerator(knowledgeStore);
         _toolRegistry = toolRegistry;
+        _toolTriggers = toolTriggers;
         _botResponses = knowledgeStore.GetBotResponses();
+        _llmGenerator = llmGenerator;
+        _enhancedCategories = enhancedCategories ?? new HashSet<string>();
+        _summariseToolResults = summariseToolResults;
     }
 
     private static readonly HashSet<string> ModalVerbs = new(StringComparer.OrdinalIgnoreCase)
@@ -99,6 +108,15 @@ public class ResponseEngine
     private string GetRandomResponse(string category, params object[] args)
     {
         _context.SetContext(ContextKeys.CurrentResponseCategory, category);
+
+        if (_llmGenerator != null && _enhancedCategories.Contains(category) && !string.IsNullOrEmpty(_currentUserInput))
+        {
+            var prompt = BuildCategoryPrompt(category, args, _currentUserInput);
+            var llmResult = _llmGenerator(prompt);
+            if (!string.IsNullOrEmpty(llmResult))
+                return llmResult;
+        }
+
         if (_botResponses.TryGetValue(category, out var responses) && responses.Count > 0)
         {
             var template = responses[Random.Shared.Next(responses.Count)];
@@ -108,8 +126,120 @@ public class ResponseEngine
         return string.Empty;
     }
 
+    private static string BuildCategoryPrompt(string category, object[] args, string userInput)
+    {
+        var arg = (int i) => i < args.Length ? (args[i]?.ToString() ?? "") : "";
+        var subj = arg(0);
+        var verb = arg(1);
+        var obj = arg(2);
+
+        var basePrompt = category switch
+        {
+            "existing_fact" =>
+                $"The user once told you: {subj} {verb} {obj}. " +
+                "Acknowledge this naturally and ask a brief follow-up question. 1-2 sentences.",
+
+            "context_followup" or "context_followup_self" =>
+                $"The user recently mentioned '{subj}'. " +
+                "Ask a natural, specific follow-up question about it. 1 sentence.",
+
+            "context_followup_with_object" or "context_followup_with_object_self" =>
+                $"The user was talking about '{obj}' (related to {subj}). " +
+                "Ask a specific follow-up question about it. 1 sentence.",
+
+            "context_followup_person" =>
+                $"The user mentioned a person: {subj}. " +
+                "Ask a natural follow-up question about them. 1 sentence.",
+
+            "context_followup_place" =>
+                $"The user mentioned a place: {subj}. " +
+                "Ask a natural follow-up question about it. 1 sentence.",
+
+            "context_followup_thing" =>
+                $"The user mentioned a thing: {subj}. " +
+                "Ask a natural follow-up question about it. 1 sentence.",
+
+            "random_fact_followup" =>
+                $"The user once said: {subj} {verb} {obj}. " +
+                "Bring this up naturally and ask if they still feel that way. 1-2 sentences.",
+
+            "topic_reference_fact" =>
+                $"Earlier, the user talked about: {subj} {verb} {obj}. " +
+                "Refer back to this naturally and ask a follow-up. 1 sentence.",
+
+            "topic_reference_old" =>
+                $"The user mentioned '{subj}' earlier in the conversation. " +
+                "Refer back to this and ask a natural question about it. 1 sentence.",
+
+            "proactive_preference" =>
+                $"The user likes '{obj}'. Ask a fresh, specific question about this interest. " +
+                "Be creative and natural. 1 sentence.",
+
+            "proactive_dislike" =>
+                $"The user dislikes '{obj}'. Ask why or what they prefer instead. " +
+                "Be natural. 1 sentence.",
+
+            "proactive_possession" =>
+                $"The user has '{obj}'. Ask a natural question about it. 1 sentence.",
+
+            "proactive_belief" =>
+                $"The user believes '{obj}'. Ask a follow-up about this belief. 1 sentence.",
+
+            "proactive_personal" =>
+                $"{subj} is '{obj}' (a personal attribute of the user). " +
+                "Ask a natural follow-up. 1 sentence.",
+
+            "proactive_general_fact" =>
+                $"You know this fact: {subj} {verb} {obj}. " +
+                "Ask a creative follow-up question about it. 1 sentence.",
+
+            "proactive_general" =>
+                $"You know something about {subj}: {verb} {obj}. " +
+                "Ask a natural follow-up question. 1 sentence.",
+
+            "session_summary_short" or "session_summary_long" =>
+                $"The user discussed: {string.Join(", ", args.Select(a => a?.ToString()))}. " +
+                "Summarize their conversation in a warm, natural way. " +
+                "Don't list facts dryly — make it conversational. 1-2 sentences.",
+
+            "empathy_happy" =>
+                "The user expressed happiness or positivity. " +
+                $"Their input: \"{userInput}\". " +
+                "Respond with warm, genuine empathy that references what they said. 1 sentence.",
+
+            "empathy_sad" =>
+                "The user expressed sadness or negativity. " +
+                $"Their input: \"{userInput}\". " +
+                "Respond with gentle, supportive empathy. 1 sentence.",
+
+            "empathy_angry" =>
+                "The user expressed anger. " +
+                $"Their input: \"{userInput}\". " +
+                "Respond with calm understanding and support. 1 sentence.",
+
+            "empathy_afraid" =>
+                "The user expressed fear. " +
+                $"Their input: \"{userInput}\". " +
+                "Respond with reassurance and support. 1 sentence.",
+
+            "empathy_surprised" =>
+                "The user expressed surprise. " +
+                $"Their input: \"{userInput}\". " +
+                "Respond with warm interest. 1 sentence.",
+
+            "story_response" =>
+                $"Tell a very short original story (3-5 sentences) about {subj}. " +
+                "Make it fun and lighthearted.",
+
+            _ => $"The user said: \"{userInput}\". Respond naturally and conversationally. 1 sentence."
+        };
+
+        return basePrompt + " Be brief, conversational, and do not mention that you are an AI.";
+    }
+
     public string GenerateResponse(string input, int? userId)
     {
+        _currentUserInput = input;
         var summaryResult = HandleSessionSummaryRequest(input, userId);
         if (summaryResult != null) return summaryResult;
 
@@ -200,7 +330,7 @@ public class ResponseEngine
         var inferenceResult = HandleInferenceResponse();
         if (inferenceResult != null) return inferenceResult;
 
-        var rule = ResponseRules.MatchRule(input, _knowledgeStore);
+        var rule = ResponseRules.MatchRule(input, _knowledgeStore, _toolTriggers);
 
         if (rule != null && rule.Responses.Count > 0)
         {
@@ -456,6 +586,17 @@ public class ResponseEngine
                     return GetRandomResponse("dictionary_query_found", word, def);
                 }
 
+                if (_llmGenerator != null)
+                {
+                    var prompt = $"Define the word '{word}' in 1-2 concise sentences. Just the definition, no extra commentary.";
+                    var llmDef = _llmGenerator(prompt);
+                    if (!string.IsNullOrEmpty(llmDef))
+                    {
+                        _context.SetContext(ContextKeys.PendingDictionarySave, $"{word}|{llmDef}");
+                        return $"{word}: {llmDef} Do you want me to remember that?";
+                    }
+                }
+
                 _context.SetContext(ContextKeys.PendingDictionaryWord, word);
                 return GetRandomResponse("dictionary_query_not_found", word);
             }
@@ -541,6 +682,15 @@ public class ResponseEngine
             var parts = contradictionRaw.Split('|');
             if (parts.Length == 4)
             {
+                if (_llmGenerator != null)
+                {
+                    var prompt = $"The user previously said they {parts[0]} {parts[1]}, but now they {parts[2]} {parts[3]}. " +
+                        $"Naturally ask about this apparent change of mind. Don't accuse, just be curious. 1 sentence.";
+                    var llmResult = _llmGenerator(prompt);
+                    if (!string.IsNullOrEmpty(llmResult))
+                        return llmResult;
+                }
+
                 return GetRandomResponse("inference_contradiction", parts[0], parts[1], parts[2], parts[3]);
             }
         }
@@ -553,8 +703,19 @@ public class ResponseEngine
             var parts = generalisationRaw.Split('|');
             if (parts.Length == 2)
             {
+                if (_llmGenerator != null)
+                {
+                    var prompt = $"The user's fact '{parts[0]}' might mean they also '{parts[1]}'. " +
+                        $"Ask a natural question to check if this connection is correct. 1 sentence.";
+                    var llmResult = _llmGenerator(prompt);
+                    if (!string.IsNullOrEmpty(llmResult))
+                        return llmResult;
+                }
+
                 return GetRandomResponse("inference_generalisation", parts[0], parts[1]);
             }
+
+            return null;
         }
 
         return null;
@@ -604,6 +765,16 @@ public class ResponseEngine
 
         if (!isStoryRequest) return null;
 
+        if (_llmGenerator != null)
+        {
+            var topic = !string.IsNullOrEmpty(_currentUserName)
+                ? $"featuring {_currentUserName}" : "about a curious adventurer";
+            var prompt = $"Tell a very short original story (3-5 sentences) {topic}. Make it fun and lighthearted. Just the story, no commentary.";
+            var llmStory = _llmGenerator(prompt);
+            if (!string.IsNullOrEmpty(llmStory))
+                return GetRandomResponse("story_response", llmStory);
+        }
+
         var story = _storyGenerator.GenerateStory(_currentUserName, userId);
         if (string.IsNullOrEmpty(story))
             return GetRandomResponse("story_response", "Once upon a time, there was a curious explorer who set out to discover new things. The end.");
@@ -630,6 +801,16 @@ public class ResponseEngine
                 if (result?.ErrorMessage == "timeout")
                     return GetRandomResponse("tool_timeout");
                 return GetRandomResponse("tool_unavailable");
+            }
+
+            if (_llmGenerator != null && _summariseToolResults && !string.IsNullOrEmpty(result.Output))
+            {
+                var prompt = $"The user asked to use the tool '{toolName}'" +
+                    (args.Length > 0 ? $" with query '{args[0]}'" : "") +
+                    $". Summarise this result naturally and concisely in 1-3 sentences:\n{result.Output}";
+                var summary = _llmGenerator(prompt);
+                if (!string.IsNullOrEmpty(summary))
+                    return summary;
             }
 
             return result.Output;

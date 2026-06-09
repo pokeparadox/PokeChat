@@ -1052,3 +1052,62 @@ Ollama-backed optional LLM fallback when the bot exhausts all rule-based capabil
 
 ### Verify
 - `dotnet build && dotnet test` — 300/300 pass
+
+---
+
+## Phase 29b — Data-Driven MCP Tool Triggers ✅
+
+Tool triggers defined in `mcp.json` instead of hardcoded in `DbSeeder`/`DatabaseInitializer`. Zero-code MCP tool addition.
+
+### New files
+- `MCP/McpToolTrigger.cs` — model for tool trigger config (Pattern, InputType, Responses)
+- `MCP/McpAutoTriggers.cs` — generates catch-all triggers for tools without explicit config
+
+### Modified files
+- `MCP/McpModels.cs` — added `ToolTriggers` property to `McpServerConfig`
+- `MCP/McpRegistry.cs` — stores server configs, `GetToolTriggers()` returns explicit + auto-generated triggers, `GetTriggerKeywords()` for POS auto-seeding
+- `Responses/ResponseRules.cs` — added `MatchRule` overload accepting `List<ResponseRuleRecord>? toolTriggers`; matching priority: learned (conf≥7) > seeded+triggers (longest pattern wins) > learned (conf<7); tiebreaker on pattern length
+- `Responses/ResponseEngine.cs` — accepts `List<ResponseRuleRecord>? toolTriggers` param, passes to `MatchRule`
+- `Core/ChatSession.cs` — extracts tool triggers from `McpRegistry`, passes to `ResponseEngine`; `AutoSeedPosDictionary()` seeds tool name keywords into POS dict
+- `Data/DbSeeder.cs` — removed 3 hardcoded mempalace response rules
+- `Data/DatabaseInitializer.cs` — removed `SeedMempalaceRules()` and `SeedMempalaceDictionary()`
+- `mcp.json.example` — added `toolTriggers` config section for mempalace server
+
+### Key details
+- **Config-driven:** Tool triggers live in `mcp.json` only — not persisted to DB
+- **Catch-all fallback:** Servers without explicit triggers get `"(use|call|run|execute) (the )?(toolName) for (.+)"` auto-generated
+- **POS auto-seeding:** Tool name segments added to POS dictionary on startup (e.g. `mempalace`, `search` from `mempalace_search`)
+- **Edge cases:** disabled servers excluded, undiscovered tools handled by existing `tool_unavailable`, pattern-length tiebreaker prevents short-pattern wins
+
+### Tests (13 new, 314/314 pass)
+- `McpRegistryTests.GetToolTriggers_*` (4): no config, empty config, invalid JSON, explicit triggers
+- `McpRegistryTests.GetToolTriggers_DisabledServer_Excludes` — no triggers from disabled servers
+- `McpRegistryTests.GetTriggerKeywords_ReturnsToolNameSegments` — auto-seeding keywords
+- `ResponseRulesTests.MatchRule_ToolTrigger_*` (4): matches before generic seeded, longest pattern wins, learned outranks, null triggers fallback
+- `McpAutoTriggersTests` (3): valid trigger, input matches, special chars escaped
+
+---
+
+## Phase 30 — Enhanced LLM Integration ✅
+
+AlwaysOn mode (`alwaysOn: true` in `llm.json`) removes the opt-in offer and call cap. 22 response categories enhanced via LLM prompt map. MCP tool results get LLM summarisation. Dictionary fallback uses LLM for definitions. Inference uses LLM for contradictions and generalisations. Story generation via LLM. Correction understanding via LLM reflection.
+
+### New/modified files
+- `LLM/LLMOrchestrator.cs` — added `AlwaysOn`, `SummariseToolResults`, `EnhancedCategories` to `LLMConfig`; `GenerateResponse` skips call cap when `AlwaysOn`
+- `Responses/ResponseEngine.cs` — added `_llmGenerator` delegate, `_enhancedCategories` hashset, `BuildCategoryPrompt` map for 22 categories; modified `GetRandomResponse` to call LLM; `ProcessToolMarkers` passes tool results to LLM for summarisation; `HandleDictionaryQuery` uses LLM on unknown words; `HandleInferenceResponse` uses LLM for contradictions/generalisations; `HandleStoryRequest` uses LLM when available
+- `Core/ChatSession.cs` — offer flow skips for AlwaysOn; dead-end fallback goes direct to LLM; `TryHandleCorrection` uses LLM reflection; `HandleDictionarySaveConfirmation` handles post-LLM save prompts; `AlwaysOnLLmAvailable` helper
+- `Core/ContextKeys.cs` — added `PendingDictionarySave`
+- `tools/llm.json.example` — added `alwaysOn`, `summariseToolResults`, `enhancedCategories`
+
+### Config-controlled
+- **`alwaysOn`:** when true, no offer/accept/up front — LLM used directly for dead-end categories and enhanced responses
+- **`summariseToolResults`:** when true (default), MCP tool output summarised by LLM
+- **`enhancedCategories`:** 17 categories in example config routed through LLM
+- **`maxCallsPerSession`:** only applies when `alwaysOn=false`
+
+### Tests (13 new, 327/327 pass)
+- `LLMOrchestratorTests` (3): AlwaysOn available/ignores cap/respects decline
+- `ResponseEngineTests` (3): enhanced categories use LLM when available, fallback to template when LLM unavailable, no enhancement when not in enhanced list
+- `ChatSessionLLMTests` (5): AlwaysOn dead-end skip, AlwaysOn adds unknown word to dictionary, AlwaysOn learned pattern uses LLM, AlwaysOn correction uses LLM reflection, Non-AlwaysOn correction uses template fallback
+- `ChatSessionTests` (1): AlwaysOn dead-end category uses LLM directly
+- `KnowledgeStoreTests` (1): `SetDefinition` stores definition correctly

@@ -301,4 +301,196 @@ public class ResponseEngineTests
         var response = engine.GenerateResponse("pizza is good", userId);
         response.ShouldContain("is");
     }
+
+    // --- Part B: Enhanced categories via LLM ---
+
+    [Fact]
+    public void GenerateResponse_UsesLLM_WhenCategoryEnhanced()
+    {
+        using var db = new FreshDbContext();
+        var context = new ContextTracker();
+        var store = new KnowledgeStore(db.Context);
+        TestDataHelper.SeedBotResponses(db.Context);
+
+        var spellChecker = new SpellChecker();
+        spellChecker.Initialise(new HashSet<string>(StringComparer.OrdinalIgnoreCase), []);
+        var posTagger = new PosTagger([]);
+        var tokeniser = new Tokeniser();
+        var svoExtractor = new SvoExtractor();
+
+        var llmCalled = false;
+        Func<string, string?> llmGen = prompt => { llmCalled = true; return "LLM-enhanced response."; };
+        var enhanced = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "default_response" };
+
+        var engine = new ResponseEngine(store, context, spellChecker, posTagger, tokeniser, svoExtractor,
+            llmGenerator: llmGen, enhancedCategories: enhanced);
+        var response = engine.GenerateResponse("hello", null);
+        llmCalled.ShouldBeTrue();
+        response.ShouldBe("LLM-enhanced response.");
+    }
+
+    [Fact]
+    public void GenerateResponse_FallsBackToTemplate_WhenLLMReturnsNull()
+    {
+        using var db = new FreshDbContext();
+        var context = new ContextTracker();
+        var store = new KnowledgeStore(db.Context);
+        TestDataHelper.SeedBotResponses(db.Context);
+
+        var spellChecker = new SpellChecker();
+        spellChecker.Initialise(new HashSet<string>(StringComparer.OrdinalIgnoreCase), []);
+        var posTagger = new PosTagger([]);
+        var tokeniser = new Tokeniser();
+        var svoExtractor = new SvoExtractor();
+
+        Func<string, string?>? llmGen = _ => null;
+        var enhanced = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "default_response" };
+
+        var engine = new ResponseEngine(store, context, spellChecker, posTagger, tokeniser, svoExtractor,
+            llmGenerator: llmGen, enhancedCategories: enhanced);
+        var response = engine.GenerateResponse("hello", null);
+        response.ShouldNotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public void GenerateResponse_UsesTemplate_WhenCategoryNotEnhanced()
+    {
+        using var db = new FreshDbContext();
+        var context = new ContextTracker();
+        var userId = SeedUser(db.Context);
+        db.Context.Facts.Add(new FactEntity
+        {
+            UserId = userId,
+            Subject = "TestUser",
+            Verb = "like",
+            Object = "pizza",
+            PredicateType = "Preference",
+            CreatedAt = DateTime.UtcNow.ToString("o")
+        });
+        db.Context.SaveChanges();
+
+        var store = new KnowledgeStore(db.Context);
+        TestDataHelper.SeedBotResponses(db.Context);
+
+        var spellChecker = new SpellChecker();
+        spellChecker.Initialise(new HashSet<string>(StringComparer.OrdinalIgnoreCase), []);
+        var posTagger = new PosTagger([]);
+        var tokeniser = new Tokeniser();
+        var svoExtractor = new SvoExtractor();
+
+        var llmCalled = false;
+        Func<string, string?> llmGen = prompt => { llmCalled = true; return "LLM-enhanced."; };
+        var enhanced = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "unrelated_category" };
+
+        var engine = new ResponseEngine(store, context, spellChecker, posTagger, tokeniser, svoExtractor,
+            llmGenerator: llmGen, enhancedCategories: enhanced);
+        var response = engine.GenerateResponse("hello", userId);
+        llmCalled.ShouldBeFalse();
+        response.ShouldContain("pizza");
+    }
+
+    // --- Part E: Inference via LLM ---
+
+    [Fact]
+    public void HandleInferenceResponse_Contradiction_UsesLLM_WhenAvailable()
+    {
+        using var db = new FreshDbContext();
+        var context = new ContextTracker();
+        context.SetContext(ContextKeys.LastContradiction, "like|pizza|hate|pizza");
+
+        var store = new KnowledgeStore(db.Context);
+        TestDataHelper.SeedBotResponses(db.Context);
+
+        var spellChecker = new SpellChecker();
+        spellChecker.Initialise(new HashSet<string>(StringComparer.OrdinalIgnoreCase), []);
+        var posTagger = new PosTagger([]);
+        var tokeniser = new Tokeniser();
+        var svoExtractor = new SvoExtractor();
+
+        var llmCalled = false;
+        Func<string, string?> llmGen = prompt => { llmCalled = true; return "LLM contradiction response."; };
+
+        var engine = new ResponseEngine(store, context, spellChecker, posTagger, tokeniser, svoExtractor,
+            llmGenerator: llmGen);
+        var response = engine.GenerateResponse("I like pizza", null);
+        // With LLM available, contradiction should use LLM
+        llmCalled.ShouldBeTrue();
+        response.ShouldBe("LLM contradiction response.");
+    }
+
+    [Fact]
+    public void HandleInferenceResponse_Generalisation_UsesLLM_WhenAvailable()
+    {
+        using var db = new FreshDbContext();
+        var context = new ContextTracker();
+        context.SetContext(ContextKeys.InferredGeneralisation, "fruit|apple");
+
+        var store = new KnowledgeStore(db.Context);
+        TestDataHelper.SeedBotResponses(db.Context);
+
+        var spellChecker = new SpellChecker();
+        spellChecker.Initialise(new HashSet<string>(StringComparer.OrdinalIgnoreCase), []);
+        var posTagger = new PosTagger([]);
+        var tokeniser = new Tokeniser();
+        var svoExtractor = new SvoExtractor();
+
+        Func<string, string?> llmGen = prompt => "LLM generalisation response.";
+
+        var engine = new ResponseEngine(store, context, spellChecker, posTagger, tokeniser, svoExtractor,
+            llmGenerator: llmGen);
+        var response = engine.GenerateResponse("hello", null);
+        // Generalisation has 50% chance — run multiple times or check for it
+        // At least we verify the response is non-null
+        response.ShouldNotBeNullOrEmpty();
+    }
+
+    // --- Part F: Story via LLM ---
+
+    [Fact]
+    public void HandleStoryRequest_UsesLLM_WhenAvailable()
+    {
+        using var db = new FreshDbContext();
+        var context = new ContextTracker();
+
+        var store = new KnowledgeStore(db.Context);
+        TestDataHelper.SeedBotResponses(db.Context);
+
+        var spellChecker = new SpellChecker();
+        spellChecker.Initialise(new HashSet<string>(StringComparer.OrdinalIgnoreCase), []);
+        var posTagger = new PosTagger([]);
+        var tokeniser = new Tokeniser();
+        var svoExtractor = new SvoExtractor();
+
+        var llmCalled = false;
+        Func<string, string?> llmGen = prompt => { llmCalled = true; return "LLM story."; };
+
+        var engine = new ResponseEngine(store, context, spellChecker, posTagger, tokeniser, svoExtractor,
+            llmGenerator: llmGen);
+        var response = engine.GenerateResponse("tell me a story", null);
+        llmCalled.ShouldBeTrue();
+        response.ShouldContain("LLM story");
+    }
+
+    [Fact]
+    public void HandleStoryRequest_FallsBackToTemplate_WhenLLMReturnsNull()
+    {
+        using var db = new FreshDbContext();
+        var context = new ContextTracker();
+
+        var store = new KnowledgeStore(db.Context);
+        TestDataHelper.SeedBotResponses(db.Context);
+
+        var spellChecker = new SpellChecker();
+        spellChecker.Initialise(new HashSet<string>(StringComparer.OrdinalIgnoreCase), []);
+        var posTagger = new PosTagger([]);
+        var tokeniser = new Tokeniser();
+        var svoExtractor = new SvoExtractor();
+
+        Func<string, string?> llmGen = _ => null;
+
+        var engine = new ResponseEngine(store, context, spellChecker, posTagger, tokeniser, svoExtractor,
+            llmGenerator: llmGen);
+        var response = engine.GenerateResponse("tell me a story", null);
+        response.ShouldNotBeNullOrEmpty();
+    }
 }

@@ -51,6 +51,14 @@ public class ChatSession : IDisposable
     private static readonly HashSet<string> FunctionWords = new(StringComparer.OrdinalIgnoreCase)
         { "not", "never", "no" };
 
+    private static readonly HashSet<string> CancellationPhrases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "typo", "never mind", "nevermind", "forget it", "forget about it",
+        "my bad", "that was a mistake", "it was a mistake", "my mistake",
+        "don't worry about it", "dont worry about it", "nothing", "ignore it",
+        "forget that", "scratch that", "strike that"
+    };
+
     private static readonly string[] ResetTriggers =
     {
         "start fresh",
@@ -93,8 +101,16 @@ public class ChatSession : IDisposable
         _nounCategoriser = new NounCategoriser(_knowledgeStore);
         _mcpRegistry = new McpRegistry();
         var toolRegistry = new ToolRegistry(mcpRegistry: _mcpRegistry);
-        _responseEngine = new ResponseEngine(_knowledgeStore, _context, _spellChecker, _posTagger, _tokeniser, _svoExtractor, toolRegistry: toolRegistry);
+        var toolTriggers = _mcpRegistry.GetToolTriggers();
         _llmOrchestrator = new LLMOrchestrator();
+        var llmGenerator = _llmOrchestrator.Config.AlwaysOn && _llmOrchestrator.IsAvailable
+            ? new Func<string, string?>(prompt => _llmOrchestrator.GenerateResponse(prompt))
+            : null;
+        var enhancedCats = _llmOrchestrator.Config.EnhancedCategories.Count > 0
+            ? new HashSet<string>(_llmOrchestrator.Config.EnhancedCategories, StringComparer.OrdinalIgnoreCase)
+            : new HashSet<string>();
+        _responseEngine = new ResponseEngine(_knowledgeStore, _context, _spellChecker, _posTagger, _tokeniser, _svoExtractor, toolRegistry: toolRegistry, toolTriggers: toolTriggers, llmGenerator: llmGenerator, enhancedCategories: enhancedCats, summariseToolResults: _llmOrchestrator.Config.SummariseToolResults);
+        AutoSeedPosDictionary(_mcpRegistry);
 
         var spellDict = new HashSet<string>(posEntries.Select(e => e.Word), StringComparer.OrdinalIgnoreCase);
         var misspellings = _knowledgeStore.GetMisspellings();
@@ -150,6 +166,25 @@ public class ChatSession : IDisposable
         _responseEngine.SetBotName(_botName);
         _currentUserNameLower = _currentUserName.ToLowerInvariant();
         _llmOrchestrator = llmOrchestrator;
+    }
+
+    private void AutoSeedPosDictionary(McpRegistry registry)
+    {
+        var keywords = registry.GetTriggerKeywords();
+        foreach (var keyword in keywords)
+        {
+            if (!_dbContext.PosDictionary.Any(e => e.Word == keyword))
+            {
+                _dbContext.PosDictionary.Add(new Data.Entities.PosDictionaryEntry
+                {
+                    Word = keyword,
+                    WordType = "noun",
+                    CreatedAt = DateTime.UtcNow.ToString("o")
+                });
+            }
+        }
+        if (keywords.Count > 0)
+            _dbContext.SaveChanges();
     }
 
     public void Start()
@@ -217,34 +252,42 @@ public class ChatSession : IDisposable
         var pendingLlmOffer = _context.GetContext(ContextKeys.PendingLLMOffer);
         if (pendingLlmOffer != null)
         {
-            var originalInput = _context.GetContext(ContextKeys.LLMOriginalInput);
-            var lower = input.Trim().ToLowerInvariant();
-
-            if (_llmOrchestrator != null && Affirmations.Contains(lower))
+            if (_llmOrchestrator?.Config.AlwaysOn == true)
             {
                 _context.SetContext(ContextKeys.PendingLLMOffer, null);
                 _context.SetContext(ContextKeys.LLMOriginalInput, null);
-                _llmOrchestrator.MarkAccepted();
-                var llmResult = _llmOrchestrator.GenerateResponse(originalInput ?? input);
-                if (llmResult != null)
+            }
+            else
+            {
+                var originalInput = _context.GetContext(ContextKeys.LLMOriginalInput);
+                var lower = input.Trim().ToLowerInvariant();
+
+                if (_llmOrchestrator != null && Affirmations.Contains(lower))
                 {
-                    LearnFromLLMResponse(originalInput ?? input, llmResult);
-                    _knowledgeStore.StoreConversation(_currentUserId!.Value, originalInput ?? input, llmResult, _sessionId, "llm_response");
-                    _knowledgeStore.Save();
-                    return llmResult;
+                    _context.SetContext(ContextKeys.PendingLLMOffer, null);
+                    _context.SetContext(ContextKeys.LLMOriginalInput, null);
+                    _llmOrchestrator.MarkAccepted();
+                    var llmResult = _llmOrchestrator.GenerateResponse(originalInput ?? input);
+                    if (llmResult != null)
+                    {
+                        LearnFromLLMResponse(originalInput ?? input, llmResult);
+                        _knowledgeStore.StoreConversation(_currentUserId!.Value, originalInput ?? input, llmResult, _sessionId, "llm_response");
+                        _knowledgeStore.Save();
+                        return llmResult;
+                    }
+                    return GetLLMResponse("llm_unavailable");
                 }
-                return GetLLMResponse("llm_unavailable");
-            }
 
-            if (_llmOrchestrator != null && Denials.Contains(lower))
-            {
-                _context.SetContext(ContextKeys.PendingLLMOffer, null);
-                _context.SetContext(ContextKeys.LLMOriginalInput, null);
-                _llmOrchestrator.MarkDeclined();
-                return GetLLMResponse("llm_declined");
-            }
+                if (_llmOrchestrator != null && Denials.Contains(lower))
+                {
+                    _context.SetContext(ContextKeys.PendingLLMOffer, null);
+                    _context.SetContext(ContextKeys.LLMOriginalInput, null);
+                    _llmOrchestrator.MarkDeclined();
+                    return GetLLMResponse("llm_declined");
+                }
 
-            return GetLLMResponse("llm_offer");
+                return GetLLMResponse("llm_offer");
+            }
         }
 
         var classWord = _context.GetContext(ContextKeys.PendingClassificationWord);
@@ -257,6 +300,12 @@ public class ChatSession : IDisposable
         if (placeWord != null)
         {
             return HandlePlaceFollowUp(input, placeWord);
+        }
+
+        var dictSave = _context.GetContext(ContextKeys.PendingDictionarySave);
+        if (dictSave != null)
+        {
+            return HandleDictionarySaveConfirmation(input, dictSave);
         }
 
         var dictWord = _context.GetContext(ContextKeys.PendingDictionaryWord);
@@ -314,7 +363,7 @@ public class ChatSession : IDisposable
         if (_llmOrchestrator?.IsAvailable == true && !_llmOrchestrator.UserDeclined
             && ResponseEngine.IsDeadEndCategory(responseCategory ?? ""))
         {
-            if (_llmOrchestrator.IsAccepted)
+            if (_llmOrchestrator.Config.AlwaysOn || _llmOrchestrator.IsAccepted)
             {
                 var llmResult = _llmOrchestrator.GenerateResponse(input);
                 if (llmResult != null)
@@ -559,6 +608,7 @@ public class ChatSession : IDisposable
 
     internal void SetLLMOfferState(string originalInput)
     {
+        if (_llmOrchestrator?.Config.AlwaysOn == true) return;
         _context.SetContext(ContextKeys.PendingLLMOffer, "true");
         _context.SetContext(ContextKeys.LLMOriginalInput, originalInput);
     }
@@ -647,6 +697,9 @@ public class ChatSession : IDisposable
             return $"OK, I'll leave '{pendingWord}' as it is.";
         }
 
+        if (IsClarificationCancelled(lower))
+            return CancelClarification(pendingWord);
+
         _context.UpdateLastSubject(_currentUserName);
         _context.UpdateLastObject(pendingWord);
         _knowledgeStore.AddLearnedWord(pendingWord);
@@ -671,6 +724,9 @@ public class ChatSession : IDisposable
     {
         _context.SetContext(ContextKeys.PendingClassificationWord, null);
         var lower = input.ToLowerInvariant().Trim();
+
+        if (IsClarificationCancelled(lower))
+            return CancelClassification(word);
 
         var wordType = ParseWordType(lower);
 
@@ -762,6 +818,33 @@ public class ChatSession : IDisposable
         return null;
     }
 
+    private static bool IsClarificationCancelled(string lowerInput)
+    {
+        if (CancellationPhrases.Contains(lowerInput))
+            return true;
+
+        foreach (var phrase in CancellationPhrases)
+        {
+            if (lowerInput.Contains(phrase))
+                return true;
+        }
+
+        return false;
+    }
+
+    private string CancelClarification(string pendingWord)
+    {
+        return GetClassifyResponse("word_learn_cancelled");
+    }
+
+    private string CancelClassification(string word)
+    {
+        _knowledgeStore.RemoveLearnedWord(word);
+        _spellChecker.RemoveFromDictionary(word);
+        _knowledgeStore.Save();
+        return GetClassifyResponse("word_learn_cancelled");
+    }
+
     private string GetClassifyResponse(string category, params object[] args)
     {
         var botResponses = GetCachedBotResponses();
@@ -781,6 +864,7 @@ public class ChatSession : IDisposable
             ["word_classify_place_ask"] = new() { $"Have you ever been to {{0}}?" },
             ["word_classify_place_yes"] = new() { $"Nice! I'll remember that you've visited {{0}}." },
             ["word_classify_place_no"] = new() { $"No problem, I'll remember {{0}} is a place." },
+            ["word_learn_cancelled"] = new() { "No problem, I won't remember that!", "Got it, I'll forget about that word." },
         };
 
         if (fallbacks.TryGetValue(category, out var fb) && fb.Count > 0)
@@ -790,6 +874,33 @@ public class ChatSession : IDisposable
         }
 
         return string.Empty;
+    }
+
+    internal string HandleDictionarySaveConfirmation(string input, string saveData)
+    {
+        _context.SetContext(ContextKeys.PendingDictionarySave, null);
+
+        var parts = saveData.Split('|', 2);
+        if (parts.Length < 2)
+            return "Got it.";
+
+        var word = parts[0];
+        var definition = parts[1];
+        var lower = input.Trim().ToLowerInvariant();
+
+        if (Affirmations.Contains(lower))
+        {
+            _knowledgeStore.SetDefinition(word, definition, _currentUserId);
+            _knowledgeStore.AddLearnedWord(word);
+            _spellChecker.AddToDictionary(word);
+            _knowledgeStore.Save();
+            return GetDictionarySavedResponse(word, definition);
+        }
+
+        if (Denials.Contains(lower))
+            return GetLLMResponse("llm_declined"); // reuse: "No problem, I'll keep learning!"
+
+        return "Do you want me to remember that definition?";
     }
 
     internal string HandleDictionaryDefinition(string input, string word)
@@ -1206,6 +1317,8 @@ public class ChatSession : IDisposable
 
                 _knowledgeStore.LearnResponseRule(triggerPattern, responseTemplate, "Statement", _currentUserId);
                 _knowledgeStore.Save();
+                if (AlwaysOnLLmAvailable())
+                    return GetLLMCorrectionReflection(triggerPattern, responseTemplate, out response);
                 return GetCorrectionResponse("pattern_learned", out response);
             }
         }
@@ -1228,6 +1341,8 @@ public class ChatSession : IDisposable
             _knowledgeStore.AdjustConfidence(lastRuleId, -2, isLearned);
             _knowledgeStore.Save();
             _context.SetContext(ContextKeys.LastRuleId, null);
+            if (AlwaysOnLLmAvailable())
+                return GetLLMCorrectionReflection("you", "not right", out response);
             return GetCorrectionResponse("pattern_acknowledged", out response);
         }
 
@@ -1237,11 +1352,30 @@ public class ChatSession : IDisposable
             _knowledgeStore.AdjustConfidence(lastRuleId, 1, isLearned);
             _knowledgeStore.Save();
             _context.SetContext(ContextKeys.LastRuleId, null);
+            if (AlwaysOnLLmAvailable())
+                return GetLLMCorrectionReflection("you", "right this time", out response);
             return GetCorrectionResponse("pattern_acknowledged", out response);
         }
 
         response = string.Empty;
         return false;
+    }
+
+    private bool AlwaysOnLLmAvailable() =>
+        _llmOrchestrator?.Config.AlwaysOn == true && _llmOrchestrator.IsAvailable && !_llmOrchestrator.UserDeclined;
+
+    private bool GetLLMCorrectionReflection(string trigger, string template, out string response)
+    {
+        var prompt = $"The user just taught you: when they say '{trigger}', you should respond like '{template}'. " +
+            "Acknowledge this naturally in 1 sentence — like 'Got it, I'll do that next time' or 'Thanks, that makes sense'. " +
+            "Do not over-explain. Be natural.";
+        var llmResult = _llmOrchestrator!.GenerateResponse(prompt);
+        if (!string.IsNullOrEmpty(llmResult))
+        {
+            response = llmResult;
+            return true;
+        }
+        return GetCorrectionResponse("pattern_acknowledged", out response);
     }
 
     private bool LearnFromCorrection(string templateRaw, out string response)

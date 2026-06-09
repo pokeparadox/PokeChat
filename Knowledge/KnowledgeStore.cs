@@ -318,6 +318,15 @@ public class KnowledgeStore(PokeChatDbContext context)
         context.PosDictionary.Add(entry);
     }
 
+    public void RemoveLearnedWord(string word)
+    {
+        var lower = word.ToLowerInvariant();
+        var entry = context.PosDictionary.Local.FirstOrDefault(e => e.Word == lower)
+                    ?? context.PosDictionary.FirstOrDefault(e => e.Word == lower);
+        if (entry != null)
+            context.PosDictionary.Remove(entry);
+    }
+
     public void UpdateWordType(string word, string wordType)
     {
         var lower = word.ToLowerInvariant();

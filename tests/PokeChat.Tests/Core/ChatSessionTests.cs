@@ -102,6 +102,52 @@ public class ChatSessionTests
     }
 
     [Fact]
+    public void HandleClarification_NeverMind_DoesNotLearnWord()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            var response = session.HandleClarification("never mind", "odn't");
+            response.ShouldBeOneOf("No problem, I won't remember that!", "Got it, I'll forget about that word.");
+
+            var posDict = new KnowledgeStore(db.Context).GetPosDictionary();
+            posDict.Any(e => e.Word == "odn't").ShouldBeFalse();
+        }
+    }
+
+    [Fact]
+    public void HandleClarification_Mistake_DoesNotLearnWord()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            var response = session.HandleClarification("that was a mistake", "odn't");
+            response.ShouldBeOneOf("No problem, I won't remember that!", "Got it, I'll forget about that word.");
+
+            var posDict = new KnowledgeStore(db.Context).GetPosDictionary();
+            posDict.Any(e => e.Word == "odn't").ShouldBeFalse();
+        }
+    }
+
+    [Fact]
+    public void HandleClassification_Typo_RemovesLearnedWord()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            var store = new KnowledgeStore(db.Context);
+            store.AddLearnedWord("odn't");
+            store.Save();
+
+            var response = session.HandleClassification("typo", "odn't");
+            response.ShouldBeOneOf("No problem, I won't remember that!", "Got it, I'll forget about that word.");
+
+            var posDict = store.GetPosDictionary();
+            posDict.Any(e => e.Word == "odn't").ShouldBeFalse();
+        }
+    }
+
+    [Fact]
     public void ExtractName_UsesPattern_ReturnsLowercase()
     {
         var (session, db) = CreateSessionAndDb();

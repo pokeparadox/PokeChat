@@ -35,6 +35,8 @@ internal static class TestDataHelper
             ("word_classify_place_ask", "Have you ever been to {0}?"),
             ("word_classify_place_yes", "Nice! I'll remember that you've visited {0}."),
             ("word_classify_place_no", "No problem, I'll remember {0} is a place."),
+            ("word_learn_cancelled", "No problem, I won't remember that!"),
+            ("word_learn_cancelled", "Got it, I'll forget about that word."),
             ("proactive_preference", "What else do you like? You mentioned {0}."),
             ("proactive_dislike", "Why don't you like {0}?"),
             ("proactive_possession", "Tell me more about your {0}."),

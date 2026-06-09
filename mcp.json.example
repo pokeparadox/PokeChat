@@ -10,7 +10,24 @@
       "transport": "stdio",
       "command": "mempalace-mcp",
       "args": [],
-      "enabled": true
+      "enabled": true,
+      "toolTriggers": [
+        {
+          "pattern": "(search|ask|check) (your )?(memory|memories|palace) for (.+)",
+          "inputType": "Statement",
+          "responses": [
+            "Let me search my memories for that. {tool:mempalace_search:{$4}}",
+            "I'll check what I remember about that. {tool:mempalace_search:{$4}}"
+          ]
+        },
+        {
+          "pattern": "what do you (remember|know) about (.+)",
+          "inputType": "Question",
+          "responses": [
+            "Let me check my memories about that. {tool:mempalace_search:{$2}}"
+          ]
+        }
+      ]
     }
   }
 }
