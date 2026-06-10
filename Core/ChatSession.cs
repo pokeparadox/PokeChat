@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using PokeChat.Data;
 using PokeChat.Knowledge;
@@ -91,6 +92,53 @@ public class ChatSession : IDisposable
     };
 
     private static readonly string[] GameStartWords = { "Once", "The", "A", "There", "I", "It" };
+
+    private static readonly HashSet<string> MadLibsStartPhrases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "let's play mad libs", "let's do mad libs", "mad libs", "play mad libs",
+        "do a mad lib", "let's make a mad lib"
+    };
+
+    private static readonly HashSet<string> JokeStartPhrases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "tell me a joke", "make me laugh", "got any jokes", "say something funny",
+        "crack a joke", "tell a joke", "tell us a joke", "tell me a funny joke",
+        "do a joke", "tell me something funny", "funny"
+    };
+
+    private static readonly HashSet<string> RiddleStartPhrases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "tell me a riddle", "give me a riddle", "i want a riddle", "riddle me",
+        "ask me a riddle", "tell us a riddle", "do a riddle", "give us a riddle"
+    };
+
+    private static readonly HashSet<string> WyrStartPhrases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "would you rather", "wyr", "play would you rather", "would you rather?"
+    };
+
+    private static readonly HashSet<string> SurrenderPhrases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "i give up", "give up", "i surrender", "surrender", "i don't know",
+        "i dont know", "no idea", "tell me", "what is it", "what's the answer"
+    };
+
+    private static readonly Dictionary<string, string> MadLibSlotLabels = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["noun"] = "a noun",
+        ["plural_noun"] = "a plural noun",
+        ["verb"] = "a verb",
+        ["verb_past"] = "a past tense verb",
+        ["verb_ing"] = "an -ing verb",
+        ["adjective"] = "an adjective",
+        ["adverb"] = "an adverb",
+        ["place"] = "a place",
+        ["person"] = "a person",
+        ["number"] = "a number",
+        ["day"] = "a day of the week",
+    };
+
+    private static readonly Regex MadLibSlotRegex = new(@"\{(\w+)\}", RegexOptions.Compiled);
 
     public ChatSession()
     {
@@ -231,6 +279,7 @@ public class ChatSession : IDisposable
             {
                 _knowledgeStore.RecordSessionMetrics(_sessionId);
                 _knowledgeStore.Save();
+                RunHomeworkCheck();
                 var sessionSummary = GenerateSessionEndSummary();
                 if (!string.IsNullOrEmpty(sessionSummary))
                 {
@@ -331,6 +380,22 @@ public class ChatSession : IDisposable
         if (gameActive != null)
             return HandleGameTurn(input);
 
+        var madLibsActive = _context.GetContext(ContextKeys.MadLibsActive);
+        if (madLibsActive != null)
+            return HandleMadLibsTurn(input);
+
+        var jokeSetup = _context.GetContext(ContextKeys.PendingJokeSetup);
+        if (jokeSetup != null)
+            return HandleJokeTurn();
+
+        var riddleActive = _context.GetContext(ContextKeys.RiddleActive);
+        if (riddleActive != null)
+            return HandleRiddleTurn(input);
+
+        var wyrActive = _context.GetContext(ContextKeys.WyrActive);
+        if (wyrActive != null)
+            return HandleWouldYouRatherAnswer(input);
+
         _context.SetContext(ContextKeys.UnknownWords, null);
 
         if (TryHandleResetRequest(input, out var resetResponse))
@@ -339,8 +404,20 @@ public class ChatSession : IDisposable
         if (TryHandleBotRename(input, out var renameResponse))
             return renameResponse;
 
+        if (TryHandleJokeStart(input, out var jokeResponse))
+            return jokeResponse;
+
+        if (TryHandleRiddleStart(input, out var riddleResponse))
+            return riddleResponse;
+
+        if (TryHandleMadLibsStart(input, out var madLibsResponse))
+            return madLibsResponse;
+
         if (TryHandleGameStart(input, out var gameStartResponse))
             return gameStartResponse;
+
+        if (TryHandleWouldYouRather(input, out var wyrResponse))
+            return wyrResponse;
 
         if (TryHandleCorrection(input, out var correctionResponse))
             return correctionResponse;
@@ -1560,7 +1637,7 @@ public class ChatSession : IDisposable
 
         var userTokens = _tokeniser.Tokenise(input);
         if (userTokens.Count == 0)
-            return GetGameResponse("game_turn_prompt", story);
+            return "Add one word!";
 
         var userWord = userTokens[0].ToLowerInvariant();
         story = string.IsNullOrEmpty(story) ? userWord : story + " " + userWord;
@@ -1573,7 +1650,9 @@ public class ChatSession : IDisposable
         string? botWord;
         if (_llmOrchestrator?.IsAvailable == true && turnCount % 2 == 0)
         {
+            Console.Write($"\r{_botName} is thinking...");
             botWord = _llmOrchestrator.GenerateWordForGame(story);
+            Console.Write("\r" + new string(' ', 30) + "\r");
             if (string.IsNullOrEmpty(botWord))
                 botWord = PickGameWord(story);
         }
@@ -1587,7 +1666,7 @@ public class ChatSession : IDisposable
         _context.SetContext(ContextKeys.GameStory, story);
         _context.SetContext(ContextKeys.GameTurnCount, turnCount.ToString());
 
-        return GetGameResponse("game_turn_prompt", story);
+        return GetGameResponse("game_turn_word_and_prompt", botWord);
     }
 
     private string HandleGameEnd()
@@ -1596,7 +1675,125 @@ public class ChatSession : IDisposable
         _context.SetContext(ContextKeys.GameModeActive, null);
         _context.SetContext(ContextKeys.GameStory, null);
         _context.SetContext(ContextKeys.GameTurnCount, null);
-        return GetGameResponse("game_stop", story);
+
+        var filteredStory = ApplyGameGrammarFilter(story);
+
+        if (_llmOrchestrator?.IsAvailable == true && !string.IsNullOrEmpty(filteredStory))
+        {
+            var llmSummary = _llmOrchestrator.GenerateGameStorySummary(filteredStory);
+            if (!string.IsNullOrEmpty(llmSummary))
+                return GetGameResponse("game_stop_llm", filteredStory, llmSummary);
+        }
+
+        return GetGameResponse("game_stop", filteredStory);
+    }
+
+    internal string ApplyGameGrammarFilter(string rawStory)
+    {
+        if (string.IsNullOrWhiteSpace(rawStory))
+            return rawStory;
+
+        var words = rawStory.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
+        if (words.Count == 0)
+            return rawStory;
+
+        // Step 1: Trim trailing Conjunction/Preposition/Determiner
+        while (words.Count > 0)
+        {
+            var lastWord = words[^1].ToLowerInvariant();
+            var tags = _posTagger.Tag(new List<string> { lastWord });
+            var pos = tags.Count > 0 ? tags[0] : PosTag.Unknown;
+            if (pos == PosTag.Conjunction || pos == PosTag.Preposition || pos == PosTag.Determiner)
+                words.RemoveAt(words.Count - 1);
+            else
+                break;
+        }
+
+        if (words.Count == 0)
+            return rawStory;
+
+        // Step 2: Collapse consecutive duplicate words
+        var collapsed = new List<string>();
+        foreach (var word in words)
+        {
+            if (collapsed.Count == 0 || !string.Equals(collapsed[^1], word, StringComparison.OrdinalIgnoreCase))
+                collapsed.Add(word);
+        }
+        words = collapsed;
+
+        // Step 3: Sentence-split at and/but/so where each side >= 5 words
+        var afterSplit = new List<string>();
+        for (int i = 0; i < words.Count; i++)
+        {
+            var lower = words[i].ToLowerInvariant();
+            if ((lower == "and" || lower == "but" || lower == "so") &&
+                i >= 5 && (words.Count - i - 1) >= 5)
+            {
+                afterSplit.Add(".");
+                continue;
+            }
+            afterSplit.Add(words[i]);
+        }
+        words = afterSplit;
+
+        // Step 4: Comma after introductory words
+        var introWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            { "once", "suddenly", "then", "finally", "meanwhile" };
+        var withIntroCommas = new List<string>();
+        foreach (var word in words)
+        {
+            if (introWords.Contains(word))
+                withIntroCommas.Add(word + ",");
+            else
+                withIntroCommas.Add(word);
+        }
+        words = withIntroCommas;
+
+        // Step 5: Comma before and/but/so (non-split points, each side >= 3 words)
+        var withConjCommas = new List<string>();
+        for (int i = 0; i < words.Count; i++)
+        {
+            var lower = words[i].ToLowerInvariant();
+            if ((lower == "and" || lower == "but" || lower == "so") &&
+                i >= 3 && (words.Count - i - 1) >= 3)
+            {
+                if (withConjCommas.Count > 0 && withConjCommas[^1] != "." && withConjCommas[^1] != ",")
+                    withConjCommas.Add(",");
+            }
+            withConjCommas.Add(words[i]);
+        }
+        words = withConjCommas;
+
+        // Step 6: a -> an before vowel
+        var vowels = new HashSet<char> { 'a', 'e', 'i', 'o', 'u' };
+        for (int i = 0; i < words.Count - 1; i++)
+        {
+            if (words[i].ToLowerInvariant() == "a" && words[i + 1].Length > 0 &&
+                vowels.Contains(char.ToLowerInvariant(words[i + 1][0])))
+            {
+                words[i] = "an";
+            }
+        }
+
+        // Step 7: Capitalize first letter of each sentence
+        var result = new List<string>();
+        var capitalizeNext = true;
+        foreach (var word in words)
+        {
+            if (capitalizeNext && word.Length > 0)
+                result.Add(char.ToUpperInvariant(word[0]) + word.Substring(1));
+            else
+                result.Add(word);
+            capitalizeNext = word == ".";
+        }
+
+        // Step 8: Trailing period if missing
+        var text = string.Join(" ", result);
+        text = text.Replace(" , ", ", ").Replace(" . ", ". ").Replace(" .", ".");
+        if (!text.EndsWith(".") && !text.EndsWith("!") && !text.EndsWith("?"))
+            text += ".";
+
+        return text;
     }
 
     private string PickGameWord(string storySoFar)
@@ -1660,8 +1857,9 @@ public class ChatSession : IDisposable
         var fallbacks = new Dictionary<string, List<string>>
         {
             ["game_start"] = new() { $"Let's play a word game! We take turns adding one word at a time to build a funny story. I'll start: {{0}}" },
-            ["game_turn_prompt"] = new() { $"Add one word! The story so far: '{{0}}'" },
-            ["game_stop"] = new() { $"That was fun! Here's our story: {{0}}" },
+            ["game_turn_word_and_prompt"] = new() { $"{{0}} Add one word!" },
+            ["game_stop"] = new() { $"That was fun! Here's our story:\n{{0}}" },
+            ["game_stop_llm"] = new() { $"Here's what we came up with:\n{{0}}\n\nAnd here's a story from those words:\n{{1}}" },
             ["game_already_active"] = new() { "We're already playing! Just add one word, or say 'stop game' to end." },
         };
 
@@ -1672,6 +1870,580 @@ public class ChatSession : IDisposable
         }
 
         return string.Empty;
+    }
+
+    internal bool TryHandleMadLibsStart(string input, out string response)
+    {
+        var lowerInput = input.ToLowerInvariant().Trim();
+        foreach (var phrase in MadLibsStartPhrases)
+        {
+            if (lowerInput.Contains(phrase))
+            {
+                var existing = _context.GetContext(ContextKeys.MadLibsActive);
+                if (existing != null)
+                {
+                    response = GetMadLibResponse("mad_libs_already_active");
+                    return true;
+                }
+
+                var gameExisting = _context.GetContext(ContextKeys.GameModeActive);
+                if (gameExisting != null)
+                {
+                    response = "You're already in the middle of a word game! Say 'stop game' first.";
+                    return true;
+                }
+
+                response = StartMadLibs();
+                return true;
+            }
+        }
+
+        response = string.Empty;
+        return false;
+    }
+
+    private string StartMadLibs()
+    {
+        var template = _knowledgeStore.GetRandomMadLibTemplate();
+        if (template == null)
+            return "I don't have any Mad Libs templates yet!";
+
+        var slots = GetMadLibSlots(template.Template);
+        if (slots.Count == 0)
+            return "That template seems empty. Let's try something else!";
+
+        _context.SetContext(ContextKeys.MadLibsActive, "true");
+        _context.SetContext(ContextKeys.MadLibsTemplateId, template.Id.ToString());
+        _context.SetContext(ContextKeys.MadLibsSlotIndex, "0");
+        _context.SetContext(ContextKeys.MadLibsFilledWords, "");
+
+        var firstSlot = slots[0];
+        var label = GetSlotLabel(firstSlot);
+        _context.SetContext(ContextKeys.MadLibsCurrentSlot, firstSlot);
+
+        return GetMadLibResponse("mad_libs_start", label);
+    }
+
+    internal string HandleMadLibsTurn(string input)
+    {
+        var lowerInput = input.Trim().ToLowerInvariant();
+
+        foreach (var phrase in GameEndPhrases)
+        {
+            if (lowerInput.Contains(phrase) || lowerInput.Equals(phrase))
+                return HandleMadLibsEnd(cancelled: true);
+        }
+
+        if (CancellationPhrases.Contains(lowerInput))
+            return HandleMadLibsEnd(cancelled: true);
+
+        var filledRaw = _context.GetContext(ContextKeys.MadLibsFilledWords) ?? "";
+        var filled = string.IsNullOrEmpty(filledRaw) ? new List<string>() : filledRaw.Split('|').ToList();
+        var slotIndexRaw = _context.GetContext(ContextKeys.MadLibsSlotIndex) ?? "0";
+        int.TryParse(slotIndexRaw, out var slotIndex);
+
+        var templateIdRaw = _context.GetContext(ContextKeys.MadLibsTemplateId) ?? "0";
+        int.TryParse(templateIdRaw, out var templateId);
+        var template = _dbContext.MadLibTemplates.Find(templateId);
+
+        if (template == null)
+        {
+            _context.SetContext(ContextKeys.MadLibsActive, null);
+            return "I lost track of our Mad Libs template! Let's start over.";
+        }
+
+        var slots = GetMadLibSlots(template.Template);
+
+        var userWord = input.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
+        filled.Add(userWord.ToLowerInvariant());
+        slotIndex++;
+
+        _context.SetContext(ContextKeys.MadLibsFilledWords, string.Join("|", filled));
+        _context.SetContext(ContextKeys.MadLibsSlotIndex, slotIndex.ToString());
+
+        if (slotIndex >= slots.Count)
+            return HandleMadLibsEnd(cancelled: false);
+
+        var nextSlot = slots[slotIndex];
+        var label = GetSlotLabel(nextSlot);
+        _context.SetContext(ContextKeys.MadLibsCurrentSlot, nextSlot);
+
+        return GetMadLibResponse("mad_libs_prompt", label);
+    }
+
+    private string HandleMadLibsEnd(bool cancelled)
+    {
+        var templateIdRaw = _context.GetContext(ContextKeys.MadLibsTemplateId) ?? "0";
+        int.TryParse(templateIdRaw, out var templateId);
+        var filledRaw = _context.GetContext(ContextKeys.MadLibsFilledWords) ?? "";
+
+        _context.SetContext(ContextKeys.MadLibsActive, null);
+        _context.SetContext(ContextKeys.MadLibsTemplateId, null);
+        _context.SetContext(ContextKeys.MadLibsSlotIndex, null);
+        _context.SetContext(ContextKeys.MadLibsFilledWords, null);
+        _context.SetContext(ContextKeys.MadLibsCurrentSlot, null);
+
+        if (cancelled)
+            return "OK, we can play Mad Libs another time!";
+
+        var template = _dbContext.MadLibTemplates.Find(templateId);
+        if (template == null)
+            return "OK, that's the end of our Mad Libs!";
+
+        var filled = string.IsNullOrEmpty(filledRaw) ? new List<string>() : filledRaw.Split('|').ToList();
+        var slots = GetMadLibSlots(template.Template);
+
+        var story = template.Template;
+        for (int i = 0; i < slots.Count && i < filled.Count; i++)
+        {
+            story = ReplaceFirst(story, $"{{{slots[i]}}}", filled[i]);
+        }
+
+        // Replace any remaining unfilled slots with "something"
+        story = MadLibSlotRegex.Replace(story, "something");
+
+        return GetMadLibResponse("mad_libs_reveal", story);
+    }
+
+    private static List<string> GetMadLibSlots(string template)
+    {
+        return MadLibSlotRegex.Matches(template)
+            .Select(m => m.Groups[1].Value)
+            .ToList();
+    }
+
+    private static string GetSlotLabel(string slotType)
+    {
+        return MadLibSlotLabels.TryGetValue(slotType, out var label) ? label : $"a/an {slotType}";
+    }
+
+    private static string ReplaceFirst(string text, string search, string replace)
+    {
+        var pos = text.IndexOf(search, StringComparison.Ordinal);
+        if (pos < 0) return text;
+        return text.Substring(0, pos) + replace + text.Substring(pos + search.Length);
+    }
+
+    private string GetMadLibResponse(string category, params object[] args)
+    {
+        var botResponses = GetCachedBotResponses();
+        if (botResponses.TryGetValue(category, out var responses) && responses.Count > 0)
+        {
+            var template = responses[Random.Shared.Next(responses.Count)];
+            return args.Length > 0 ? string.Format(template, args) : template;
+        }
+
+        var fallbacks = new Dictionary<string, List<string>>
+        {
+            ["mad_libs_start"] = new() { $"Let's play Mad Libs! {{0}}" },
+            ["mad_libs_prompt"] = new() { $"Give me {{0}}:" },
+            ["mad_libs_reveal"] = new() { $"Here's our Mad Libs story:\n{{0}}" },
+            ["mad_libs_already_active"] = new() { "We're already playing Mad Libs!" },
+        };
+
+        if (fallbacks.TryGetValue(category, out var fb) && fb.Count > 0)
+        {
+            var template = fb[Random.Shared.Next(fb.Count)];
+            return args.Length > 0 ? string.Format(template, args) : template;
+        }
+
+        return string.Empty;
+    }
+
+    internal bool TryHandleJokeStart(string input, out string response)
+    {
+        var lowerInput = input.ToLowerInvariant().Trim();
+        foreach (var phrase in JokeStartPhrases)
+        {
+            if (lowerInput.Contains(phrase))
+            {
+                var joke = _knowledgeStore.GetRandomJoke();
+                if (joke == null)
+                {
+                    response = "I don't have any jokes to tell yet!";
+                    return true;
+                }
+
+                _context.SetContext(ContextKeys.PendingJokeSetup, joke.Setup);
+                _context.SetContext(ContextKeys.PendingJokePunchline, joke.Punchline);
+                response = GetJokeResponse("dad_joke_setup", joke.Setup);
+                return true;
+            }
+        }
+
+        response = string.Empty;
+        return false;
+    }
+
+    internal string HandleJokeTurn()
+    {
+        var punchline = _context.GetContext(ContextKeys.PendingJokePunchline) ?? string.Empty;
+        _context.SetContext(ContextKeys.PendingJokeSetup, null);
+        _context.SetContext(ContextKeys.PendingJokePunchline, null);
+        return GetJokeResponse("dad_joke_punchline", punchline);
+    }
+
+    internal bool TryHandleRiddleStart(string input, out string response)
+    {
+        var lowerInput = input.ToLowerInvariant().Trim();
+        foreach (var phrase in RiddleStartPhrases)
+        {
+            if (lowerInput.Contains(phrase))
+            {
+                var existing = _context.GetContext(ContextKeys.RiddleActive);
+                if (existing != null)
+                {
+                    response = GetRiddleResponse("riddle_already_active");
+                    return true;
+                }
+
+                var riddle = _knowledgeStore.GetRandomRiddle();
+                if (riddle == null)
+                {
+                    response = "I don't have any riddles yet!";
+                    return true;
+                }
+
+                _context.SetContext(ContextKeys.RiddleActive, "true");
+                _context.SetContext(ContextKeys.PendingRiddleQuestion, riddle.Question);
+                _context.SetContext(ContextKeys.PendingRiddleAnswer, riddle.Answer);
+                _context.SetContext(ContextKeys.PendingRiddleHint, riddle.Hint ?? "");
+                _context.SetContext(ContextKeys.PendingRiddleAttempts, "0");
+                response = GetRiddleResponse("riddle_present", riddle.Question);
+                return true;
+            }
+        }
+
+        response = string.Empty;
+        return false;
+    }
+
+    internal string HandleRiddleTurn(string input)
+    {
+        var lowerInput = input.Trim().ToLowerInvariant();
+        var answer = _context.GetContext(ContextKeys.PendingRiddleAnswer) ?? "";
+        var hint = _context.GetContext(ContextKeys.PendingRiddleHint) ?? "";
+        var attemptsRaw = _context.GetContext(ContextKeys.PendingRiddleAttempts) ?? "0";
+        int.TryParse(attemptsRaw, out var attempts);
+
+        foreach (var phrase in SurrenderPhrases)
+        {
+            if (lowerInput.Contains(phrase))
+            {
+                ClearRiddleState();
+                return GetRiddleResponse("riddle_give_up", answer);
+            }
+        }
+
+        if (lowerInput.Contains("hint") && !string.IsNullOrEmpty(hint))
+        {
+            _context.SetContext(ContextKeys.PendingRiddleAttempts, (attempts + 1).ToString());
+            return GetRiddleResponse("riddle_hint", hint);
+        }
+
+        if (lowerInput.Contains(answer.ToLowerInvariant()) || IsCorrectGuess(lowerInput, answer))
+        {
+            ClearRiddleState();
+            return GetRiddleResponse("riddle_correct");
+        }
+
+        attempts++;
+        _context.SetContext(ContextKeys.PendingRiddleAttempts, attempts.ToString());
+
+        if (attempts >= 3)
+        {
+            ClearRiddleState();
+            return GetRiddleResponse("riddle_give_up", answer);
+        }
+
+        return GetRiddleResponse("riddle_wrong");
+    }
+
+    private static bool IsCorrectGuess(string lowerInput, string answer)
+    {
+        var cleanAnswer = answer.ToLowerInvariant().Trim();
+        if (cleanAnswer.StartsWith("a ") || cleanAnswer.StartsWith("an "))
+        {
+            var withoutArticle = cleanAnswer.Split(' ', 2)[1];
+            if (lowerInput.Contains(withoutArticle))
+                return true;
+        }
+        if (lowerInput.Contains(cleanAnswer))
+            return true;
+        if (lowerInput.Trim() == cleanAnswer)
+            return true;
+        return false;
+    }
+
+    private void ClearRiddleState()
+    {
+        _context.SetContext(ContextKeys.RiddleActive, null);
+        _context.SetContext(ContextKeys.PendingRiddleQuestion, null);
+        _context.SetContext(ContextKeys.PendingRiddleAnswer, null);
+        _context.SetContext(ContextKeys.PendingRiddleHint, null);
+        _context.SetContext(ContextKeys.PendingRiddleAttempts, null);
+    }
+
+    private string GetJokeResponse(string category, params object[] args)
+    {
+        var botResponses = GetCachedBotResponses();
+        if (botResponses.TryGetValue(category, out var responses) && responses.Count > 0)
+        {
+            var template = responses[Random.Shared.Next(responses.Count)];
+            return args.Length > 0 ? string.Format(template, args) : template;
+        }
+
+        var fallbacks = new Dictionary<string, List<string>>
+        {
+            ["dad_joke_setup"] = new() { $"{{0}}?" },
+            ["dad_joke_punchline"] = new() { $"{{0}}" },
+        };
+
+        if (fallbacks.TryGetValue(category, out var fb) && fb.Count > 0)
+        {
+            var template = fb[Random.Shared.Next(fb.Count)];
+            return args.Length > 0 ? string.Format(template, args) : template;
+        }
+
+        return string.Empty;
+    }
+
+    private string GetRiddleResponse(string category, params object[] args)
+    {
+        var botResponses = GetCachedBotResponses();
+        if (botResponses.TryGetValue(category, out var responses) && responses.Count > 0)
+        {
+            var template = responses[Random.Shared.Next(responses.Count)];
+            return args.Length > 0 ? string.Format(template, args) : template;
+        }
+
+        var fallbacks = new Dictionary<string, List<string>>
+        {
+            ["riddle_present"] = new() { $"Here's a riddle: {{0}}" },
+            ["riddle_correct"] = new() { "That's right! Well done!" },
+            ["riddle_wrong"] = new() { "Not quite! Try again." },
+            ["riddle_hint"] = new() { $"Here's a hint: {{0}}" },
+            ["riddle_give_up"] = new() { $"The answer was {{0}}." },
+            ["riddle_already_active"] = new() { "You already have a riddle to solve!" },
+        };
+
+        if (fallbacks.TryGetValue(category, out var fb) && fb.Count > 0)
+        {
+            var template = fb[Random.Shared.Next(fb.Count)];
+            return args.Length > 0 ? string.Format(template, args) : template;
+        }
+
+        return string.Empty;
+    }
+
+    internal bool TryHandleWouldYouRather(string input, out string response)
+    {
+        var lowerInput = input.ToLowerInvariant().Trim();
+        foreach (var phrase in WyrStartPhrases)
+        {
+            if (lowerInput.Contains(phrase))
+            {
+                var question = _responseEngine.BuildWyrQuestion(_currentUserId);
+                if (question == null)
+                {
+                    response = string.Empty;
+                    return false;
+                }
+
+                response = question;
+                return true;
+            }
+        }
+
+        response = string.Empty;
+        return false;
+    }
+
+    internal string HandleWouldYouRatherAnswer(string input)
+    {
+        _context.SetContext(ContextKeys.WyrActive, null);
+        _context.SetContext(ContextKeys.PendingWyrQuestion, null);
+        var optionA = _context.GetContext(ContextKeys.PendingWyrOptionA);
+        var optionB = _context.GetContext(ContextKeys.PendingWyrOptionB);
+        _context.SetContext(ContextKeys.PendingWyrOptionA, null);
+        _context.SetContext(ContextKeys.PendingWyrOptionB, null);
+
+        if (string.IsNullOrEmpty(optionA) && string.IsNullOrEmpty(optionB))
+            return string.Empty;
+
+        var chosen = Random.Shared.Next(2) == 0 ? optionA : optionB;
+        return GetWyrResponse("wyr_acknowledgement", chosen ?? "");
+    }
+
+    private string GetWyrResponse(string category, params object[] args)
+    {
+        var botResponses = GetCachedBotResponses();
+        if (botResponses.TryGetValue(category, out var responses) && responses.Count > 0)
+        {
+            var template = responses[Random.Shared.Next(responses.Count)];
+            return args.Length > 0 ? string.Format(template, args) : template;
+        }
+
+        return string.Empty;
+    }
+
+    internal void RunHomeworkCheck()
+    {
+        if (_llmOrchestrator == null || !_llmOrchestrator.IsAvailable || _llmOrchestrator.UserDeclined)
+            return;
+        if (_currentUserId == null)
+            return;
+
+        var botResponses = GetCachedBotResponses();
+        if (botResponses.TryGetValue("homework_check_processing", out var procResponses) && procResponses.Count > 0)
+            Console.WriteLine($"{_botName}: {procResponses[Random.Shared.Next(procResponses.Count)]}");
+
+        var prompt = BuildHomeworkCheckPrompt();
+        if (string.IsNullOrEmpty(prompt)) return;
+
+        var llmResult = _llmOrchestrator.GenerateHomeworkCheck(prompt);
+        if (string.IsNullOrEmpty(llmResult)) return;
+
+        var result = ParseHomeworkCheckResult(llmResult);
+        if (result == null) return;
+
+        var changes = new List<string>();
+
+        foreach (var rule in result.RulesToRemove)
+        {
+            _knowledgeStore.DeactivateLearnedRule(rule.RuleId);
+            changes.Add($"fixed rule #{rule.RuleId}");
+        }
+
+        foreach (var def in result.DefinitionsToAdd)
+        {
+            var validCats = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "person", "place", "thing", "verb" };
+            if (result.ClassificationsToAdd.Any(c =>
+                    string.Equals(c.Word, def.Word, StringComparison.OrdinalIgnoreCase) &&
+                    validCats.Contains(c.Category)))
+                continue;
+
+            _knowledgeStore.SetDefinition(def.Word, def.Definition, _currentUserId);
+            changes.Add($"defined '{def.Word}'");
+        }
+
+        foreach (var cls in result.ClassificationsToAdd)
+        {
+            var validCats = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "person", "place", "thing", "verb" };
+            if (!validCats.Contains(cls.Category)) continue;
+
+            _knowledgeStore.AddNounCategory(cls.Word, cls.Category, _currentUserId);
+            var wordType = cls.Category is "person" or "place" or "thing" ? "noun" : cls.Category;
+            _knowledgeStore.UpdateWordType(cls.Word, wordType);
+            changes.Add($"classified '{cls.Word}'");
+        }
+
+        _knowledgeStore.Save();
+
+        if (changes.Count > 0)
+        {
+            var summary = string.Join(", ", changes);
+            if (botResponses.TryGetValue("homework_check_summary", out var sumResponses) && sumResponses.Count > 0)
+            {
+                var template = sumResponses[Random.Shared.Next(sumResponses.Count)];
+                Console.WriteLine($"{_botName}: {string.Format(template, summary)}");
+            }
+        }
+        else
+        {
+            if (botResponses.TryGetValue("homework_check_none", out var noneResponses) && noneResponses.Count > 0)
+            {
+                Console.WriteLine($"{_botName}: {noneResponses[Random.Shared.Next(noneResponses.Count)]}");
+            }
+        }
+    }
+
+    private string BuildHomeworkCheckPrompt()
+    {
+        var conversations = _knowledgeStore.GetConversationsBySession(_sessionId);
+        if (conversations.Count == 0) return string.Empty;
+
+        var log = new System.Text.StringBuilder();
+        log.AppendLine("Conversation log:");
+        foreach (var c in conversations)
+        {
+            log.AppendLine($"User: {c.UserInput}");
+            log.AppendLine($"Bot: {c.BotResponse}");
+        }
+
+        var learnedRules = _knowledgeStore.GetLearnedRules();
+        if (learnedRules.Count > 0)
+        {
+            log.AppendLine("\nLearned response rules:");
+            foreach (var r in learnedRules)
+            {
+                log.AppendLine($"  Rule #{r.Id}: pattern=\"{r.Pattern}\", template=\"{r.ResponseTemplate}\", confidence={r.Confidence}");
+            }
+        }
+
+        var definitions = _dbContext.WordDefinitions.ToList();
+        if (definitions.Count > 0)
+        {
+            log.AppendLine("\nWord definitions:");
+            foreach (var d in definitions)
+            {
+                log.AppendLine($"  \"{d.Word}\": \"{d.Definition}\"");
+            }
+        }
+
+        var nounCategories = _knowledgeStore.GetNounCategories();
+        if (nounCategories.Count > 0)
+        {
+            log.AppendLine("\nNoun categories:");
+            foreach (var n in nounCategories)
+            {
+                log.AppendLine($"  \"{n.Noun}\": {n.Category}");
+            }
+        }
+
+        return log.ToString();
+    }
+
+    private static HomeworkCheckResult? ParseHomeworkCheckResult(string json)
+    {
+        try
+        {
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+            };
+            return JsonSerializer.Deserialize<HomeworkCheckResult>(json, options);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private class HomeworkCheckResult
+    {
+        public List<RuleToRemove> RulesToRemove { get; set; } = new();
+        public List<DefinitionToAdd> DefinitionsToAdd { get; set; } = new();
+        public List<ClassificationToAdd> ClassificationsToAdd { get; set; } = new();
+    }
+
+    private class RuleToRemove
+    {
+        public int RuleId { get; set; }
+        public string? Reason { get; set; }
+    }
+
+    private class DefinitionToAdd
+    {
+        public string Word { get; set; } = "";
+        public string Definition { get; set; } = "";
+    }
+
+    private class ClassificationToAdd
+    {
+        public string Word { get; set; } = "";
+        public string Category { get; set; } = "";
     }
 
     public void Dispose()

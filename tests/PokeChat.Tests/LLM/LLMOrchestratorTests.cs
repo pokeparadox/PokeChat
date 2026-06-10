@@ -128,4 +128,38 @@ public class LLMOrchestratorTests
         orchestrator.MarkDeclined();
         orchestrator.GenerateResponse("hello").ShouldBeNull();
     }
+
+    [Fact]
+    public void GenerateGameStorySummary_ReturnsSummary()
+    {
+        var config = new LLMConfig { Enabled = true };
+        var provider = new StubLLMProvider { Response = "A cat and a dog became friends." };
+        var orchestrator = new LLMOrchestrator(provider, config);
+
+        var result = orchestrator.GenerateGameStorySummary("cat dog friend");
+        result.ShouldBe("A cat and a dog became friends.");
+    }
+
+    [Fact]
+    public void GenerateGameStorySummary_Unavailable_ReturnsNull()
+    {
+        var config = new LLMConfig { Enabled = true };
+        var provider = new StubLLMProvider { Response = null };
+        var orchestrator = new LLMOrchestrator(provider, config);
+
+        var result = orchestrator.GenerateGameStorySummary("cat dog");
+        result.ShouldBeNull();
+    }
+
+    [Fact]
+    public void GenerateGameStorySummary_Declined_ReturnsNull()
+    {
+        var config = new LLMConfig { Enabled = true };
+        var provider = new StubLLMProvider();
+        var orchestrator = new LLMOrchestrator(provider, config);
+
+        orchestrator.MarkDeclined();
+        var result = orchestrator.GenerateGameStorySummary("cat dog");
+        result.ShouldBeNull();
+    }
 }

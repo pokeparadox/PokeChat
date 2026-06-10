@@ -222,3 +222,26 @@ CREATE TABLE IF NOT EXISTS story_templates (
     category TEXT,
     created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS mad_lib_templates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    template TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS jokes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    setup TEXT NOT NULL,
+    punchline TEXT NOT NULL,
+    category TEXT,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS riddles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    question TEXT NOT NULL,
+    answer TEXT NOT NULL,
+    hint TEXT,
+    difficulty INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL
+);

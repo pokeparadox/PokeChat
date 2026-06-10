@@ -322,4 +322,45 @@ public class ChatSessionLLMTests
         var response = session.ProcessInput("that's not right");
         response.ShouldNotBe("LLM text.");
     }
+
+    [Fact]
+    public void HandleGameEnd_WithLLM_IncludesSummary()
+    {
+        using var db = new FreshDbContext();
+        TestDataHelper.SeedBotResponses(db.Context);
+        TestDataHelper.SeedPosDictionary(db.Context);
+        var store = new KnowledgeStore(db.Context);
+        var context = new ContextTracker();
+        var spellChecker = new SpellChecker();
+        var posEntries = store.GetPosDictionary();
+        var posTagger = new PosTagger(posEntries);
+        var spellDict = new HashSet<string>(posEntries.Select(e => e.Word), StringComparer.OrdinalIgnoreCase);
+        var misspellings = store.GetMisspellings();
+        spellChecker.Initialise(spellDict, misspellings);
+
+        var tokeniser = new Tokeniser();
+        var sentenceSplitter = new SentenceSplitter();
+        var svoExtractor = new SvoExtractor();
+        var nounCategoriser = new NounCategoriser(store);
+
+        var llmConfig = new LLMConfig { Enabled = true };
+        var llmProvider = new StubLLMProvider { Response = "A funny story about a cat." };
+        var llmOrchestrator = new LLMOrchestrator(llmProvider, llmConfig);
+        var responseEngine = new ResponseEngine(store, context, spellChecker, posTagger, tokeniser, svoExtractor);
+
+        var session = new ChatSession(
+            db.Context, store, responseEngine, spellChecker, posTagger,
+            tokeniser, sentenceSplitter, svoExtractor, context, nounCategoriser,
+            new List<string> { "my name is", "i am", "i'm", "call me" },
+            new List<string> { "quit", "exit" }.ToHashSet(StringComparer.OrdinalIgnoreCase),
+            new List<string> { "hi", "hello" }.ToHashSet(StringComparer.OrdinalIgnoreCase),
+            llmOrchestrator: llmOrchestrator);
+
+        session.HandleNameInput("my name is Alice");
+        session.TryHandleGameStart("let's play a word game", out _);
+
+        var response = session.HandleGameTurn("stop");
+
+        response.ShouldContain("A funny story about a cat.");
+    }
 }

@@ -37,6 +37,18 @@ public class LLMOrchestrator : IDisposable
         Config = config;
     }
 
+    public static readonly string HomeworkCheckSystemPrompt =
+        "You are a QA assistant for a learning chatbot. Review the conversation below for mistakes.\n\n" +
+        "If any learned response rules are incorrect or don't match what the user intended, flag them.\n" +
+        "If the user taught words that could use a definition, suggest one.\n" +
+        "If words were taught but not classified, suggest a category.\n\n" +
+        "Return ONLY valid JSON (no markdown, no extra text):\n" +
+        "{\n" +
+        "  \"rules_to_remove\": [{\"rule_id\": 1, \"reason\": \"...\"}],\n" +
+        "  \"definitions_to_add\": [{\"word\": \"...\", \"definition\": \"...\"}],\n" +
+        "  \"classifications_to_add\": [{\"word\": \"...\", \"category\": \"person|place|thing|verb\"}]\n" +
+        "}";
+
     public void MarkAccepted()
     {
         IsAccepted = true;
@@ -68,6 +80,20 @@ public class LLMOrchestrator : IDisposable
 
         var firstWord = result.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
         return firstWord.ToLowerInvariant();
+    }
+
+    public string? GenerateGameStorySummary(string storyWords)
+    {
+        if (_provider == null || UserDeclined) return null;
+
+        var prompt = $"Here are some words chosen in a word game: '{storyWords}'. Write a short, funny story (2-3 sentences) using these words. Return only the story, no commentary.";
+        return _provider.GenerateResponse(prompt, "");
+    }
+
+    public string? GenerateHomeworkCheck(string prompt)
+    {
+        if (_provider == null || UserDeclined) return null;
+        return _provider.GenerateResponse(prompt, HomeworkCheckSystemPrompt);
     }
 
     public void Dispose()

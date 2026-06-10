@@ -23,6 +23,9 @@ public static class DbSeeder
         SeedTemporalExpressions(context);
         SeedInferenceWordLinks(context, now);
         SeedStoryTemplates(context, now);
+        SeedMadLibTemplates(context, now);
+        SeedJokes(context, now);
+        SeedRiddles(context, now);
         SeedBotResponses(context, now);
 
         context.SaveChanges();
@@ -680,6 +683,86 @@ public static class DbSeeder
         }));
     }
 
+    private static void SeedMadLibTemplates(PokeChatDbContext context, string now)
+    {
+        if (context.MadLibTemplates.Any()) return;
+
+        var templates = new[]
+        {
+            "The {adjective} {noun} {verb_past} over the {adjective} {plural_noun}.",
+            "My {adjective} {noun} loves to {verb} {adverb} every morning before {verb_ing}.",
+            "I went to {place} with {person} and saw a {adjective} {noun}.",
+            "Once upon a time, a {adjective} {noun} decided to {verb} {adverb}.",
+            "The {adjective} {noun} ate {number} {adjective} {plural_noun} for dinner.",
+            "When I {verb_past} my {noun}, I found a {adjective} {noun} inside.",
+            "My {adjective} {noun} loves to {verb} {adverb} in the park.",
+            "{person} and I played with {number} {adjective} {plural_noun} yesterday.",
+            "A {adjective} {noun} appeared and started {verb_ing} at me!",
+            "I think {person} needs a {adjective} {noun} to feel better.",
+            "The {adjective} {person} {verb_past} the {noun} with a {adjective} {noun}.",
+            "Last {day}, we found a {adjective} {noun} hiding under the {noun}.",
+        };
+
+        context.MadLibTemplates.AddRange(templates.Select(t => new MadLibTemplate
+        {
+            Template = t,
+            CreatedAt = now
+        }));
+    }
+
+    private static void SeedJokes(PokeChatDbContext context, string now)
+    {
+        if (context.Jokes.Any()) return;
+
+        var jokes = new (string Setup, string Punchline, string? Category)[]
+        {
+            ("Why don't scientists trust atoms", "Because they make up everything!", "science"),
+            ("What do you call a fake noodle", "An impasta!", "food"),
+            ("Why did the scarecrow win an award", "Because he was outstanding in his field!", "agriculture"),
+            ("What do you call a fish with no eyes", "A fsh!", "animal"),
+            ("Why don't eggs tell jokes", "They'd crack each other up!", "food"),
+            ("What do you call a bear with no teeth", "A gummy bear!", "animal"),
+            ("Why did the bicycle fall over", "Because it was two tired!", "vehicle"),
+            ("What do you call a sleeping bull", "A bulldozer!", "animal"),
+            ("Why did the math book look so sad", "Because it had too many problems!", "education"),
+            ("What do you call a can opener that doesn't work", "A can't opener!", "food"),
+        };
+
+        context.Jokes.AddRange(jokes.Select(j => new Joke
+        {
+            Setup = j.Setup,
+            Punchline = j.Punchline,
+            Category = j.Category,
+            CreatedAt = now
+        }));
+    }
+
+    private static void SeedRiddles(PokeChatDbContext context, string now)
+    {
+        if (context.Riddles.Any()) return;
+
+        var riddles = new (string Question, string Answer, string? Hint, int Difficulty)[]
+        {
+            ("I speak without a mouth and hear without ears. I have no body, but I come alive with the wind. What am I?", "an echo", "Think about sound reflecting...", 2),
+            ("The more you take, the more you leave behind. What am I?", "footsteps", "What do you leave when you walk?", 1),
+            ("I have cities, but no houses. I have mountains, but no trees. I have water, but no fish. What am I?", "a map", "You can find me in an atlas.", 2),
+            ("What has keys but can't open locks?", "a piano", "Think about music...", 1),
+            ("What can travel around the world while staying in a corner?", "a stamp", "It goes on letters.", 2),
+            ("What gets wetter the more it dries?", "a towel", "Think about what you use after a shower.", 1),
+            ("What has a head and a tail but no body?", "a coin", "You might find it in your pocket.", 2),
+            ("I'm tall when I'm young and short when I'm old. What am I?", "a candle", "Think about something that burns.", 1),
+        };
+
+        context.Riddles.AddRange(riddles.Select(r => new Riddle
+        {
+            Question = r.Question,
+            Answer = r.Answer,
+            Hint = r.Hint,
+            Difficulty = r.Difficulty,
+            CreatedAt = now
+        }));
+    }
+
     private static void SeedBotResponses(PokeChatDbContext context, string now)
     {
         if (context.BotResponses.Any()) return;
@@ -908,11 +991,74 @@ public static class DbSeeder
             ("llm_declined", "That's OK! I'll try to figure it out on my own."),
             ("game_start", "Let's play a word game! We take turns adding one word at a time to build a funny story. I'll start: {0}"),
             ("game_start", "Alright, story time! Adding one word each. I'll begin: {0}"),
-            ("game_turn_prompt", "Add one word! The story so far: '{0}'"),
-            ("game_turn_prompt", "Your turn! Add the next word. Story: '{0}'"),
-            ("game_stop", "That was fun! Here's our story: {0}"),
-            ("game_stop", "What a tale! Here's what we came up with: {0}"),
+            ("game_turn_word_and_prompt", "{0} Add one word!"),
+            ("game_turn_word_and_prompt", "{0} Your turn! Add the next word."),
+            ("game_turn_word_and_prompt", "I'll add: {0}. Your turn!"),
+            ("game_stop", "That was fun! Here's our story:\n{0}"),
+            ("game_stop", "What a tale!\n{0}"),
+            ("game_stop_llm", "Here's what we came up with:\n{0}\n\nAnd here's a story from those words:\n{1}"),
             ("game_already_active", "We're already playing! Just add one word, or say 'stop game' to end."),
+            ("mad_libs_start", "Let's play Mad Libs! {0}"),
+            ("mad_libs_start", "Time for Mad Libs! {0}"),
+            ("mad_libs_prompt", "Give me {0}:"),
+            ("mad_libs_prompt", "Enter {0}:"),
+            ("mad_libs_prompt", "I need {0}:"),
+            ("mad_libs_reveal", "Here's our Mad Libs story:\n{0}"),
+            ("mad_libs_reveal", "Ta-da! Our Mad Libs:\n{0}"),
+            ("mad_libs_already_active", "We're already playing Mad Libs!"),
+            ("magic_8ball", "It is certain."),
+            ("magic_8ball", "Without a doubt."),
+            ("magic_8ball", "Yes definitely."),
+            ("magic_8ball", "You may rely on it."),
+            ("magic_8ball", "As I see it, yes."),
+            ("magic_8ball", "Most likely."),
+            ("magic_8ball", "Outlook good."),
+            ("magic_8ball", "Yes."),
+            ("magic_8ball", "Signs point to yes."),
+            ("magic_8ball", "It is decidedly so."),
+            ("magic_8ball", "Reply hazy, try again."),
+            ("magic_8ball", "Ask again later."),
+            ("magic_8ball", "Better not tell you now."),
+            ("magic_8ball", "Cannot predict now."),
+            ("magic_8ball", "Concentrate and ask again."),
+            ("magic_8ball", "Don't count on it."),
+            ("magic_8ball", "My reply is no."),
+            ("magic_8ball", "My sources say no."),
+            ("magic_8ball", "Outlook not so good."),
+            ("magic_8ball", "Very doubtful."),
+            ("dad_joke_setup", "{0}?"),
+            ("dad_joke_setup", "Here goes: {0}?"),
+            ("dad_joke_setup", "OK, {0}?"),
+            ("dad_joke_punchline", "{0}"),
+            ("dad_joke_punchline", "Because {0}"),
+            ("dad_joke_punchline", "The answer is: {0}"),
+            ("riddle_present", "Here's a riddle: {0}"),
+            ("riddle_present", "Riddle me this: {0}"),
+            ("riddle_present", "Can you solve this? {0}"),
+            ("riddle_correct", "That's right! Well done!"),
+            ("riddle_correct", "Correct! You got it!"),
+            ("riddle_correct", "Brilliant! That's the answer."),
+            ("riddle_wrong", "Not quite! Try again."),
+            ("riddle_wrong", "That's not right. Have another guess!"),
+            ("riddle_wrong", "Nope, but don't give up!"),
+            ("riddle_hint", "Here's a hint: {0}"),
+            ("riddle_hint", "OK, a clue: {0}"),
+            ("riddle_give_up", "The answer was {0}. Want another riddle?"),
+            ("riddle_give_up", "It's {0}. Fancy trying another?"),
+            ("riddle_already_active", "You already have a riddle to solve!"),
+            ("homework_check_processing", "Let me review our conversation for anything to tidy up..."),
+            ("homework_check_summary", "I reviewed our chat and {0}"),
+            ("homework_check_summary", "I checked our conversation and {0}"),
+            ("homework_check_none", "Everything looked good in our conversation."),
+            ("homework_check_none", "Our conversation looked fine, nothing to fix."),
+            ("wyr_question", "Would you rather {0} or {1}?"),
+            ("wyr_question", "Here's a question for you: would you rather {0} or {1}?"),
+            ("wyr_question", "Quick one — would you rather {0} or {1}?"),
+            ("wyr_acknowledgement", "{0}! That's an interesting choice!"),
+            ("wyr_acknowledgement", "Ah, a {0} person!"),
+            ("wyr_acknowledgement", "Good answer!"),
+            ("wyr_acknowledgement", "Fair enough!"),
+            ("wyr_acknowledgement", "Can't go wrong with that!"),
         };
 
         context.BotResponses.AddRange(responses.Select(r => new BotResponse

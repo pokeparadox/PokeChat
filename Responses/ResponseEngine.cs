@@ -348,6 +348,9 @@ public class ResponseEngine
             return ProcessToolMarkers(withBotName);
         }
 
+        var predictionResult = HandlePredictionRequest(input);
+        if (predictionResult != null) return predictionResult;
+
         var tokens = _tokeniser.Tokenise(input);
         var correctedTokens = _spellChecker.AutoCorrect(tokens);
         var tags = _posTagger.Tag(correctedTokens);
@@ -464,6 +467,49 @@ public class ResponseEngine
             return GetRandomResponse("topic_reference_old", olderTopic.Subject);
 
         return GetRandomResponse("topic_reference_old", olderTopic.Subject);
+    }
+
+    public string? BuildWyrQuestion(int? userId)
+    {
+        if (userId == null) return null;
+        var (factA, factB) = _knowledgeStore.GetTwoRandomUserFacts(userId.Value);
+        if (factA == null || factB == null) return null;
+
+        var optionA = BuildWyrOption(factA);
+        var optionB = BuildWyrOption(factB);
+
+        _context.SetContext(ContextKeys.WyrActive, "true");
+        _context.SetContext(ContextKeys.PendingWyrOptionA, optionA);
+        _context.SetContext(ContextKeys.PendingWyrOptionB, optionB);
+
+        var question = GetRandomResponse("wyr_question", optionA, optionB);
+        _context.SetContext(ContextKeys.PendingWyrQuestion, question);
+
+        return question;
+    }
+
+    public string HandleWouldYouRatherAcknowledge()
+    {
+        _context.SetContext(ContextKeys.WyrActive, null);
+        _context.SetContext(ContextKeys.PendingWyrQuestion, null);
+        var optionA = _context.GetContext(ContextKeys.PendingWyrOptionA);
+        _context.SetContext(ContextKeys.PendingWyrOptionA, null);
+        _context.SetContext(ContextKeys.PendingWyrOptionB, null);
+
+        var chosen = Random.Shared.Next(2) == 0 ? optionA : null;
+        return GetRandomResponse("wyr_acknowledgement", chosen ?? "");
+    }
+
+    private static string BuildWyrOption(Fact fact)
+    {
+        return fact.PredicateType switch
+        {
+            nameof(PredicateType.Preference) => $"having {fact.Object}",
+            nameof(PredicateType.Dislike) => $"avoiding {fact.Object}",
+            nameof(PredicateType.Possession) => $"owning {fact.Object}",
+            nameof(PredicateType.PersonalAttribute) => $"being {fact.Object}",
+            _ => $"{fact.Verb} {fact.Object}"
+        };
     }
 
     private string GenerateProactiveQuestion(int? userId)
@@ -815,6 +861,35 @@ public class ResponseEngine
 
             return result.Output;
         });
+    }
+
+    private static readonly HashSet<string> PredictionTriggers = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "magic 8 ball", "8 ball", "magic eight ball", "shake the ball",
+        "predict", "my fortune", "tell my fortune"
+    };
+
+    private string? HandlePredictionRequest(string input)
+    {
+        var lower = input.ToLowerInvariant().Trim();
+
+        foreach (var trigger in PredictionTriggers)
+        {
+            if (lower.Contains(trigger))
+                return Get8BallResponse();
+        }
+
+        if (lower.EndsWith("?") && lower != "?")
+            return Get8BallResponse();
+
+        return null;
+    }
+
+    private string Get8BallResponse()
+    {
+        var preamble = Random.Shared.Next(2) == 0 ? "*shakes the magic 8 ball* " : "";
+        var answer = GetRandomResponse("magic_8ball");
+        return answer != null ? preamble + answer : preamble + "Ask again later.";
     }
 
     private string? HandleLinkCreation(string input)

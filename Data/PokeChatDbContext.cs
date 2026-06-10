@@ -56,6 +56,9 @@ public sealed class PokeChatDbContext : DbContext
     public DbSet<ConversationMetric> ConversationMetrics => Set<ConversationMetric>();
     public DbSet<ResponseEffectiveness> ResponseEffectiveness => Set<ResponseEffectiveness>();
     public DbSet<StoryTemplate> StoryTemplates => Set<StoryTemplate>();
+    public DbSet<MadLibTemplate> MadLibTemplates => Set<MadLibTemplate>();
+    public DbSet<Joke> Jokes => Set<Joke>();
+    public DbSet<Riddle> Riddles => Set<Riddle>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -341,6 +344,32 @@ public sealed class PokeChatDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Template).IsRequired();
             entity.Property(e => e.Category);
+            entity.Property(e => e.CreatedAt).IsRequired();
+        });
+
+        modelBuilder.Entity<MadLibTemplate>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Template).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+        });
+
+        modelBuilder.Entity<Joke>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Setup).IsRequired();
+            entity.Property(e => e.Punchline).IsRequired();
+            entity.Property(e => e.Category);
+            entity.Property(e => e.CreatedAt).IsRequired();
+        });
+
+        modelBuilder.Entity<Riddle>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Question).IsRequired();
+            entity.Property(e => e.Answer).IsRequired();
+            entity.Property(e => e.Hint);
+            entity.Property(e => e.Difficulty);
             entity.Property(e => e.CreatedAt).IsRequired();
         });
     }

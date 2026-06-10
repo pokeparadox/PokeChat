@@ -46,4 +46,20 @@ public static class ContextKeys
     public const string GameModeActive = "game_mode_active";
     public const string GameStory = "game_story";
     public const string GameTurnCount = "game_turn_count";
+    public const string MadLibsActive = "mad_libs_active";
+    public const string MadLibsTemplateId = "mad_libs_template_id";
+    public const string MadLibsSlotIndex = "mad_libs_slot_index";
+    public const string MadLibsFilledWords = "mad_libs_filled_words";
+    public const string MadLibsCurrentSlot = "mad_libs_current_slot";
+    public const string PendingJokeSetup = "pending_joke_setup";
+    public const string PendingJokePunchline = "pending_joke_punchline";
+    public const string PendingRiddleQuestion = "pending_riddle_question";
+    public const string PendingRiddleAnswer = "pending_riddle_answer";
+    public const string PendingRiddleHint = "pending_riddle_hint";
+    public const string PendingRiddleAttempts = "pending_riddle_attempts";
+    public const string RiddleActive = "riddle_active";
+    public const string WyrActive = "wyr_active";
+    public const string PendingWyrQuestion = "pending_wyr_question";
+    public const string PendingWyrOptionA = "pending_wyr_option_a";
+    public const string PendingWyrOptionB = "pending_wyr_option_b";
 }

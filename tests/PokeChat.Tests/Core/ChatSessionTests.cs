@@ -1201,7 +1201,7 @@ public class ChatSessionTests
 
             var response = session.HandleGameTurn("stop");
 
-            response.ShouldContain("story");
+            response.ShouldNotBeNullOrEmpty();
         }
     }
 
@@ -1217,7 +1217,69 @@ public class ChatSessionTests
             var response = session.HandleGameTurn("The");
 
             response.ShouldNotBeNullOrEmpty();
-            response.ShouldContain("story");
+            response.ShouldNotContain("story");
+        }
+    }
+
+    [Fact]
+    public void HandleGameTurn_ShowsBotWord()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.TryHandleGameStart("let's play a word game", out _);
+
+            var response = session.HandleGameTurn("The");
+
+            response.ShouldNotBeNullOrEmpty();
+            response.ShouldNotContain("Story");
+            response.ShouldNotContain("story");
+        }
+    }
+
+    [Fact]
+    public void ApplyGameGrammarFilter_TrimsTrailingConjunction()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            var result = session.ApplyGameGrammarFilter("the cat went to the cinema and");
+            result.ShouldNotContain("and");
+            result.ShouldContain("The cat went to the cinema");
+        }
+    }
+
+    [Fact]
+    public void ApplyGameGrammarFilter_SplitsIntoMultipleSentences()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            var result = session.ApplyGameGrammarFilter("the cat went to the cinema and the sky is blue today");
+            result.ShouldContain(". ");
+        }
+    }
+
+    [Fact]
+    public void ApplyGameGrammarFilter_CollapsesDuplicateWords()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            var result = session.ApplyGameGrammarFilter("the the cat went to the cinema");
+            result.ShouldNotContain("the the");
+        }
+    }
+
+    [Fact]
+    public void ApplyGameGrammarFilter_AddsTrailingPeriod()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            var result = session.ApplyGameGrammarFilter("the cat went to the cinema");
+            result.ShouldEndWith(".");
         }
     }
 
@@ -1249,6 +1311,386 @@ public class ChatSessionTests
 
             result.ShouldBeTrue();
             response.ShouldBe("We're already playing! Just add one word, or say 'stop game' to end.");
+        }
+    }
+
+    [Fact]
+    public void TryHandleMadLibsStart_TriggersOnPhrase()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedMadLibTemplates(db.Context);
+            session.HandleNameInput("my name is Alice");
+
+            var result = session.TryHandleMadLibsStart("let's play mad libs", out var response);
+
+            result.ShouldBeTrue();
+            response.ShouldContain("Mad Libs");
+        }
+    }
+
+    [Fact]
+    public void TryHandleMadLibsStart_AlreadyActive_ReturnsPrompt()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedMadLibTemplates(db.Context);
+            session.HandleNameInput("my name is Alice");
+            session.TryHandleMadLibsStart("let's play mad libs", out _);
+
+            var result = session.TryHandleMadLibsStart("mad libs", out var response);
+
+            result.ShouldBeTrue();
+            response.ShouldBe("We're already playing Mad Libs!");
+        }
+    }
+
+    [Fact]
+    public void TryHandleMadLibsStart_GameActive_Blocks()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.TryHandleGameStart("let's play a word game", out _);
+
+            var result = session.TryHandleMadLibsStart("mad libs", out var response);
+
+            result.ShouldBeTrue();
+            response.ShouldContain("word game");
+        }
+    }
+
+    [Fact]
+    public void HandleMadLibsTurn_FillsFirstSlot_PromptsNext()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedMadLibTemplates(db.Context);
+            session.HandleNameInput("my name is Alice");
+            session.TryHandleMadLibsStart("mad libs", out _);
+
+            var response = session.HandleMadLibsTurn("silly");
+
+            response.ShouldContain("noun");
+        }
+    }
+
+    [Fact]
+    public void HandleMadLibsTurn_AllSlotsFilled_RevealsStory()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedMadLibTemplates(db.Context);
+            session.HandleNameInput("my name is Alice");
+            session.TryHandleMadLibsStart("mad libs", out _);
+
+            session.HandleMadLibsTurn("silly");
+            session.HandleMadLibsTurn("cat");
+            session.HandleMadLibsTurn("jumped");
+            session.HandleMadLibsTurn("big");
+            var response = session.HandleMadLibsTurn("monkeys");
+
+            response.ShouldNotBeNullOrEmpty();
+            response.ShouldContain("cat");
+            response.ShouldContain("jumped");
+        }
+    }
+
+    [Fact]
+    public void HandleMadLibsTurn_CancelsOnStop()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedMadLibTemplates(db.Context);
+            session.HandleNameInput("my name is Alice");
+            session.TryHandleMadLibsStart("mad libs", out _);
+
+            var response = session.HandleMadLibsTurn("stop");
+
+            response.ShouldContain("another time");
+        }
+    }
+
+    [Fact]
+    public void HandleMadLibsTurn_CancelsOnNeverMind()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedMadLibTemplates(db.Context);
+            session.HandleNameInput("my name is Alice");
+            session.TryHandleMadLibsStart("mad libs", out _);
+
+            var response = session.HandleMadLibsTurn("never mind");
+
+            response.ShouldContain("another time");
+        }
+    }
+
+    [Fact]
+    public void ProcessInput_MadLibsThroughProcessInput_StartsAndReveals()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedMadLibTemplates(db.Context);
+            session.HandleNameInput("my name is Alice");
+
+            var startResponse = session.ProcessInput("let's play mad libs");
+            startResponse.ShouldContain("Mad Libs");
+
+            var turnResponse = session.ProcessInput("silly");
+            turnResponse.ShouldNotBeNullOrEmpty();
+
+            var turn2 = session.ProcessInput("cat");
+            turn2.ShouldNotBeNullOrEmpty();
+
+            var turn3 = session.ProcessInput("jumped");
+            turn3.ShouldNotBeNullOrEmpty();
+
+            var turn4 = session.ProcessInput("big");
+            turn4.ShouldNotBeNullOrEmpty();
+
+            var turn5 = session.ProcessInput("monkeys");
+            turn5.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    // --- Dad Jokes ---
+
+    [Fact]
+    public void TryHandleJokeStart_TriggersOnPhrase()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedJokes(db.Context);
+            session.HandleNameInput("my name is Alice");
+
+            var result = session.TryHandleJokeStart("tell me a joke", out var response);
+
+            result.ShouldBeTrue();
+            response.ShouldNotBeNullOrEmpty();
+            response.ShouldContain("?");
+        }
+    }
+
+    [Fact]
+    public void TryHandleJokeStart_NoJokes_ReturnsEmpty()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+
+            var result = session.TryHandleJokeStart("tell me a joke", out var response);
+
+            result.ShouldBeTrue();
+            response.ShouldBe("I don't have any jokes to tell yet!");
+        }
+    }
+
+    [Fact]
+    public void TryHandleJokeStart_NonTrigger_ReturnsFalse()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+
+            var result = session.TryHandleJokeStart("what is the weather", out _);
+
+            result.ShouldBeFalse();
+        }
+    }
+
+    [Fact]
+    public void HandleJokeTurn_ReturnsPunchline()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedJokes(db.Context);
+            session.HandleNameInput("my name is Alice");
+            session.TryHandleJokeStart("tell me a joke", out _);
+
+            var response = session.HandleJokeTurn();
+
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void ProcessInput_JokeFlow_ThroughProcessInput()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedJokes(db.Context);
+            session.HandleNameInput("my name is Alice");
+
+            var setupResponse = session.ProcessInput("tell me a joke");
+            setupResponse.ShouldNotBeNullOrEmpty();
+            setupResponse.ShouldContain("?");
+
+            var punchResponse = session.ProcessInput("ha ha");
+            punchResponse.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    // --- Riddles ---
+
+    [Fact]
+    public void TryHandleRiddleStart_TriggersOnPhrase()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedRiddles(db.Context);
+            session.HandleNameInput("my name is Alice");
+
+            var result = session.TryHandleRiddleStart("tell me a riddle", out var response);
+
+            result.ShouldBeTrue();
+            response.ShouldNotBeNullOrEmpty();
+            response.ShouldContain("riddle");
+        }
+    }
+
+    [Fact]
+    public void TryHandleRiddleStart_NoRiddles_ReturnsEmpty()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+
+            var result = session.TryHandleRiddleStart("tell me a riddle", out var response);
+
+            result.ShouldBeTrue();
+            response.ShouldBe("I don't have any riddles yet!");
+        }
+    }
+
+    [Fact]
+    public void HandleRiddleTurn_CorrectGuess_Wins()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedRiddles(db.Context);
+            session.HandleNameInput("my name is Alice");
+            session.TryHandleRiddleStart("riddle me", out _);
+
+            var response = session.HandleRiddleTurn("echo");
+
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void HandleRiddleTurn_WrongGuess_LetsTryAgain()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedRiddles(db.Context);
+            session.HandleNameInput("my name is Alice");
+            session.TryHandleRiddleStart("riddle me", out _);
+
+            var response = session.HandleRiddleTurn("I don't know");
+
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void HandleRiddleTurn_GiveUp_RevealsAnswer()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedRiddles(db.Context);
+            session.HandleNameInput("my name is Alice");
+            session.TryHandleRiddleStart("riddle me", out _);
+
+            var response = session.HandleRiddleTurn("i give up");
+
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void HandleRiddleTurn_AfterThreeAttempts_GivesUp()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedRiddles(db.Context);
+            session.HandleNameInput("my name is Alice");
+            session.TryHandleRiddleStart("riddle me", out _);
+
+            session.HandleRiddleTurn("wrong1");
+            session.HandleRiddleTurn("wrong2");
+            var response = session.HandleRiddleTurn("wrong3");
+
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void HandleRiddleTurn_Hint_ReturnsHint()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedRiddles(db.Context);
+            session.HandleNameInput("my name is Alice");
+            session.TryHandleRiddleStart("riddle me", out _);
+
+            var response = session.HandleRiddleTurn("hint");
+
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void TryHandleRiddleStart_AlreadyActive_ReturnsPrompt()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedRiddles(db.Context);
+            session.HandleNameInput("my name is Alice");
+            session.TryHandleRiddleStart("riddle me", out _);
+
+            var result = session.TryHandleRiddleStart("tell me a riddle", out var response);
+
+            result.ShouldBeTrue();
+            response.ShouldContain("already");
+        }
+    }
+
+    [Fact]
+    public void ProcessInput_RiddleFlow_ThroughProcessInput()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedRiddles(db.Context);
+            session.HandleNameInput("my name is Alice");
+
+            var riddleResponse = session.ProcessInput("riddle me");
+            riddleResponse.ShouldNotBeNullOrEmpty();
+
+            var answerResponse = session.ProcessInput("echo");
+            answerResponse.ShouldNotBeNullOrEmpty();
         }
     }
 }

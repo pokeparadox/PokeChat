@@ -1145,3 +1145,45 @@ Added a word game where the user and bot take turns adding one word at a time to
 - `HandleGameTurn_BotAddsWord`
 - `HandleGameTurn_UserSendsMultipleWords_TakesFirst`
 - `TryHandleGameStart_AlreadyActive_ReturnsPrompt`
+
+---
+
+## Phase 33 — Word Game UX Improvements ✅
+
+Hides mid-game story reveal, shows thinking indicator during LLM calls, applies grammar filter to final story, and adds optional LLM story summary at game end.
+
+### Changes
+- `ChatSession.cs`: updated `HandleGameTurn` to return only bot word + prompt (`game_turn_word_and_prompt`), shows `"{_botName} is thinking..."` before LLM call; updated `HandleGameEnd` to apply `ApplyGameGrammarFilter` then optionally call LLM summary (`game_stop_llm`); added `ApplyGameGrammarFilter` (8-step pipeline: trim trailing conj/prep/det, collapse dupes, sentence-split at and/but/so, intro word commas, pre-conjunction commas, a→an, capitalize, trailing period); updated `GetGameResponse` fallbacks
+- `LLMOrchestrator.cs`: added `GenerateGameStorySummary` method (bypasses MaxCallsPerSession, separate prompt)
+- `DbSeeder.cs` / `TestDataHelper.cs`: replaced `game_turn_prompt` with `game_turn_word_and_prompt` (3 templates), updated `game_stop` templates with `\n`, added `game_stop_llm` category
+- `TestDataHelper.cs`: added `and`, `on`, `a`, `an`, `once` to seeded POS dictionary
+
+### Tests (12 new/updated, 355/356 pass)
+- Updated: `HandleGameTurn_BotAddsWord` (checks no story leak), `HandleGameTurn_UserSaysStop_EndsGame` (flexible assertion)
+- New: `HandleGameTurn_ShowsBotWord`, `ApplyGameGrammarFilter_TrimsTrailingConjunction`, `ApplyGameGrammarFilter_SplitsIntoMultipleSentences`, `ApplyGameGrammarFilter_CollapsesDuplicateWords`, `ApplyGameGrammarFilter_AddsTrailingPeriod`
+- New `ChatSessionLLMTests`: `HandleGameEnd_WithLLM_IncludesSummary`
+- New `LLMOrchestratorTests`: `GenerateGameStorySummary_ReturnsSummary`, `GenerateGameStorySummary_Unavailable_ReturnsNull`, `GenerateGameStorySummary_Declined_ReturnsNull`
+- 1 pre-existing flaky rename test failure unrelated
+
+---
+
+## Phase 34 — Dad Jokes + Riddles ✅
+
+Two content-driven diversions: dad jokes (setup→punchline, 2-turn) and riddles (multi-turn with hints/attempts/give-up).
+
+### Changes
+- `Data/Entities/Joke.cs` (new): Id, Setup, Punchline, Category, CreatedAt
+- `Data/Entities/Riddle.cs` (new): Id, Question, Answer, Hint, Difficulty, CreatedAt
+- `Data/Schema.sql`: added `jokes` and `riddles` tables
+- `Data/PokeChatDbContext.cs`: added `DbSet<Joke> Jokes`, `DbSet<Riddle> Riddles` + OnModelCreating
+- `Core/ContextKeys.cs`: added `PendingJokeSetup`, `PendingJokePunchline`, `PendingRiddleQuestion`, `PendingRiddleAnswer`, `PendingRiddleHint`, `PendingRiddleAttempts`, `RiddleActive`
+- `Knowledge/KnowledgeStore.cs`: added `GetRandomJoke()`, `GetRandomRiddle()`
+- `Data/DbSeeder.cs`: `SeedJokes()` (10 family-friendly jokes), `SeedRiddles()` (8 riddles with hints/difficulty), `SeedBotResponses` (dad_joke_setup/punchline, riddle_present/correct/wrong/hint/give_up/already_active)
+- `tests/Helpers/TestDataHelper.cs`: `SeedJokes()` (2 jokes), `SeedRiddles()` (2 riddles), bot response categories for tests
+- `Core/ChatSession.cs`: `JokeStartPhrases` (10), `RiddleStartPhrases` (7), `SurrenderPhrases` (9), routing before main flow (PendingJokeSetup → HandleJokeTurn, RiddleActive → HandleRiddleTurn), `TryHandleJokeStart`/`HandleJokeTurn`/`TryHandleRiddleStart`/`HandleRiddleTurn`/`IsCorrectGuess`/`ClearRiddleState`/`GetJokeResponse`/`GetRiddleResponse`, ordered before MadLibs/Game start checks
+- EF Core migration: `AddJokesAndRiddles`
+
+### Tests (12 new, 384/385 pass)
+- `TryHandleJokeStart_TriggersOnPhrase`, `TryHandleJokeStart_NoJokes_ReturnsEmpty`, `TryHandleJokeStart_NonTrigger_ReturnsFalse`, `HandleJokeTurn_ReturnsPunchline`, `ProcessInput_JokeFlow_ThroughProcessInput`
+- `TryHandleRiddleStart_TriggersOnPhrase`, `TryHandleRiddleStart_NoRiddles_ReturnsEmpty`, `HandleRiddleTurn_CorrectGuess_Wins`, `HandleRiddleTurn_WrongGuess_LetsTryAgain`, `HandleRiddleTurn_GiveUp_RevealsAnswer`, `HandleRiddleTurn_AfterThreeAttempts_GivesUp`, `HandleRiddleTurn_Hint_ReturnsHint`, `TryHandleRiddleStart_AlreadyActive_ReturnsPrompt`, `ProcessInput_RiddleFlow_ThroughProcessInput`
+- 1 pre-existing flaky game start test (template randomization)

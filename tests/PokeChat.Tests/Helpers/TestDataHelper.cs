@@ -112,11 +112,38 @@ internal static class TestDataHelper
             ("llm_declined", "That's OK! I'll try to figure it out on my own."),
             ("game_start", "Let's play a word game! We take turns adding one word at a time to build a funny story. I'll start: {0}"),
             ("game_start", "Alright, story time! Adding one word each. I'll begin: {0}"),
-            ("game_turn_prompt", "Add one word! The story so far: '{0}'"),
-            ("game_turn_prompt", "Your turn! Add the next word. Story: '{0}'"),
-            ("game_stop", "That was fun! Here's our story: {0}"),
-            ("game_stop", "What a tale! Here's what we came up with: {0}"),
+            ("game_turn_word_and_prompt", "{0} Add one word!"),
+            ("game_turn_word_and_prompt", "{0} Your turn! Add the next word."),
+            ("game_turn_word_and_prompt", "I'll add: {0}. Your turn!"),
+            ("game_stop", "That was fun! Here's our story:\n{0}"),
+            ("game_stop", "What a tale!\n{0}"),
+            ("game_stop_llm", "Here's what we came up with:\n{0}\n\nAnd here's a story from those words:\n{1}"),
             ("game_already_active", "We're already playing! Just add one word, or say 'stop game' to end."),
+            ("mad_libs_start", "Let's play Mad Libs! {0}"),
+            ("mad_libs_prompt", "Give me {0}:"),
+            ("mad_libs_reveal", "Here's our Mad Libs story:\n{0}"),
+            ("mad_libs_already_active", "We're already playing Mad Libs!"),
+            ("homework_check_processing", "Let me review our conversation for anything to tidy up..."),
+            ("homework_check_summary", "I reviewed our chat and {0}"),
+            ("homework_check_summary", "I checked our conversation and {0}"),
+            ("homework_check_none", "Everything looked good in our conversation."),
+            ("homework_check_none", "Our conversation looked fine, nothing to fix."),
+            ("magic_8ball", "Yes."),
+            ("magic_8ball", "No."),
+            ("magic_8ball", "Maybe."),
+            ("magic_8ball", "Ask again later."),
+            ("magic_8ball", "It is certain."),
+            ("dad_joke_setup", "{0}?"),
+            ("dad_joke_punchline", "{0}"),
+            ("riddle_present", "Here's a riddle: {0}"),
+            ("riddle_correct", "That's right! Well done!"),
+            ("riddle_wrong", "Not quite! Try again."),
+            ("riddle_hint", "Here's a hint: {0}"),
+            ("riddle_give_up", "The answer was {0}."),
+            ("riddle_already_active", "You already have a riddle!"),
+            ("wyr_question", "Would you rather {0} or {1}?"),
+            ("wyr_acknowledgement", "{0}! That's an interesting choice!"),
+            ("wyr_acknowledgement", "Good answer!"),
         };
         db.BotResponses.AddRange(responses.Select(r => new BotResponse
         {
@@ -210,7 +237,12 @@ internal static class TestDataHelper
             new PosDictionaryEntry { Word = "palace", WordType = "noun", CreatedAt = now },
             new PosDictionaryEntry { Word = "knowledge", WordType = "noun", CreatedAt = now },
             new PosDictionaryEntry { Word = "facts", WordType = "noun", CreatedAt = now },
-            new PosDictionaryEntry { Word = "search", WordType = "verb", CreatedAt = now }
+            new PosDictionaryEntry { Word = "search", WordType = "verb", CreatedAt = now },
+            new PosDictionaryEntry { Word = "and", WordType = "conjunction", CreatedAt = now },
+            new PosDictionaryEntry { Word = "on", WordType = "preposition", CreatedAt = now },
+            new PosDictionaryEntry { Word = "a", WordType = "determiner", CreatedAt = now },
+            new PosDictionaryEntry { Word = "an", WordType = "determiner", CreatedAt = now },
+            new PosDictionaryEntry { Word = "once", WordType = "adverb", CreatedAt = now }
         );
         db.SaveChanges();
     }
@@ -326,7 +358,23 @@ internal static class TestDataHelper
             new BotResponse { Category = "tool_unavailable", ResponseText = "I don't have a way to search right now.", CreatedAt = now },
             new BotResponse { Category = "tool_unavailable", ResponseText = "I can't look that up at the moment.", CreatedAt = now },
             new BotResponse { Category = "tool_timeout", ResponseText = "That search took too long.", CreatedAt = now },
-            new BotResponse { Category = "tool_error", ResponseText = "I tried that but got an error.", CreatedAt = now }
+            new BotResponse { Category = "tool_error", ResponseText = "I tried that but got an error.", CreatedAt = now },
+            new BotResponse { Category = "wyr_question", ResponseText = "Would you rather {0} or {1}?", CreatedAt = now },
+            new BotResponse { Category = "wyr_acknowledgement", ResponseText = "{0}! That's an interesting choice!", CreatedAt = now },
+            new BotResponse { Category = "wyr_acknowledgement", ResponseText = "Good answer!", CreatedAt = now }
+        );
+        db.SaveChanges();
+    }
+
+    public static void SeedMadLibTemplates(PokeChatDbContext db)
+    {
+        var now = DateTime.UtcNow.ToString("o");
+        db.MadLibTemplates.AddRange(
+            new MadLibTemplate
+            {
+                Template = "The {adjective} {noun} {verb_past} over the {adjective} {plural_noun}.",
+                CreatedAt = now
+            }
         );
         db.SaveChanges();
     }
@@ -350,6 +398,26 @@ internal static class TestDataHelper
                 Template = "A long time ago, {character} was {a_adj} {noun} who dreamed of {verb}ing. Everyone said it was impossible, but {character} didn't listen. And that's how the greatest adventure began.",
                 CreatedAt = now
             }
+        );
+        db.SaveChanges();
+    }
+
+    public static void SeedJokes(PokeChatDbContext db)
+    {
+        var now = DateTime.UtcNow.ToString("o");
+        db.Jokes.AddRange(
+            new Joke { Setup = "Why did the chicken cross the road", Punchline = "To get to the other side!", Category = "animal", CreatedAt = now },
+            new Joke { Setup = "What do you call a bear with no teeth", Punchline = "A gummy bear!", Category = "animal", CreatedAt = now }
+        );
+        db.SaveChanges();
+    }
+
+    public static void SeedRiddles(PokeChatDbContext db)
+    {
+        var now = DateTime.UtcNow.ToString("o");
+        db.Riddles.AddRange(
+            new Riddle { Question = "I speak without a mouth and hear without ears. What am I?", Answer = "an echo", Hint = "Think about sound", Difficulty = 2, CreatedAt = now },
+            new Riddle { Question = "What has keys but can't open locks?", Answer = "a piano", Hint = "Think about music", Difficulty = 1, CreatedAt = now }
         );
         db.SaveChanges();
     }

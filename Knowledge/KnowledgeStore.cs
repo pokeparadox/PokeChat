@@ -791,6 +791,13 @@ public class KnowledgeStore(PokeChatDbContext context)
         }
     }
 
+    public void DeactivateLearnedRule(int ruleId)
+    {
+        var rule = context.LearnedResponseRules.Find(ruleId);
+        if (rule != null)
+            rule.IsActive = false;
+    }
+
     public void RecordFeedback(int ruleId, int userId, string feedback, bool isLearned, string? correctionText = null)
     {
         var entry = new ResponseFeedback
@@ -994,5 +1001,50 @@ public class KnowledgeStore(PokeChatDbContext context)
 
         if (names.Count == 0) return null;
         return names[Random.Shared.Next(names.Count)];
+    }
+
+    public MadLibTemplate? GetRandomMadLibTemplate()
+    {
+        var templates = context.MadLibTemplates.ToList();
+        if (templates.Count == 0) return null;
+        return templates[Random.Shared.Next(templates.Count)];
+    }
+
+    public (Fact?, Fact?) GetTwoRandomUserFacts(int userId)
+    {
+        var facts = context.Facts
+            .Where(f => f.UserId == userId)
+            .SelectFacet<Fact>()
+            .ToList();
+
+        if (facts.Count < 2) return (null, null);
+
+        var distinct = facts
+            .GroupBy(f => f.Object.ToLowerInvariant())
+            .Where(g => g.Count() >= 1)
+            .Select(g => g.First())
+            .ToList();
+
+        if (distinct.Count < 2) return (null, null);
+
+        var first = distinct[Random.Shared.Next(distinct.Count)];
+        distinct.Remove(first);
+        var second = distinct[Random.Shared.Next(distinct.Count)];
+
+        return (first, second);
+    }
+
+    public Joke? GetRandomJoke()
+    {
+        var jokes = context.Jokes.ToList();
+        if (jokes.Count == 0) return null;
+        return jokes[Random.Shared.Next(jokes.Count)];
+    }
+
+    public Riddle? GetRandomRiddle()
+    {
+        var riddles = context.Riddles.ToList();
+        if (riddles.Count == 0) return null;
+        return riddles[Random.Shared.Next(riddles.Count)];
     }
 }

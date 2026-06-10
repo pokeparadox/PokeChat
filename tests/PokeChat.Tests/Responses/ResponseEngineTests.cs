@@ -493,4 +493,115 @@ public class ResponseEngineTests
         var response = engine.GenerateResponse("tell me a story", null);
         response.ShouldNotBeNullOrEmpty();
     }
+
+    [Fact]
+    public void Explicit8Ball_ReturnsAnswer()
+    {
+        using var db = new FreshDbContext();
+        var context = new ContextTracker();
+        var engine = CreateEngine(db.Context, context);
+        var response = engine.GenerateResponse("magic 8 ball, will I win?", null);
+        response.ShouldNotBeNullOrEmpty();
+        var seededAnswers = new[] { "Yes.", "No.", "Maybe.", "Ask again later.", "It is certain." };
+        var withoutPreamble = response.StartsWith("*shakes the magic 8 ball* ")
+            ? response["*shakes the magic 8 ball* ".Length..]
+            : response;
+        seededAnswers.ShouldContain(withoutPreamble);
+    }
+
+    [Fact]
+    public void ExplicitPredict_Returns8Ball()
+    {
+        using var db = new FreshDbContext();
+        var context = new ContextTracker();
+        var engine = CreateEngine(db.Context, context);
+        var response = engine.GenerateResponse("predict my future", null);
+        response.ShouldNotBeNullOrEmpty();
+        var seededAnswers = new[] { "Yes.", "No.", "Maybe.", "Ask again later.", "It is certain." };
+        var withoutPreamble = response.StartsWith("*shakes the magic 8 ball* ")
+            ? response["*shakes the magic 8 ball* ".Length..]
+            : response;
+        seededAnswers.ShouldContain(withoutPreamble);
+    }
+
+    [Fact]
+    public void QuestionFallthrough_Returns8Ball()
+    {
+        using var db = new FreshDbContext();
+        var context = new ContextTracker();
+        var engine = CreateEngine(db.Context, context);
+        var response = engine.GenerateResponse("Will I get the job?", null);
+        response.ShouldNotBeNullOrEmpty();
+        var seededAnswers = new[] { "Yes.", "No.", "Maybe.", "Ask again later.", "It is certain." };
+        var withoutPreamble = response.StartsWith("*shakes the magic 8 ball* ")
+            ? response["*shakes the magic 8 ball* ".Length..]
+            : response;
+        seededAnswers.ShouldContain(withoutPreamble);
+    }
+
+    [Fact]
+    public void HandledQuestion_No8Ball()
+    {
+        using var db = new FreshDbContext();
+        var context = new ContextTracker();
+
+        var now = DateTime.UtcNow.ToString("o");
+        db.Context.ResponseRules.Add(new()
+        {
+            Pattern = @"what is a cat",
+            InputType = "Question",
+            IsActive = true,
+            CreatedAt = now,
+            Responses = [new() { ResponseText = "Cats are fascinating creatures." }]
+        });
+        db.Context.SaveChanges();
+
+        var engine = CreateEngine(db.Context, context);
+        var response = engine.GenerateResponse("what is a cat?", null);
+        response.ShouldBe("Cats are fascinating creatures.");
+    }
+
+    [Fact]
+    public void Statement_No8Ball()
+    {
+        using var db = new FreshDbContext();
+        var context = new ContextTracker();
+        var engine = CreateEngine(db.Context, context);
+        var response = engine.GenerateResponse("I like pizza", null);
+        response.ShouldNotBeNullOrEmpty();
+        response.ShouldNotStartWith("*shakes the magic 8 ball* ");
+        var seededAnswers = new[] { "Yes.", "No.", "Maybe.", "Ask again later.", "It is certain." };
+        seededAnswers.ShouldNotContain(response);
+    }
+
+    [Fact]
+    public void EmptyQuestionMark_Skips()
+    {
+        using var db = new FreshDbContext();
+        var context = new ContextTracker();
+        var engine = CreateEngine(db.Context, context);
+        var response = engine.GenerateResponse("?", null);
+        response.ShouldNotBeNullOrEmpty();
+        response.ShouldNotStartWith("*shakes the magic 8 ball* ");
+        var seededAnswers = new[] { "Yes.", "No.", "Maybe.", "Ask again later.", "It is certain." };
+        seededAnswers.ShouldNotContain(response);
+    }
+
+    [Fact]
+    public void RandomSelection_ProvidesVariety()
+    {
+        using var db = new FreshDbContext();
+        var context = new ContextTracker();
+        var engine = CreateEngine(db.Context, context);
+        var answers = new HashSet<string>();
+        for (int i = 0; i < 50; i++)
+        {
+            var response = engine.GenerateResponse("magic 8 ball, will I win?", null);
+            var withoutPreamble = response.StartsWith("*shakes the magic 8 ball* ")
+                ? response["*shakes the magic 8 ball* ".Length..]
+                : response;
+            answers.Add(withoutPreamble);
+        }
+        answers.Count.ShouldBeGreaterThanOrEqualTo(3);
+    }
 }
