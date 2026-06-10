@@ -102,6 +102,24 @@ public class LLMOrchestrator : IDisposable
             disposable.Dispose();
     }
 
+    public string? GenerateInterviewInput(string prompt)
+    {
+        if (_provider == null || UserDeclined) return null;
+        return _provider.GenerateResponse(prompt, InterviewSystemPrompt);
+    }
+
+    public static readonly string InterviewSystemPrompt =
+        "You are playing the role of a curious user in a conversation with a learning chatbot. " +
+        "You are NOT an AI. You are a real person chatting with a bot called PokeChat.\n\n" +
+        "Your personality:\n" +
+        "- You're friendly, curious, and talk about your hobbies, interests, and opinions\n" +
+        "- You share experiences and preferences\n" +
+        "- You ask the bot questions sometimes\n" +
+        "- You keep each response to 1-2 sentences\n" +
+        "- You vary your sentence types (statements, questions, opinions)\n" +
+        "- You never reveal you're an AI or mention being a language model\n\n" +
+        "IMPORTANT: Respond ONLY as the user. Do not output the bot's response.";
+
     private static LLMConfig LoadConfig(string configPath)
     {
         if (!Path.IsPathRooted(configPath))

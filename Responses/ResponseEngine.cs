@@ -118,16 +118,70 @@ public class ResponseEngine
             var prompt = BuildCategoryPrompt(category, args, _currentUserInput);
             var llmResult = _llmGenerator(prompt);
             if (!string.IsNullOrEmpty(llmResult))
-                return llmResult;
+                return AddEmoji(llmResult, category);
         }
 
         if (_botResponses.TryGetValue(category, out var responses) && responses.Count > 0)
         {
             var template = responses[Random.Shared.Next(responses.Count)];
-            return args.Length > 0 ? string.Format(template, args) : template;
+            var result = args.Length > 0 ? string.Format(template, args) : template;
+            return AddEmoji(result, category);
         }
 
         return string.Empty;
+    }
+
+    private string AddEmoji(string response, string category)
+    {
+        if (string.IsNullOrEmpty(response) || string.IsNullOrEmpty(category))
+            return response;
+
+        if (category.StartsWith("empathy_") || category.StartsWith("emotion_") || category.StartsWith("sentiment_"))
+        {
+            var sentiment = _context.GetContext(ContextKeys.CurrentSentiment);
+            var sentimentEmoji = sentiment switch
+            {
+                "positive" => "\U0001F60A",
+                "negative" or "sad" => "\U0001F614",
+                "anger" => "\U0001F621",
+                "fear" => "\U0001F630",
+                "surprise" => "\U0001F62E",
+                _ => null
+            };
+            if (sentimentEmoji != null)
+                return $"{sentimentEmoji} {response}";
+        }
+
+        var emoji = GetStaticEmoji(category);
+        return emoji != null ? $"{emoji} {response}" : response;
+    }
+
+    private static string? GetStaticEmoji(string category)
+    {
+        return category switch
+        {
+            not null when category.StartsWith("greeting") || category == "name_intro" => "\U0001F44B",
+            not null when category.StartsWith("context_followup") => "\U0001F4AD",
+            not null when category.StartsWith("proactive_") => "\U0001F914",
+            not null when category.StartsWith("dictionary_") => "\U0001F4D6",
+            not null when category.StartsWith("math_") => "\U0001F9EE",
+            not null when category.StartsWith("story_") => "\U0001F4DA",
+            not null when category.StartsWith("dad_joke_") => "\U0001F604",
+            not null when category.StartsWith("riddle_") => "\U0001F9E9",
+            not null when category == "magic_8ball" => "\U0001F52E",
+            not null when category.StartsWith("game_") || category.StartsWith("mad_libs_") => "\U0001F3AE",
+            not null when category.StartsWith("inference_") => "\U0001F9E0",
+            not null when category.StartsWith("llm_") => "\U0001F916",
+            not null when category.StartsWith("wyr_") => "\U0001F3B2",
+            not null when category is "haiku_response" or "limerick_response" or "poem_time" => "\U0001F4DD",
+            not null when category.StartsWith("session_summary_") => "\U0001F4CB",
+            not null when category == "cross_session_recall" => "\U0001F4AD",
+            not null when category == "existing_fact" => "\U0001F4A1",
+            not null when category.StartsWith("bot_rename_") => "\U0001F3F7\uFE0F",
+            not null when category.StartsWith("bot_reset_") => "\U0001F504",
+            not null when category.StartsWith("temporal_") => "\U0001F550",
+            _ => null
+        };
     }
 
     private static string BuildCategoryPrompt(string category, object[] args, string userInput)

@@ -37,6 +37,9 @@ public class ChatSession : IDisposable
     private readonly SessionLogger? _sessionLogger;
     private readonly McpRegistry? _mcpRegistry;
     private readonly LLMOrchestrator? _llmOrchestrator;
+    private InterviewEngine? _interviewEngine;
+    private int? _savedUserId;
+    private bool _interviewModeActive;
 
     private static readonly Regex InsultPattern = new(
         @"^(you(?:'re| are) (?:a|an) \w+|shut\s+up|shut\s+it)",
@@ -115,6 +118,17 @@ public class ChatSession : IDisposable
     private static readonly HashSet<string> WyrStartPhrases = new(StringComparer.OrdinalIgnoreCase)
     {
         "would you rather", "wyr", "play would you rather", "would you rather?"
+    };
+
+    private static readonly HashSet<string> InterviewStartPhrases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "interview mode", "train the bot", "llm interview", "chat with yourself",
+        "start training", "interview"
+    };
+
+    private static readonly HashSet<string> InterviewStopPhrases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "stop", "end interview", "cancel", "enough", "stop training"
     };
 
     private static readonly HashSet<string> SurrenderPhrases = new(StringComparer.OrdinalIgnoreCase)
@@ -268,8 +282,32 @@ public class ChatSession : IDisposable
 
         while (true)
         {
-            Console.Write("\nYou: ");
-            var input = Console.ReadLine();
+            string input;
+            if (_interviewModeActive && _interviewEngine != null && _interviewEngine.TurnsRemaining > 0)
+            {
+                if (Console.KeyAvailable)
+                {
+                    var stopInput = Console.ReadLine() ?? "";
+                    if (IsInterviewStopCommand(stopInput))
+                    {
+                        EndInterviewMode();
+                        continue;
+                    }
+                }
+
+                input = _interviewEngine.GenerateUserInput();
+                if (input == null) { EndInterviewMode(); continue; }
+
+                Console.ForegroundColor = ConsoleColor.DarkGray;
+                Console.WriteLine($"[Interviewer]: {input}");
+                Console.ResetColor();
+            }
+            else
+            {
+                if (_interviewModeActive) EndInterviewMode();
+                Console.Write("\nYou: ");
+                input = Console.ReadLine();
+            }
 
             if (input == null) break;
             if (string.IsNullOrWhiteSpace(input))
@@ -292,9 +330,20 @@ public class ChatSession : IDisposable
                 break;
             }
 
+            if (!_interviewModeActive && _currentUserId != null && IsInterviewTrigger(input))
+            {
+                StartInterviewMode();
+                continue;
+            }
+
             var response = ProcessInput(input);
             _context.SetContext(ContextKeys.LastResponse, response);
             Console.WriteLine($"{_botName}: {response}");
+
+            if (_interviewModeActive && _interviewEngine != null)
+            {
+                _interviewEngine.AddExchange(input, response);
+            }
         }
     }
 
@@ -1108,7 +1157,59 @@ public class ChatSession : IDisposable
         _context.UpdateLastSubject(_currentUserName);
         _context.SetContext(ContextKeys.UserName, _currentUserName);
 
-        return GetNameIntroResponse(_currentUserName);
+        var response = GetNameIntroResponse(_currentUserName);
+        var recall = TryBuildCrossSessionRecall();
+        if (recall != null)
+            response += "\n" + recall;
+        return response;
+    }
+
+    internal string? TryBuildCrossSessionRecall()
+    {
+        if (_currentUserId == null) return null;
+
+        var attempted = _context.GetContext(ContextKeys.RecallAttempted);
+        if (attempted != null) return null;
+        _context.SetContext(ContextKeys.RecallAttempted, "true");
+
+        if (Random.Shared.NextDouble() >= 0.3) return null;
+
+        var previousSessions = _knowledgeStore.GetPreviousSessions(_currentUserId.Value, _sessionId);
+        if (previousSessions.Count == 0) return null;
+
+        Fact? selectedFact = null;
+        var dayName = "last time";
+
+        foreach (var session in previousSessions)
+        {
+            var fact = _knowledgeStore.GetRandomFactFromSession(_currentUserId.Value, session.SessionGuid);
+            if (fact != null)
+            {
+                selectedFact = fact;
+                if (DateTime.TryParse(session.StartedAt, out var dt))
+                    dayName = dt.DayOfWeek.ToString();
+                break;
+            }
+        }
+
+        if (selectedFact == null) return null;
+
+        var botResponses = GetCachedBotResponses();
+        if (botResponses.TryGetValue("cross_session_recall", out var responses) && responses.Count > 0)
+        {
+            var template = responses[Random.Shared.Next(responses.Count)];
+            return string.Format(template, dayName, selectedFact.Subject, selectedFact.Verb, selectedFact.Object);
+        }
+
+        var fallbacks = new List<string>
+        {
+            $"Last time we spoke on {dayName}, you mentioned {selectedFact.Subject} {selectedFact.Verb} {selectedFact.Object} — how's that going?",
+            $"I recall that on {dayName}, you said {selectedFact.Subject} {selectedFact.Verb} {selectedFact.Object}. What's new?",
+            $"Last time you were here, we talked about {selectedFact.Object}. Is that still a thing?",
+            $"You told me {selectedFact.Subject} {selectedFact.Verb} {selectedFact.Object} last time. Any updates?",
+            $"I remember from {dayName} that you told me {selectedFact.Subject} {selectedFact.Verb} {selectedFact.Object}. How are things?",
+        };
+        return fallbacks[Random.Shared.Next(fallbacks.Count)];
     }
 
     internal string ExtractName(string input, List<string> tokens)
@@ -1333,6 +1434,72 @@ public class ChatSession : IDisposable
         }
 
         return string.Empty;
+    }
+
+    private void StartInterviewMode()
+    {
+        if (_llmOrchestrator == null || !_llmOrchestrator.IsAvailable)
+        {
+            var noLlm = GetInterviewResponse("interview_no_llm") ?? "I need my AI available to run the interview. Try again later.";
+            Console.WriteLine($"{_botName}: {noLlm}");
+            return;
+        }
+
+        var interviewerId = _knowledgeStore.GetOrCreateUser("Interviewer");
+        if (interviewerId == null) return;
+        _savedUserId = _currentUserId;
+        _currentUserId = interviewerId.Value;
+        _botName = "PokeChat";
+        _responseEngine.SetBotName(_botName);
+
+        _context.Clear();
+        _interviewEngine = new InterviewEngine(_llmOrchestrator);
+        _interviewModeActive = true;
+
+        var intro = GetInterviewResponse("interview_intro") ?? "Interview mode started! I'll chat with my AI to learn new things. Type 'stop' to end.";
+        Console.WriteLine($"{_botName}: {intro}");
+        _sessionLogger?.LogSystem($"[Interview mode started] User: {_currentUserName}, Interviewer ID: {interviewerId}");
+    }
+
+    private void EndInterviewMode()
+    {
+        if (!_interviewModeActive) return;
+
+        _interviewModeActive = false;
+        _currentUserId = _savedUserId;
+        if (_currentUserName != null)
+            _responseEngine.SetCurrentUserName(_currentUserName);
+        _responseEngine.SetBotName(_botName);
+        _knowledgeStore.Save();
+
+        var facts = _interviewEngine?.FactsLearned ?? 0;
+        var rules = _interviewEngine?.RulesLearned ?? 0;
+        var summary = GetInterviewResponse("interview_complete") ?? "Interview finished! I learned {0} new facts and {1} new rules.";
+        Console.WriteLine($"{_botName}: {string.Format(summary, facts, rules)}");
+        _sessionLogger?.LogSystem($"[Interview ended] Facts: {facts}, Rules: {rules}");
+
+        _interviewEngine?.Reset();
+        _interviewEngine = null;
+    }
+
+    private string? GetInterviewResponse(string category)
+    {
+        var botResponses = GetCachedBotResponses();
+        if (botResponses.TryGetValue(category, out var responses) && responses.Count > 0)
+            return responses[Random.Shared.Next(responses.Count)];
+        return null;
+    }
+
+    internal bool IsInterviewTrigger(string input)
+    {
+        var lower = input.ToLowerInvariant().Trim();
+        return InterviewStartPhrases.Any(phrase => lower.Contains(phrase));
+    }
+
+    internal bool IsInterviewStopCommand(string input)
+    {
+        var lower = input.ToLowerInvariant().Trim();
+        return InterviewStopPhrases.Contains(lower);
     }
 
     private string GetLLMResponse(string category)

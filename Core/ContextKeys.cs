@@ -58,6 +58,7 @@ public static class ContextKeys
     public const string PendingRiddleHint = "pending_riddle_hint";
     public const string PendingRiddleAttempts = "pending_riddle_attempts";
     public const string RiddleActive = "riddle_active";
+    public const string RecallAttempted = "recall_attempted";
     public const string WyrActive = "wyr_active";
     public const string PendingWyrQuestion = "pending_wyr_question";
     public const string PendingWyrOptionA = "pending_wyr_option_a";

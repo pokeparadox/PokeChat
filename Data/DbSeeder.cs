@@ -1184,6 +1184,17 @@ public static class DbSeeder
             ("limerick_response", "How about a limerick:\n\n{0}"),
             ("poem_time", "Would you like to hear a haiku or a limerick?"),
             ("poem_time", "I could write you a poem. Haiku or limerick?"),
+            ("cross_session_recall", "Last time we spoke on {0}, you mentioned {1} {2} {3} — how's that going?"),
+            ("cross_session_recall", "I recall that on {0}, you said {1} {2} {3}. What's new?"),
+            ("cross_session_recall", "Last time you were here, we talked about {3}. Is that still a thing?"),
+            ("cross_session_recall", "You told me {1} {2} {3} last time. Any updates?"),
+            ("cross_session_recall", "I remember from {0} that you told me {1} {2} {3}. How are things?"),
+            ("interview_intro", "Interview mode started! I'll chat with my AI to learn new things. Type 'stop' to end."),
+            ("interview_intro", "Training mode activated! Sit back while I have a conversation with my AI."),
+            ("interview_complete", "Interview finished! I learned {0} new facts and {1} new rules."),
+            ("interview_complete", "That's the end of training. I picked up {0} facts and {1} new patterns."),
+            ("interview_stopped", "Interview stopped. I'll keep what I learned so far."),
+            ("interview_no_llm", "I need my AI available to run the interview. Try again later."),
         };
 
         context.BotResponses.AddRange(responses.Select(r => new BotResponse

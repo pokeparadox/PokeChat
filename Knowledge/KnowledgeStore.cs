@@ -1004,6 +1004,48 @@ public class KnowledgeStore(PokeChatDbContext context)
         return names[Random.Shared.Next(names.Count)];
     }
 
+    public List<ConversationSession> GetPreviousSessions(int userId, string currentSessionId)
+    {
+        return context.ConversationSessions
+            .Where(s => s.UserId == userId && s.SessionGuid != currentSessionId)
+            .OrderByDescending(s => s.Id)
+            .ToList();
+    }
+
+    public Fact? GetRandomFactFromSession(int userId, string sessionId)
+    {
+        var conversations = context.Conversations
+            .Where(c => c.SessionId == sessionId && c.UserId == userId)
+            .OrderBy(c => c.Timestamp)
+            .ToList();
+
+        if (conversations.Count == 0) return null;
+
+        var allUserFacts = context.Facts
+            .Where(f => f.UserId == userId)
+            .SelectFacet<Fact>()
+            .ToList();
+
+        var sessionFacts = new List<Fact>();
+        foreach (var conv in conversations)
+        {
+            var lowerInput = conv.UserInput.ToLowerInvariant();
+            foreach (var fact in allUserFacts)
+            {
+                if (!SummaryFilters.IsGarbageFact(fact) &&
+                    lowerInput.Contains(fact.Object.ToLowerInvariant()) &&
+                    (lowerInput.Contains(fact.Subject.ToLowerInvariant()) ||
+                     lowerInput.Contains(fact.Verb.ToLowerInvariant())))
+                {
+                    sessionFacts.Add(fact);
+                }
+            }
+        }
+
+        if (sessionFacts.Count == 0) return null;
+        return sessionFacts[Random.Shared.Next(sessionFacts.Count)];
+    }
+
     public MadLibTemplate? GetRandomMadLibTemplate()
     {
         var templates = context.MadLibTemplates.ToList();

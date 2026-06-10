@@ -131,7 +131,7 @@ public class ResponseEngineTests
 
         var engine = CreateEngine(db.Context, context);
         var response = engine.GenerateResponse("hello", null);
-        response.ShouldBe("Tell me more about TestUser.");
+        response.ShouldBe("\U0001F4AD Tell me more about TestUser.");
     }
 
     [Fact]
@@ -598,6 +598,14 @@ public class ResponseEngineTests
         response.ShouldContain("limerick");
     }
 
+    private static string Strip8BallEmoji(string response)
+    {
+        var text = response.StartsWith("*shakes the magic 8 ball* ")
+            ? response["*shakes the magic 8 ball* ".Length..]
+            : response;
+        return text.Length >= 3 && char.IsHighSurrogate(text[0]) ? text[3..] : text;
+    }
+
     [Fact]
     public void Explicit8Ball_ReturnsAnswer()
     {
@@ -607,10 +615,7 @@ public class ResponseEngineTests
         var response = engine.GenerateResponse("magic 8 ball, will I win?", null);
         response.ShouldNotBeNullOrEmpty();
         var seededAnswers = new[] { "Yes.", "No.", "Maybe.", "Ask again later.", "It is certain." };
-        var withoutPreamble = response.StartsWith("*shakes the magic 8 ball* ")
-            ? response["*shakes the magic 8 ball* ".Length..]
-            : response;
-        seededAnswers.ShouldContain(withoutPreamble);
+        seededAnswers.ShouldContain(Strip8BallEmoji(response));
     }
 
     [Fact]
@@ -622,10 +627,7 @@ public class ResponseEngineTests
         var response = engine.GenerateResponse("predict my future", null);
         response.ShouldNotBeNullOrEmpty();
         var seededAnswers = new[] { "Yes.", "No.", "Maybe.", "Ask again later.", "It is certain." };
-        var withoutPreamble = response.StartsWith("*shakes the magic 8 ball* ")
-            ? response["*shakes the magic 8 ball* ".Length..]
-            : response;
-        seededAnswers.ShouldContain(withoutPreamble);
+        seededAnswers.ShouldContain(Strip8BallEmoji(response));
     }
 
     [Fact]
@@ -637,10 +639,7 @@ public class ResponseEngineTests
         var response = engine.GenerateResponse("Will I get the job?", null);
         response.ShouldNotBeNullOrEmpty();
         var seededAnswers = new[] { "Yes.", "No.", "Maybe.", "Ask again later.", "It is certain." };
-        var withoutPreamble = response.StartsWith("*shakes the magic 8 ball* ")
-            ? response["*shakes the magic 8 ball* ".Length..]
-            : response;
-        seededAnswers.ShouldContain(withoutPreamble);
+        seededAnswers.ShouldContain(Strip8BallEmoji(response));
     }
 
     [Fact]
@@ -707,5 +706,50 @@ public class ResponseEngineTests
             answers.Add(withoutPreamble);
         }
         answers.Count.ShouldBeGreaterThanOrEqualTo(3);
+    }
+
+    [Fact]
+    public void DefaultResponse_NoEmoji()
+    {
+        using var db = new FreshDbContext();
+        var context = new ContextTracker();
+        var engine = CreateEngine(db.Context, context);
+        var response = engine.GenerateResponse("hello world", null);
+        response.ShouldNotBeNullOrEmpty();
+        response.ShouldNotStartWith("\U0001F44B");
+        response.ShouldNotStartWith("\U0001F4AD");
+        response.ShouldNotStartWith("\U0001F4D6");
+    }
+
+    [Fact]
+    public void DictionaryQuery_IncludesBookEmoji()
+    {
+        using var db = new FreshDbContext();
+        var context = new ContextTracker();
+        var engine = CreateEngine(db.Context, context);
+        var response = engine.GenerateResponse("what is the definition of testword", null);
+        response.ShouldStartWith("\U0001F4D6");
+    }
+
+    [Fact]
+    public void PredictionResponse_IncludesCrystalBallEmoji()
+    {
+        using var db = new FreshDbContext();
+        var context = new ContextTracker();
+        var engine = CreateEngine(db.Context, context);
+        var response = engine.GenerateResponse("predict my future", null);
+        response.ShouldContain("\U0001F52E");
+    }
+
+    [Fact]
+    public void EmpathyResponse_IncludesSentimentEmoji()
+    {
+        using var db = new FreshDbContext();
+        var context = new ContextTracker();
+        context.SetContext(ContextKeys.CurrentSentiment, "positive");
+        context.SetContext(ContextKeys.LastSentimentIntensity, "3");
+        var engine = CreateEngine(db.Context, context);
+        var response = engine.GenerateResponse("hello", null);
+        response.ShouldStartWith("\U0001F60A");
     }
 }

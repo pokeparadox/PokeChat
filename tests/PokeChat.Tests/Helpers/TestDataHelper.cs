@@ -150,6 +150,15 @@ internal static class TestDataHelper
             ("limerick_response", "{0}"),
             ("poem_time", "I'm in a creative mood!"),
             ("poem_time", "Alright, let me think of something poetic..."),
+            ("cross_session_recall", "I remember! Last {0}, you told me that {1} {2} {3}."),
+            ("cross_session_recall", "Oh, that reminds me — last {0} you said {1} {2} {3}."),
+            ("cross_session_recall", "Do you remember last {0}? You mentioned that {1} {2} {3}."),
+            ("cross_session_recall", "I was thinking about last {0} — you said {1} {2} {3}. I found that interesting!"),
+            ("cross_session_recall", "Hey, last {0} you told me {1} {2} {3}. Do you still feel that way?"),
+            ("interview_intro", "Interview mode started!"),
+            ("interview_complete", "I learned {0} facts and {1} rules."),
+            ("interview_stopped", "Interview stopped."),
+            ("interview_no_llm", "AI not available."),
         };
         db.BotResponses.AddRange(responses.Select(r => new BotResponse
         {

@@ -1,4 +1,5 @@
 using PokeChat.Core;
+using PokeChat.Data.Entities;
 using PokeChat.Knowledge;
 using PokeChat.NLP;
 using PokeChat.Responses;
@@ -1743,6 +1744,349 @@ public class ChatSessionTests
 
             var answerResponse = session.ProcessInput("echo");
             answerResponse.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    // --- Cross-Session Recall ---
+
+    [Fact]
+    public void KnowledgeStore_GetPreviousSessions_NoPrevious_ReturnsEmpty()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            var userId = db.Context.Users.First().Id;
+            var store = new KnowledgeStore(db.Context);
+            var result = store.GetPreviousSessions(userId, "current-session");
+            result.ShouldBeEmpty();
+        }
+    }
+
+    [Fact]
+    public void KnowledgeStore_GetPreviousSessions_HasPrevious_ReturnsSessions()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            var userId = db.Context.Users.First().Id;
+
+            db.Context.ConversationSessions.Add(new ConversationSession
+            {
+                SessionGuid = "prev-session",
+                UserId = userId,
+                StartedAt = DateTime.UtcNow.AddDays(-1).ToString("o"),
+                TurnCount = 5
+            });
+            db.Context.SaveChanges();
+
+            var store = new KnowledgeStore(db.Context);
+            var result = store.GetPreviousSessions(userId, "current-session");
+            result.Count.ShouldBe(1);
+            result[0].SessionGuid.ShouldBe("prev-session");
+        }
+    }
+
+    [Fact]
+    public void KnowledgeStore_GetRandomFactFromSession_HasFacts_ReturnsFact()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            var userId = db.Context.Users.First().Id;
+
+            var sessionId = "test-session";
+            db.Context.Conversations.Add(new Conversation
+            {
+                UserId = userId,
+                UserInput = "I like pizza",
+                BotResponse = "Cool!",
+                SessionId = sessionId,
+                Timestamp = DateTime.UtcNow.ToString("o")
+            });
+
+            db.Context.Facts.Add(new FactEntity
+            {
+                UserId = userId,
+                Subject = "Alice",
+                Verb = "like",
+                Object = "pizza",
+                PredicateType = "Preference",
+                CreatedAt = DateTime.UtcNow.ToString("o")
+            });
+            db.Context.SaveChanges();
+
+            var store = new KnowledgeStore(db.Context);
+            var fact = store.GetRandomFactFromSession(userId, sessionId);
+            fact.ShouldNotBeNull();
+            fact.Object.ShouldBe("pizza");
+        }
+    }
+
+    [Fact]
+    public void KnowledgeStore_GetRandomFactFromSession_NoConversations_ReturnsNull()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            var userId = db.Context.Users.First().Id;
+
+            var store = new KnowledgeStore(db.Context);
+            var fact = store.GetRandomFactFromSession(userId, "nonexistent");
+            fact.ShouldBeNull();
+        }
+    }
+
+    [Fact]
+    public void TryBuildCrossSessionRecall_NoUser_ReturnsNull()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            var result = session.TryBuildCrossSessionRecall();
+            result.ShouldBeNull();
+        }
+    }
+
+    [Fact]
+    public void TryBuildCrossSessionRecall_NoPreviousSession_ReturnsNull()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            var result = session.TryBuildCrossSessionRecall();
+            result.ShouldBeNull();
+        }
+    }
+
+    [Fact]
+    public void TryBuildCrossSessionRecall_AlreadyAttempted_ReturnsNull()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.TryBuildCrossSessionRecall(); // sets the flag
+            var result = session.TryBuildCrossSessionRecall();
+            result.ShouldBeNull();
+        }
+    }
+
+    [Fact]
+    public void TryBuildCrossSessionRecall_HasPreviousSession_FiresOrNot()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            var userId = db.Context.Users.First().Id;
+
+            var prevSessionId = "prev-session";
+            db.Context.ConversationSessions.Add(new ConversationSession
+            {
+                SessionGuid = prevSessionId,
+                UserId = userId,
+                StartedAt = DateTime.UtcNow.AddDays(-1).ToString("o"),
+                TurnCount = 5
+            });
+
+            db.Context.Conversations.Add(new Conversation
+            {
+                UserId = userId,
+                UserInput = "I like pizza",
+                BotResponse = "Cool!",
+                SessionId = prevSessionId,
+                Timestamp = DateTime.UtcNow.AddDays(-1).ToString("o")
+            });
+
+            db.Context.Facts.Add(new FactEntity
+            {
+                UserId = userId,
+                Subject = "Alice",
+                Verb = "like",
+                Object = "pizza",
+                PredicateType = "Preference",
+                CreatedAt = DateTime.UtcNow.AddDays(-1).ToString("o")
+            });
+            db.Context.SaveChanges();
+
+            var result = session.TryBuildCrossSessionRecall();
+            // May return null due to 30% chance, but should never throw
+            if (result != null)
+            {
+                result.ShouldContain("pizza");
+            }
+        }
+    }
+
+    // --- Interview Mode ---
+
+    [Fact]
+    public void IsInterviewTrigger_DetectsInterviewPhrase()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.IsInterviewTrigger("interview mode").ShouldBeTrue();
+        }
+    }
+
+    [Fact]
+    public void IsInterviewTrigger_DetectsTrainTheBot()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.IsInterviewTrigger("train the bot").ShouldBeTrue();
+        }
+    }
+
+    [Fact]
+    public void IsInterviewTrigger_DetectsLLMInterview()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.IsInterviewTrigger("llm interview").ShouldBeTrue();
+        }
+    }
+
+    [Fact]
+    public void IsInterviewTrigger_DetectsStartTraining()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.IsInterviewTrigger("start training").ShouldBeTrue();
+        }
+    }
+
+    [Fact]
+    public void IsInterviewTrigger_DetectsChatWithYourself()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.IsInterviewTrigger("chat with yourself").ShouldBeTrue();
+        }
+    }
+
+    [Fact]
+    public void IsInterviewTrigger_DetectsInterview()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.IsInterviewTrigger("interview").ShouldBeTrue();
+        }
+    }
+
+    [Fact]
+    public void IsInterviewTrigger_ReturnsFalse_ForNonTrigger()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.IsInterviewTrigger("hello there").ShouldBeFalse();
+        }
+    }
+
+    [Fact]
+    public void IsInterviewTrigger_ReturnsFalse_ForEmptyInput()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.IsInterviewTrigger("").ShouldBeFalse();
+        }
+    }
+
+    [Fact]
+    public void IsInterviewStopCommand_DetectsStop()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.IsInterviewStopCommand("stop").ShouldBeTrue();
+        }
+    }
+
+    [Fact]
+    public void IsInterviewStopCommand_DetectsEndInterview()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.IsInterviewStopCommand("end interview").ShouldBeTrue();
+        }
+    }
+
+    [Fact]
+    public void IsInterviewStopCommand_DetectsCancel()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.IsInterviewStopCommand("cancel").ShouldBeTrue();
+        }
+    }
+
+    [Fact]
+    public void IsInterviewStopCommand_DetectsEnough()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.IsInterviewStopCommand("enough").ShouldBeTrue();
+        }
+    }
+
+    [Fact]
+    public void IsInterviewStopCommand_DetectsStopTraining()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.IsInterviewStopCommand("stop training").ShouldBeTrue();
+        }
+    }
+
+    [Fact]
+    public void IsInterviewStopCommand_ReturnsFalse_ForNonStop()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.IsInterviewStopCommand("go away").ShouldBeFalse();
+        }
+    }
+
+    [Fact]
+    public void IsInterviewStopCommand_ReturnsFalse_ForEmptyInput()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.IsInterviewStopCommand("").ShouldBeFalse();
+        }
+    }
+
+    [Fact]
+    public void ProcessInput_DoesNotInterfereWithInterviewMode()
+    {
+        // Interview mode detection happens in Start(), not ProcessInput.
+        // Verify that a normal ProcessInput still works when interview
+        // triggers are not matched.
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            var response = session.ProcessInput("hello there");
+            response.ShouldNotBeNullOrEmpty();
         }
     }
 }

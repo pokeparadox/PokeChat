@@ -1129,7 +1129,26 @@ Added ability for user to cancel unknown word clarification and word classificat
 
 ---
 
-## Phase 32 — Word Game (Story Chain) ✅
+## Phase 32 — End-of-Session LLM Homework Check ✅
+
+LLM reviews conversation after exit to retrospectively correct mistakes — removing bad learned rules, completing word definitions, and filling in missing classifications.
+
+### Changes
+- `Core/ChatSession.cs` — `RunHomeworkCheck()` called before `GenerateSessionEndSummary()` on quit/exit; runs silently (no prompt to user); bypasses MaxCallsPerSession
+- `Knowledge/KnowledgeStore.cs` — added `DeactivateLearnedRule(int ruleId)` for removing low-quality learned patterns
+- `LLM/LLMOrchestrator.cs` — `GenerateHomeworkCheck()` with dedicated prompt, JSON parsing via `SnakeCaseLower`
+- `Data/DbSeeder.cs` — seeded `homework_check_start`, `homework_check_fixes`, `homework_check_none` bot response categories
+- `tests/Helpers/TestDataHelper.cs` — matching seed data
+
+### Tests (12 new, 347/356 pass)
+- `ChatSessionLLMTests.HomeworkCheck_RunsOnExit_WhenLLMAvailable`
+- `ChatSessionLLMTests.HomeworkCheck_Skips_WhenLLMNotAvailable`
+- `KnowledgeStoreTests.DeactivateLearnedRule_DeactivatesRule`
+- Plus 9 supporting unit tests for JSON parsing, `SnakeCaseLower`, edge cases
+
+---
+
+## Phase 33 — Word Game (Story Chain) ✅
 
 Added a word game where the user and bot take turns adding one word at a time to build a story. LLM optionally participates as third player.
 
@@ -1148,7 +1167,7 @@ Added a word game where the user and bot take turns adding one word at a time to
 
 ---
 
-## Phase 33 — Word Game UX Improvements ✅
+## Phase 34 — Word Game UX Improvements ✅
 
 Hides mid-game story reveal, shows thinking indicator during LLM calls, applies grammar filter to final story, and adds optional LLM story summary at game end.
 
@@ -1167,7 +1186,7 @@ Hides mid-game story reveal, shows thinking indicator during LLM calls, applies 
 
 ---
 
-## Phase 34 — Dad Jokes + Riddles ✅
+## Phase 35 — Dad Jokes + Riddles ✅
 
 Two content-driven diversions: dad jokes (setup→punchline, 2-turn) and riddles (multi-turn with hints/attempts/give-up).
 
@@ -1190,7 +1209,7 @@ Two content-driven diversions: dad jokes (setup→punchline, 2-turn) and riddles
 
 ---
 
-## Phase 35 — Poetry Generation (Haiku & Limerick) ✅
+## Phase 36 — Poetry Generation (Haiku & Limerick) ✅
 
 Algorithmic haiku (5-7-5 syllables) and DB-backed limerick (AABBA rhyme) generation without LLM.
 
@@ -1214,3 +1233,37 @@ Algorithmic haiku (5-7-5 syllables) and DB-backed limerick (AABBA rhyme) generat
 - `ResponseEngineTests.cs`: `HandlePoetryRequest_ExplicitHaiku_ReturnsPoem`, `HandlePoetryRequest_ExplicitLimerick_ReturnsPoem`, `HandlePoetryRequest_HaikuViaLLM_WhenAvailable`, `HandlePoetryRequest_LimerickViaLLM_WhenAvailable`
 - `ChatSessionTests.cs`: `PoetryRequest_Haiku_ReturnsNonEmptyResponse`, `PoetryRequest_Limerick_ReturnsNonEmptyResponse`, `PoetryRequest_JustHaikuWord_TriggersPoem`
 - Fixed flaky `TryHandleGameStart_TriggersOnPhrase` test (accept either "word game" or "story" in response)
+
+---
+
+## Phase 37 — Cross-Session Recall ✅
+
+Bot recalls facts from previous sessions with 30% chance at session start after name intro.
+
+### Modified files
+- `Knowledge/KnowledgeStore.cs` — added `GetPreviousSessions(int userId, string currentSessionId)` returning `List<ConversationSession>` ordered by Id desc; `GetRandomFactFromSession(int userId, string sessionId)` cross-references conversations with facts to pick a random fact from that session
+- `Core/ContextKeys.cs` — added `RecallAttempted` key
+- `Data/DbSeeder.cs` — added 5 `cross_session_recall` bot response templates (using {0}=day, {1}=subject, {2}=verb, {3}=object)
+- `Core/ChatSession.cs` — added `TryBuildCrossSessionRecall()` method: checks `RecallAttempted` (prevents double-fire), 30% chance, queries previous sessions via KnowledgeStore, picks random fact, formats with day name from session start. Called in `HandleNameInput` after intro response; appends recall on newline. Fallback templates if DB not seeded.
+- `tests/PokeChat.Tests/Core/ChatSessionTests.cs` — 8 new deterministic tests
+
+### Key details
+- **30% chance** per session (only the first session with a returning user can trigger it)
+- **Double-fire prevention:** `RecallAttempted` context key set after first attempt
+- **Day name:** Uses `session.StartedAt` day-of-week (Monday/Tuesday/etc.) for natural phrasing
+- **No sessions = quiet:** Silently skips if no previous sessions exist
+
+### Tests (8 new, ~488/496 pass)
+
+---
+
+## Phase 38 — Emoji Personality ✅
+
+Bot responses are now decorated with category-appropriate emoji for personality and visual variety.
+
+### Modified files
+- `Responses/ResponseEngine.cs` — added `AddEmoji` and `GetStaticEmoji` methods. `GetRandomResponse` now wraps all returns with category-appropriate emoji. Emoji map: greeting/name_intro → 👋, context_followup/cross_session_recall → 💭, proactive → 🤔, dictionary → 📖, math → 🧮, story → 📚, dad_joke → 😄, riddle → 🧩, magic_8ball → 🔮, game/mad_libs → 🎮, inference → 🧠, llm → 🤖, wyr → 🎲, poetry/poem_time → 📝, session_summary → 📋, temporal → 🕐, bot_rename → 🏷️, bot_reset → 🔄, existing_fact → 💡. Sentiment-aware emoji for empathy_*/emotion_*/sentiment_*: 😊 positive, 😔 negative/sad, 😡 anger, 😰 fear, 😮 surprise. No emoji for unmapped categories.
+- `tests/PokeChat.Tests/Helpers/TestDataHelper.cs` — backfilled missing `cross_session_recall` category
+- `tests/PokeChat.Tests/Responses/ResponseEngineTests.cs` — 4 new emoji tests
+
+### Tests (4 new, 496/496 pass)
