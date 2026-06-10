@@ -79,6 +79,19 @@ public class ChatSession : IDisposable
         "let's start again",
     };
 
+    private static readonly HashSet<string> GameStartPhrases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "let's play a word game", "let's tell a story", "word game", "story chain",
+        "let's make a story", "play a game"
+    };
+
+    private static readonly HashSet<string> GameEndPhrases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "stop", "stop game", "end game", "finish", "that's enough", "i'm done"
+    };
+
+    private static readonly string[] GameStartWords = { "Once", "The", "A", "There", "I", "It" };
+
     public ChatSession()
     {
         _dbContext = new PokeChatDbContext();
@@ -314,6 +327,10 @@ public class ChatSession : IDisposable
             return HandleDictionaryDefinition(input, dictWord);
         }
 
+        var gameActive = _context.GetContext(ContextKeys.GameModeActive);
+        if (gameActive != null)
+            return HandleGameTurn(input);
+
         _context.SetContext(ContextKeys.UnknownWords, null);
 
         if (TryHandleResetRequest(input, out var resetResponse))
@@ -321,6 +338,9 @@ public class ChatSession : IDisposable
 
         if (TryHandleBotRename(input, out var renameResponse))
             return renameResponse;
+
+        if (TryHandleGameStart(input, out var gameStartResponse))
+            return gameStartResponse;
 
         if (TryHandleCorrection(input, out var correctionResponse))
             return correctionResponse;
@@ -1490,6 +1510,168 @@ public class ChatSession : IDisposable
         };
 
         return ctx;
+    }
+
+    internal bool TryHandleGameStart(string input, out string response)
+    {
+        var lowerInput = input.ToLowerInvariant().Trim();
+        foreach (var phrase in GameStartPhrases)
+        {
+            if (lowerInput.Contains(phrase))
+            {
+                var existingGame = _context.GetContext(ContextKeys.GameModeActive);
+                if (existingGame != null)
+                {
+                    response = GetGameResponse("game_already_active");
+                    return true;
+                }
+
+                response = StartGame();
+                return true;
+            }
+        }
+
+        response = string.Empty;
+        return false;
+    }
+
+    private string StartGame()
+    {
+        var startWord = GameStartWords[Random.Shared.Next(GameStartWords.Length)];
+        _context.SetContext(ContextKeys.GameModeActive, "true");
+        _context.SetContext(ContextKeys.GameStory, startWord);
+        _context.SetContext(ContextKeys.GameTurnCount, "0");
+        return GetGameResponse("game_start", startWord);
+    }
+
+    internal string HandleGameTurn(string input)
+    {
+        var lowerInput = input.Trim().ToLowerInvariant();
+
+        foreach (var phrase in GameEndPhrases)
+        {
+            if (lowerInput.Contains(phrase) || lowerInput.Equals(phrase))
+                return HandleGameEnd();
+        }
+
+        var story = _context.GetContext(ContextKeys.GameStory) ?? "";
+        var turnCountRaw = _context.GetContext(ContextKeys.GameTurnCount) ?? "0";
+        int.TryParse(turnCountRaw, out var turnCount);
+
+        var userTokens = _tokeniser.Tokenise(input);
+        if (userTokens.Count == 0)
+            return GetGameResponse("game_turn_prompt", story);
+
+        var userWord = userTokens[0].ToLowerInvariant();
+        story = string.IsNullOrEmpty(story) ? userWord : story + " " + userWord;
+
+        turnCount++;
+
+        if (turnCount >= 50)
+            return HandleGameEnd();
+
+        string? botWord;
+        if (_llmOrchestrator?.IsAvailable == true && turnCount % 2 == 0)
+        {
+            botWord = _llmOrchestrator.GenerateWordForGame(story);
+            if (string.IsNullOrEmpty(botWord))
+                botWord = PickGameWord(story);
+        }
+        else
+        {
+            botWord = PickGameWord(story);
+        }
+
+        story = story + " " + botWord;
+
+        _context.SetContext(ContextKeys.GameStory, story);
+        _context.SetContext(ContextKeys.GameTurnCount, turnCount.ToString());
+
+        return GetGameResponse("game_turn_prompt", story);
+    }
+
+    private string HandleGameEnd()
+    {
+        var story = _context.GetContext(ContextKeys.GameStory) ?? "";
+        _context.SetContext(ContextKeys.GameModeActive, null);
+        _context.SetContext(ContextKeys.GameStory, null);
+        _context.SetContext(ContextKeys.GameTurnCount, null);
+        return GetGameResponse("game_stop", story);
+    }
+
+    private string PickGameWord(string storySoFar)
+    {
+        var words = storySoFar.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var lastWord = words.Length > 0 ? words[^1] : string.Empty;
+        if (string.IsNullOrEmpty(lastWord)) return "the";
+
+        var lastWordTags = _posTagger.Tag(new List<string> { lastWord.ToLowerInvariant() });
+        var lastPos = lastWordTags.Count > 0 ? lastWordTags[0] : PosTag.Unknown;
+
+        var preferredTypes = lastPos switch
+        {
+            PosTag.Determiner => new[] { "adjective", "noun" },
+            PosTag.Adjective => new[] { "noun" },
+            PosTag.Noun => new[] { "verb", "preposition", "adverb", "conjunction" },
+            PosTag.Verb => new[] { "determiner", "adverb", "preposition", "noun" },
+            PosTag.Adverb => new[] { "verb", "adjective" },
+            PosTag.Preposition => new[] { "determiner", "adjective", "noun" },
+            PosTag.Pronoun => new[] { "verb", "adverb" },
+            PosTag.Conjunction => new[] { "determiner", "pronoun", "noun" },
+            _ => new[] { "noun", "verb", "adjective" }
+        };
+
+        var lastTwo = words.Length >= 2
+            ? words[^2..].Select(w => w.ToLowerInvariant()).ToHashSet(StringComparer.OrdinalIgnoreCase)
+            : new HashSet<string>();
+
+        foreach (var type in preferredTypes)
+        {
+            var candidates = _dbContext.PosDictionary
+                .Where(e => e.WordType == type)
+                .Select(e => e.Word)
+                .ToList()
+                .Where(w => !lastTwo.Contains(w))
+                .ToList();
+            if (candidates.Count > 0)
+                return candidates[Random.Shared.Next(candidates.Count)];
+        }
+
+        var fallback = _dbContext.PosDictionary
+            .Select(e => e.Word)
+            .ToList()
+            .Where(w => !lastTwo.Contains(w))
+            .ToList();
+        if (fallback.Count > 0)
+            return fallback[Random.Shared.Next(fallback.Count)];
+
+        return "the";
+    }
+
+    private string GetGameResponse(string category, params object[] args)
+    {
+        var botResponses = GetCachedBotResponses();
+        if (botResponses.TryGetValue(category, out var responses) && responses.Count > 0)
+        {
+            var template = responses[Random.Shared.Next(responses.Count)];
+            return args.Length > 0 ? string.Format(template, args) : template;
+        }
+
+        var fallbacks = new Dictionary<string, List<string>>
+        {
+            ["game_start"] = new() { $"Let's play a word game! We take turns adding one word at a time to build a funny story. I'll start: {{0}}" },
+            ["game_turn_prompt"] = new() { $"Add one word! The story so far: '{{0}}'" },
+            ["game_stop"] = new() { $"That was fun! Here's our story: {{0}}" },
+            ["game_already_active"] = new() { "We're already playing! Just add one word, or say 'stop game' to end." },
+        };
+
+        if (fallbacks.TryGetValue(category, out var fb) && fb.Count > 0)
+        {
+            var template = fb[Random.Shared.Next(fb.Count)];
+            return args.Length > 0 ? string.Format(template, args) : template;
+        }
+
+        return string.Empty;
     }
 
     public void Dispose()

@@ -1174,4 +1174,81 @@ public class ChatSessionTests
             response.ShouldNotContain("Alice and gobbledygook");
         }
     }
+
+    [Fact]
+    public void TryHandleGameStart_TriggersOnPhrase()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+
+            var result = session.TryHandleGameStart("let's play a word game", out var response);
+
+            result.ShouldBeTrue();
+            response.ShouldContain("word game");
+        }
+    }
+
+    [Fact]
+    public void HandleGameTurn_UserSaysStop_EndsGame()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.TryHandleGameStart("let's play a word game", out _);
+
+            var response = session.HandleGameTurn("stop");
+
+            response.ShouldContain("story");
+        }
+    }
+
+    [Fact]
+    public void HandleGameTurn_BotAddsWord()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.TryHandleGameStart("let's play a word game", out _);
+
+            var response = session.HandleGameTurn("The");
+
+            response.ShouldNotBeNullOrEmpty();
+            response.ShouldContain("story");
+        }
+    }
+
+    [Fact]
+    public void HandleGameTurn_UserSendsMultipleWords_TakesFirst()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.TryHandleGameStart("let's play a word game", out _);
+
+            var response = session.HandleGameTurn("the cat sat");
+
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void TryHandleGameStart_AlreadyActive_ReturnsPrompt()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.TryHandleGameStart("let's play a word game", out _);
+
+            var result = session.TryHandleGameStart("let's play a word game", out var response);
+
+            result.ShouldBeTrue();
+            response.ShouldBe("We're already playing! Just add one word, or say 'stop game' to end.");
+        }
+    }
 }

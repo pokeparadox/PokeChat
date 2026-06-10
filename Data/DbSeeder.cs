@@ -906,6 +906,13 @@ public static class DbSeeder
             ("llm_unavailable", "I can't reach my AI at the moment."),
             ("llm_declined", "No problem, I'll keep learning!"),
             ("llm_declined", "That's OK! I'll try to figure it out on my own."),
+            ("game_start", "Let's play a word game! We take turns adding one word at a time to build a funny story. I'll start: {0}"),
+            ("game_start", "Alright, story time! Adding one word each. I'll begin: {0}"),
+            ("game_turn_prompt", "Add one word! The story so far: '{0}'"),
+            ("game_turn_prompt", "Your turn! Add the next word. Story: '{0}'"),
+            ("game_stop", "That was fun! Here's our story: {0}"),
+            ("game_stop", "What a tale! Here's what we came up with: {0}"),
+            ("game_already_active", "We're already playing! Just add one word, or say 'stop game' to end."),
         };
 
         context.BotResponses.AddRange(responses.Select(r => new BotResponse

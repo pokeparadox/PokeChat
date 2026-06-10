@@ -57,6 +57,19 @@ public class LLMOrchestrator : IDisposable
         return _provider.GenerateResponse(input, Config.SystemPrompt);
     }
 
+    public string? GenerateWordForGame(string storySoFar)
+    {
+        if (_provider == null || UserDeclined) return null;
+
+        var systemPrompt = "You are playing a word game. Add EXACTLY ONE word that continues the story in a " +
+            "funny or interesting way, following proper grammar. Return ONLY that word, no punctuation or explanation.";
+        var result = _provider.GenerateResponse($"The story so far is: '{storySoFar}'", systemPrompt);
+        if (string.IsNullOrEmpty(result)) return null;
+
+        var firstWord = result.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
+        return firstWord.ToLowerInvariant();
+    }
+
     public void Dispose()
     {
         if (_provider is IDisposable disposable)

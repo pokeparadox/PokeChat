@@ -43,4 +43,7 @@ public static class ContextKeys
     public const string PendingLLMOffer = "pending_llm_offer";
     public const string LLMOriginalInput = "llm_original_input";
     public const string PendingDictionarySave = "pending_dictionary_save";
+    public const string GameModeActive = "game_mode_active";
+    public const string GameStory = "game_story";
+    public const string GameTurnCount = "game_turn_count";
 }

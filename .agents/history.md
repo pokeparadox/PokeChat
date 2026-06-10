@@ -1111,3 +1111,37 @@ AlwaysOn mode (`alwaysOn: true` in `llm.json`) removes the opt-in offer and call
 - `ChatSessionLLMTests` (5): AlwaysOn dead-end skip, AlwaysOn adds unknown word to dictionary, AlwaysOn learned pattern uses LLM, AlwaysOn correction uses LLM reflection, Non-AlwaysOn correction uses template fallback
 - `ChatSessionTests` (1): AlwaysOn dead-end category uses LLM directly
 - `KnowledgeStoreTests` (1): `SetDefinition` stores definition correctly
+
+---
+
+## Phase 31 — Clarification/Classification Cancel ✅
+
+Added ability for user to cancel unknown word clarification and word classification flows mid-stream.
+
+### Changes
+- `ChatSession.cs`: added `IsClarificationCancelled()` check in `HandleClarification` and `HandleClassification`, `CancelClarification`/`CancelClassification` methods, `CancellationPhrases` HashSet (typo, never mind, forget it, my bad, etc.)
+- `KnowledgeStore.cs`: added `RemoveLearnedWord`, `RemoveFromDictionary`
+
+### Tests (3 new, 330/330 pass)
+- `HandleClarification_Cancelled_ReturnsCancelMessage`
+- `HandleClarification_CancelledDoesNotLearn`
+- `HandleClassification_Cancelled_RemovesFromDictionary`
+
+---
+
+## Phase 32 — Word Game (Story Chain) ✅
+
+Added a word game where the user and bot take turns adding one word at a time to build a story. LLM optionally participates as third player.
+
+### Changes
+- `ContextKeys.cs`: added `GameModeActive`, `GameStory`, `GameTurnCount`
+- `ChatSession.cs`: added `TryHandleGameStart`, `HandleGameTurn`, `HandleGameEnd`, `PickGameWord` (POS-cycling), `GetGameResponse`; `GameStartPhrases`, `GameEndPhrases`, `GameStartWords` statics; hooks in `ProcessInput`
+- `LLMOrchestrator.cs`: added `GenerateWordForGame` with strict single-word prompt
+- `DbSeeder.cs` / `TestDataHelper.cs`: seeded `game_start`, `game_turn_prompt`, `game_stop`, `game_already_active` bot response categories
+
+### Tests (5 new, 335/335 pass)
+- `TryHandleGameStart_TriggersOnPhrase`
+- `HandleGameTurn_UserSaysStop_EndsGame`
+- `HandleGameTurn_BotAddsWord`
+- `HandleGameTurn_UserSendsMultipleWords_TakesFirst`
+- `TryHandleGameStart_AlreadyActive_ReturnsPrompt`

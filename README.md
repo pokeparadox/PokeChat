@@ -110,5 +110,13 @@ All conversational data is persisted:
 | 23 | Grammar & natural flow bugs (11 bugs fixed) | ✅ |
 | 24 | Random short story generation (11-slot templates) | ✅ |
 | 25 | Word classification (person/place/thing/verb follow-up) | ✅ |
+| 26 | Chat log & session improvements (24 bug fixes) | ✅ |
+| 27 | Built-in Tool Layer (WebSearch, ReadUrl) | ✅ |
+| 28 | Full MCP Protocol (JSON-RPC stdio subprocess) | ✅ |
+| 29 | Optional LLM support (Ollama-backed) | ✅ |
+| 29b | Data-Driven MCP Tool Triggers (zero-code tool rules) | ✅ |
+| 30 | Enhanced LLM Integration (AlwaysOn, summarisation, inference) | ✅ |
+| 31 | Clarification/Classification Cancel | ✅ |
+| 32 | Word Game (Story Chain — turn-based POS-cycling) | ✅ |
 
 See `.agents/history.md` for completed improvements. 
