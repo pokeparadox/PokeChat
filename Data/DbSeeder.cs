@@ -26,6 +26,8 @@ public static class DbSeeder
         SeedMadLibTemplates(context, now);
         SeedJokes(context, now);
         SeedRiddles(context, now);
+        SeedRhymeGroups(context, now);
+        SeedPoemTemplates(context, now);
         SeedBotResponses(context, now);
 
         context.SaveChanges();
@@ -763,6 +765,121 @@ public static class DbSeeder
         }));
     }
 
+    private static void SeedRhymeGroups(PokeChatDbContext context, string now)
+    {
+        if (context.RhymeGroups.Any()) return;
+
+        var groups = new (string Key, string Word, string Type)[]
+        {
+            ("at", "cat", "noun"), ("at", "hat", "noun"), ("at", "bat", "noun"),
+            ("at", "rat", "noun"), ("at", "mat", "noun"), ("at", "sat", "verb"),
+            ("at", "that", "pronoun"), ("at", "flat", "adjective"),
+            ("ake", "cake", "noun"), ("ake", "lake", "noun"), ("ake", "bake", "verb"),
+            ("ake", "make", "verb"), ("ake", "take", "verb"), ("ake", "shake", "verb"),
+            ("ake", "wake", "verb"), ("ake", "brake", "noun"),
+            ("ight", "night", "noun"), ("ight", "light", "noun"), ("ight", "bright", "adjective"),
+            ("ight", "sight", "noun"), ("ight", "fight", "verb"), ("ight", "might", "verb"),
+            ("ight", "right", "adjective"), ("ight", "tight", "adjective"),
+            ("ock", "rock", "noun"), ("ock", "lock", "noun"), ("ock", "clock", "noun"),
+            ("ock", "block", "noun"), ("ock", "sock", "noun"), ("ock", "knock", "verb"),
+            ("ock", "dock", "noun"), ("ock", "shock", "noun"),
+            ("ing", "king", "noun"), ("ing", "ring", "noun"), ("ing", "wing", "noun"),
+            ("ing", "thing", "noun"), ("ing", "spring", "noun"), ("ing", "sing", "verb"),
+            ("ing", "bring", "verb"), ("ing", "fling", "verb"),
+            ("ell", "bell", "noun"), ("ell", "tell", "verb"), ("ell", "sell", "verb"),
+            ("ell", "well", "adverb"), ("ell", "fell", "verb"), ("ell", "shell", "noun"),
+            ("ell", "smell", "verb"), ("ell", "yell", "verb"),
+            ("ime", "time", "noun"), ("ime", "lime", "noun"), ("ime", "dime", "noun"),
+            ("ime", "chime", "noun"), ("ime", "climb", "verb"), ("ime", "prime", "adjective"),
+            ("ime", "sublime", "adjective"),
+            ("one", "bone", "noun"), ("one", "stone", "noun"), ("one", "phone", "noun"),
+            ("one", "throne", "noun"), ("one", "alone", "adjective"),
+            ("ain", "rain", "noun"), ("ain", "pain", "noun"), ("ain", "train", "noun"),
+            ("ain", "brain", "noun"), ("ain", "plain", "adjective"), ("ain", "main", "adjective"),
+            ("ain", "explain", "verb"),
+            ("ump", "jump", "verb"), ("ump", "bump", "noun"), ("ump", "pump", "noun"),
+            ("ump", "lump", "noun"), ("ump", "dump", "verb"), ("ump", "stump", "noun"),
+            ("ice", "nice", "adjective"), ("ice", "ice", "noun"), ("ice", "price", "noun"),
+            ("ice", "mice", "noun"), ("ice", "spice", "noun"), ("ice", "advice", "noun"),
+            ("ide", "ride", "verb"), ("ide", "hide", "verb"), ("ide", "side", "noun"),
+            ("ide", "wide", "adjective"), ("ide", "glide", "verb"), ("ide", "pride", "noun"),
+            ("ide", "inside", "noun"),
+            ("unk", "sunk", "verb"), ("unk", "junk", "noun"), ("unk", "trunk", "noun"),
+            ("unk", "drunk", "adjective"), ("unk", "chunk", "noun"),
+            ("ink", "think", "verb"), ("ink", "sink", "verb"), ("ink", "drink", "verb"),
+            ("ink", "pink", "adjective"), ("ink", "blink", "verb"), ("ink", "link", "noun"),
+            ("ank", "bank", "noun"), ("ank", "tank", "noun"), ("ank", "rank", "noun"),
+            ("ank", "sank", "verb"), ("ank", "plank", "noun"), ("ank", "blank", "adjective"),
+            ("and", "hand", "noun"), ("and", "sand", "noun"), ("and", "land", "noun"),
+            ("and", "band", "noun"), ("and", "stand", "verb"), ("and", "understand", "verb"),
+            ("eam", "team", "noun"), ("eam", "dream", "noun"), ("eam", "stream", "noun"),
+            ("eam", "cream", "noun"), ("eam", "scream", "verb"),
+            ("eet", "meet", "verb"), ("eet", "feet", "noun"), ("eet", "sheet", "noun"),
+            ("eet", "street", "noun"), ("eet", "sweet", "adjective"),
+            ("op", "top", "noun"), ("op", "stop", "verb"), ("op", "drop", "verb"),
+            ("op", "shop", "noun"), ("op", "pop", "noun"), ("op", "hop", "verb"),
+            ("un", "fun", "noun"), ("un", "sun", "noun"), ("un", "run", "verb"),
+            ("un", "gun", "noun"), ("un", "bun", "noun"), ("un", "done", "adjective"),
+        };
+
+        context.RhymeGroups.AddRange(groups.Select(g => new RhymeGroup
+        {
+            RhymeKey = g.Key,
+            Word = g.Word,
+            WordType = g.Type,
+            CreatedAt = now
+        }));
+    }
+
+    private static void SeedPoemTemplates(PokeChatDbContext context, string now)
+    {
+        if (context.PoemTemplates.Any()) return;
+
+        var haikuTemplates = new[]
+        {
+            "an {adj} {noun} falls\n{adj} {noun} {verb}ing in the {noun}\n{adj} {noun} {verb}s",
+            "the {adj} {noun} pond\n{art} {noun} jumps into the {noun}\n{noun} {verb}s {adv}",
+            "{adj} {noun} {noun}\n{verb}ing through the {adj} {noun} {noun}\n{adj} {noun} {verb}s",
+            "{noun} in the {noun}\n{adj} {noun} {verb}ing {adv} {prep} {noun}\n{noun} {verb}s again",
+            "when {noun} {verb}s {adv}\n{art} {noun} {verb}s {prep} the {noun}\n{adj} {noun} {verb}s",
+            "{adj} {noun} {verb}s\nover the {adj} {noun} and {noun}\n{adv} the {noun} {verb}s",
+            "{noun} {verb}s in {place}\n{adj} {noun} {verb}ing {prep} the {noun}\n{noun} {verb}s no more",
+            "under the {noun}\n{adj} {noun} {verb}ing for {noun}\n{noun} {verb}s alone",
+            "{adj} {noun} morning\n{noun} {verb}s {prep} the {adj} {noun}\n{adj} {noun} {verb}s on",
+            "above the {noun}\n{art} {noun} {verb}s {adv} and {verb}s\n{adv} the {noun} {verb}s",
+            "{noun} after {noun}\n{adj} {noun} {verb}ing through the {noun}\n{noun} {verb}s {adv}",
+            "the {adj} {noun} wind\n{verb}s through the {adj} {noun} {noun}\n{noun} {verb}s {adv}",
+        };
+
+        context.PoemTemplates.AddRange(haikuTemplates.Select(t => new PoemTemplate
+        {
+            Template = t,
+            PoemType = "haiku",
+            CreatedAt = now
+        }));
+
+        var limerickTemplates = new[]
+        {
+            "there once was {art} {a_rhyme} from {place}\nwho had {art} {a_rhyme} all over {pron} face\n{pron} would {verb} every {noun}\nin {art} {b_rhyme} {noun}\nand {verb} with {adj} {a_rhyme} grace",
+            "a {adj} {a_rhyme} from {place}\nfound {art} {a_rhyme} with {adj} grace\n{pron} {verb}ed {art} {noun}\nand {art} {b_rhyme} {noun}\nand smiled with {art} {a_rhyme} face",
+            "there lived {art} {adj} {a_rhyme}\nwho dreamed of {art} {a_rhyme} all the time\n{pron} {verb}ed every day\nin {art} {b_rhyme} way\nand said it was {adj} and sublime",
+            "i knew {art} {adj} {a_rhyme} from {place}\nwho painted with {adj} {a_rhyme} grace\n{pron} {verb}ed all the {noun}\nwith {art} {b_rhyme} noun\nand smiled with a smile on {pron} face",
+            "there was an old {a_rhyme} from {place}\nwho had a most {adj} {a_rhyme}\n{pron} {verb}ed every {noun}\nin {art} {b_rhyme} noun\ntill the {noun} fell {adv} on {pron} face",
+            "a {adj} {a_rhyme} i once knew\n{verb}ed {adv} and then {verb}ed too\n{pron} {verb}ed {art} {noun}\nwith {art} {b_rhyme} noun\nand then {verb}ed away from view",
+            "the {adj} {a_rhyme} of {place}\nhad a {adj} {a_rhyme} on {pron} face\n{pron} {verb}ed every {noun}\nwith {art} {b_rhyme} noun\nand {verb}ed with remarkable grace",
+            "i met {art} {adj} {a_rhyme}\nwho {verb}ed all the {adj} {noun} time\n{pron} {verb}ed {art} {noun}\nwith {art} {b_rhyme} noun\nand said it was {adj} and sublime",
+            "there once was {art} {a_rhyme} so {adj}\nwho {verb}ed {art} {adj} {a_rhyme}\n{pron} {verb}ed every {noun}\nin {art} {b_rhyme} noun\ntill the {noun} went {adv} and flat",
+            "from the {adj} hills of {place}\ncame {art} {a_rhyme} with {adj} grace\n{pron} {verb}ed {art} {noun}\nwith {art} {b_rhyme} noun\nand {verb}ed a smile on {pron} face",
+        };
+
+        context.PoemTemplates.AddRange(limerickTemplates.Select(t => new PoemTemplate
+        {
+            Template = t,
+            PoemType = "limerick",
+            CreatedAt = now
+        }));
+    }
+
     private static void SeedBotResponses(PokeChatDbContext context, string now)
     {
         if (context.BotResponses.Any()) return;
@@ -1059,6 +1176,14 @@ public static class DbSeeder
             ("wyr_acknowledgement", "Good answer!"),
             ("wyr_acknowledgement", "Fair enough!"),
             ("wyr_acknowledgement", "Can't go wrong with that!"),
+            ("haiku_response", "A haiku for you:\n\n{0}"),
+            ("haiku_response", "Here is a haiku:\n\n{0}"),
+            ("haiku_response", "A poem, if you will:\n\n{0}"),
+            ("limerick_response", "A limerick, if you please:\n\n{0}"),
+            ("limerick_response", "Here's a limerick:\n\n{0}"),
+            ("limerick_response", "How about a limerick:\n\n{0}"),
+            ("poem_time", "Would you like to hear a haiku or a limerick?"),
+            ("poem_time", "I could write you a poem. Haiku or limerick?"),
         };
 
         context.BotResponses.AddRange(responses.Select(r => new BotResponse

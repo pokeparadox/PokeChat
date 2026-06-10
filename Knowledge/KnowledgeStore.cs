@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using PokeChat.Data;
 using PokeChat.Data.Entities;
 using PokeChat.Responses;
+using PokeChat.Stories;
 
 namespace PokeChat.Knowledge;
 
@@ -1046,5 +1047,41 @@ public class KnowledgeStore(PokeChatDbContext context)
         var riddles = context.Riddles.ToList();
         if (riddles.Count == 0) return null;
         return riddles[Random.Shared.Next(riddles.Count)];
+    }
+
+    public List<string> GetAllRhymeGroupWords(string wordType)
+    {
+        return context.RhymeGroups
+            .Where(r => r.WordType == wordType)
+            .Select(r => r.Word)
+            .Distinct()
+            .ToList();
+    }
+
+    public List<string> GetRhymeGroupWords(string rhymeKey, string wordType)
+    {
+        return context.RhymeGroups
+            .Where(r => r.RhymeKey == rhymeKey && r.WordType == wordType)
+            .Select(r => r.Word)
+            .ToList();
+    }
+
+    public List<string> GetWordsByTypeAndSyllables(string wordType, int syllableCount)
+    {
+        var words = context.PosDictionary
+            .Where(p => p.WordType == wordType)
+            .Select(p => p.Word)
+            .ToList();
+
+        return words
+            .Where(w => SyllableCounter.Count(w) == syllableCount)
+            .ToList();
+    }
+
+    public List<PoemTemplate> GetPoemTemplates(string poemType)
+    {
+        return context.PoemTemplates
+            .Where(t => t.PoemType == poemType)
+            .ToList();
     }
 }

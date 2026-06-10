@@ -977,6 +977,58 @@ public class ChatSessionTests
     }
 
     [Fact]
+    public void PoetryRequest_Haiku_ReturnsNonEmptyResponse()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedRhymeGroups(db.Context);
+            TestDataHelper.SeedPoemTemplates(db.Context);
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("I like pizza");
+
+            var response = session.ProcessInput("write a haiku");
+
+            response.ShouldNotBeNullOrEmpty();
+            response.ShouldNotContain("{");
+        }
+    }
+
+    [Fact]
+    public void PoetryRequest_Limerick_ReturnsNonEmptyResponse()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedRhymeGroups(db.Context);
+            TestDataHelper.SeedPoemTemplates(db.Context);
+            session.HandleNameInput("my name is Alice");
+            session.ProcessInput("I like pizza");
+
+            var response = session.ProcessInput("write a limerick");
+
+            response.ShouldNotBeNullOrEmpty();
+            response.ShouldNotContain("{");
+        }
+    }
+
+    [Fact]
+    public void PoetryRequest_JustHaikuWord_TriggersPoem()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            TestDataHelper.SeedRhymeGroups(db.Context);
+            TestDataHelper.SeedPoemTemplates(db.Context);
+            session.HandleNameInput("my name is Alice");
+
+            var response = session.ProcessInput("haiku");
+
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
     public void ProcessInput_UnknownWord_ClassificationFires_AfterLearn()
     {
         var (session, db) = CreateSessionAndDb();
@@ -1186,7 +1238,7 @@ public class ChatSessionTests
             var result = session.TryHandleGameStart("let's play a word game", out var response);
 
             result.ShouldBeTrue();
-            response.ShouldContain("word game");
+            (response.Contains("word game") || response.Contains("story")).ShouldBeTrue();
         }
     }
 

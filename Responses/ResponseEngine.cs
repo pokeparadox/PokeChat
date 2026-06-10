@@ -18,6 +18,7 @@ public class ResponseEngine
     private readonly ISvoExtractor _svoExtractor;
     private readonly IMathEngine _mathEngine;
     private readonly StoryGenerator _storyGenerator;
+    private readonly PoetryGenerator _poetryGenerator;
     private readonly ToolRegistry? _toolRegistry;
     private readonly List<ResponseRuleRecord>? _toolTriggers;
     private readonly Dictionary<string, List<string>> _botResponses;
@@ -50,6 +51,8 @@ public class ResponseEngine
     {
         return category == "default_response"
             || category == "story_response"
+            || category == "haiku_response"
+            || category == "limerick_response"
             || category == "random_fact_followup"
             || (category != null && category.StartsWith("proactive_"));
     }
@@ -64,6 +67,7 @@ public class ResponseEngine
         _svoExtractor = svoExtractor;
         _mathEngine = mathEngine ?? new SimpleMath();
         _storyGenerator = storyGenerator ?? new StoryGenerator(knowledgeStore);
+        _poetryGenerator = new PoetryGenerator(knowledgeStore);
         _toolRegistry = toolRegistry;
         _toolTriggers = toolTriggers;
         _botResponses = knowledgeStore.GetBotResponses();
@@ -231,6 +235,12 @@ public class ResponseEngine
                 $"Tell a very short original story (3-5 sentences) about {subj}. " +
                 "Make it fun and lighthearted.",
 
+            "haiku_response" =>
+                $"Write a haiku (5-7-5 syllables) about {subj} or {obj}. Just the poem, no commentary.",
+
+            "limerick_response" =>
+                $"Write a limerick (AABBA rhyme scheme) about {subj} or {obj}. Just the poem, no commentary.",
+
             _ => $"The user said: \"{userInput}\". Respond naturally and conversationally. 1 sentence."
         };
 
@@ -326,6 +336,9 @@ public class ResponseEngine
 
         var storyResult = HandleStoryRequest(input, userId);
         if (storyResult != null) return storyResult;
+
+        var poemResult = HandlePoetryRequest(input, userId);
+        if (poemResult != null) return poemResult;
 
         var inferenceResult = HandleInferenceResponse();
         if (inferenceResult != null) return inferenceResult;
@@ -429,14 +442,30 @@ public class ResponseEngine
             return GetRandomResponse("random_fact_followup", randomFact.Subject, conjVerb, randomFact.Object);
         }
 
-        if (Random.Shared.Next(6) == 0)
+        if (Random.Shared.Next(5) == 0)
         {
-            var story = _storyGenerator.GenerateStory(_currentUserName, userId);
-            if (!string.IsNullOrEmpty(story))
+            var roll = Random.Shared.Next(4);
+            if (roll < 2)
             {
-                var storyResponse = GetRandomResponse("story_response", story);
-                if (!string.IsNullOrEmpty(storyResponse))
-                    return storyResponse;
+                var story = _storyGenerator.GenerateStory(_currentUserName, userId);
+                if (!string.IsNullOrEmpty(story))
+                {
+                    var storyResponse = GetRandomResponse("story_response", story);
+                    if (!string.IsNullOrEmpty(storyResponse))
+                        return storyResponse;
+                }
+            }
+            else if (roll == 2)
+            {
+                var haiku = _poetryGenerator.GenerateHaiku(_currentUserName, userId);
+                if (!string.IsNullOrEmpty(haiku))
+                    return GetRandomResponse("haiku_response", haiku);
+            }
+            else
+            {
+                var limerick = _poetryGenerator.GenerateLimerick(_currentUserName, userId);
+                if (!string.IsNullOrEmpty(limerick))
+                    return GetRandomResponse("limerick_response", limerick);
             }
         }
 
@@ -826,6 +855,51 @@ public class ResponseEngine
             return GetRandomResponse("story_response", "Once upon a time, there was a curious explorer who set out to discover new things. The end.");
 
         return GetRandomResponse("story_response", story);
+    }
+
+    private string? HandlePoetryRequest(string input, int? userId)
+    {
+        var lower = input.ToLowerInvariant().Trim();
+
+        var isHaikuRequest = lower.Contains("write a haiku") || lower.Contains("make a haiku") ||
+                             lower.Contains("a haiku") || lower == "haiku";
+        if (isHaikuRequest)
+        {
+            if (_llmGenerator != null)
+            {
+                var prompt = $"Write a haiku (5-7-5 syllables). Just the poem, no commentary.";
+                var llmResult = _llmGenerator(prompt);
+                if (!string.IsNullOrEmpty(llmResult))
+                    return GetRandomResponse("haiku_response", llmResult);
+            }
+
+            var haiku = _poetryGenerator.GenerateHaiku(_currentUserName, userId);
+            if (!string.IsNullOrEmpty(haiku))
+                return GetRandomResponse("haiku_response", haiku);
+
+            return GetRandomResponse("haiku_response", "silent pond\na frog jumps into the water\nripples spread");
+        }
+
+        var isLimerickRequest = lower.Contains("write a limerick") || lower.Contains("make a limerick") ||
+                                lower.Contains("a limerick") || lower == "limerick";
+        if (isLimerickRequest)
+        {
+            if (_llmGenerator != null)
+            {
+                var prompt = $"Write a limerick (AABBA rhyme scheme). Just the poem, no commentary.";
+                var llmResult = _llmGenerator(prompt);
+                if (!string.IsNullOrEmpty(llmResult))
+                    return GetRandomResponse("limerick_response", llmResult);
+            }
+
+            var limerick = _poetryGenerator.GenerateLimerick(_currentUserName, userId);
+            if (!string.IsNullOrEmpty(limerick))
+                return GetRandomResponse("limerick_response", limerick);
+
+            return GetRandomResponse("limerick_response", "There once was a coder from Leeds\nwho swallowed a packet of seeds\nin a month and a day\na plant grew that way\nand now he's a garden that reads");
+        }
+
+        return null;
     }
 
     private static readonly Regex ToolMarkerRegex = new(@"\{tool:(\w+)(?::([^}]+))?\}", RegexOptions.Compiled);

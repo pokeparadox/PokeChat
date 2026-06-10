@@ -144,6 +144,12 @@ internal static class TestDataHelper
             ("wyr_question", "Would you rather {0} or {1}?"),
             ("wyr_acknowledgement", "{0}! That's an interesting choice!"),
             ("wyr_acknowledgement", "Good answer!"),
+            ("haiku_response", "A haiku for you:\n\n{0}"),
+            ("haiku_response", "{0}"),
+            ("limerick_response", "A limerick for you:\n\n{0}"),
+            ("limerick_response", "{0}"),
+            ("poem_time", "I'm in a creative mood!"),
+            ("poem_time", "Alright, let me think of something poetic..."),
         };
         db.BotResponses.AddRange(responses.Select(r => new BotResponse
         {
@@ -242,7 +248,41 @@ internal static class TestDataHelper
             new PosDictionaryEntry { Word = "on", WordType = "preposition", CreatedAt = now },
             new PosDictionaryEntry { Word = "a", WordType = "determiner", CreatedAt = now },
             new PosDictionaryEntry { Word = "an", WordType = "determiner", CreatedAt = now },
-            new PosDictionaryEntry { Word = "once", WordType = "adverb", CreatedAt = now }
+            new PosDictionaryEntry { Word = "once", WordType = "adverb", CreatedAt = now },
+            new PosDictionaryEntry { Word = "garden", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "water", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "silent", WordType = "adjective", CreatedAt = now },
+            new PosDictionaryEntry { Word = "happy", WordType = "adjective", CreatedAt = now },
+            new PosDictionaryEntry { Word = "yellow", WordType = "adjective", CreatedAt = now },
+            new PosDictionaryEntry { Word = "purple", WordType = "adjective", CreatedAt = now },
+            new PosDictionaryEntry { Word = "simple", WordType = "adjective", CreatedAt = now },
+            new PosDictionaryEntry { Word = "table", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "castle", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "bottle", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "middle", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "little", WordType = "adjective", CreatedAt = now },
+            new PosDictionaryEntry { Word = "forest", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "mountain", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "ocean", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "village", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "quickly", WordType = "adverb", CreatedAt = now },
+            new PosDictionaryEntry { Word = "silently", WordType = "adverb", CreatedAt = now },
+            new PosDictionaryEntry { Word = "boldly", WordType = "adverb", CreatedAt = now },
+            new PosDictionaryEntry { Word = "gently", WordType = "adverb", CreatedAt = now },
+            new PosDictionaryEntry { Word = "treasure", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "mysterious", WordType = "adjective", CreatedAt = now },
+            new PosDictionaryEntry { Word = "hat", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "cake", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "lake", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "night", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "light", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "rock", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "king", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "ring", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "bell", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "bright", WordType = "adjective", CreatedAt = now },
+            new PosDictionaryEntry { Word = "in", WordType = "preposition", CreatedAt = now },
+            new PosDictionaryEntry { Word = "spring", WordType = "noun", CreatedAt = now }
         );
         db.SaveChanges();
     }
@@ -396,6 +436,66 @@ internal static class TestDataHelper
             new StoryTemplate
             {
                 Template = "A long time ago, {character} was {a_adj} {noun} who dreamed of {verb}ing. Everyone said it was impossible, but {character} didn't listen. And that's how the greatest adventure began.",
+                CreatedAt = now
+            }
+        );
+        db.SaveChanges();
+    }
+
+    public static void SeedRhymeGroups(PokeChatDbContext db)
+    {
+        var now = DateTime.UtcNow.ToString("o");
+        var groups = new (string Key, string Word, string Type)[]
+        {
+            ("at", "cat", "noun"), ("at", "hat", "noun"), ("at", "bat", "noun"),
+            ("at", "rat", "noun"), ("at", "mat", "noun"), ("at", "sat", "verb"),
+            ("ake", "cake", "noun"), ("ake", "lake", "noun"), ("ake", "bake", "verb"),
+            ("ake", "make", "verb"), ("ake", "take", "verb"), ("ake", "shake", "verb"),
+            ("ight", "night", "noun"), ("ight", "light", "noun"), ("ight", "bright", "adjective"),
+            ("ight", "sight", "noun"), ("ight", "fight", "verb"), ("ight", "might", "verb"),
+            ("ock", "rock", "noun"), ("ock", "lock", "noun"), ("ock", "clock", "noun"),
+            ("ock", "block", "noun"), ("ock", "sock", "noun"), ("ock", "knock", "verb"),
+            ("ing", "king", "noun"), ("ing", "ring", "noun"), ("ing", "wing", "noun"),
+            ("ing", "thing", "noun"), ("ing", "spring", "noun"), ("ing", "sing", "verb"),
+            ("ell", "bell", "noun"), ("ell", "tell", "verb"), ("ell", "sell", "verb"),
+            ("ell", "well", "adverb"), ("ell", "fell", "verb"), ("ell", "shell", "noun"),
+        };
+        db.RhymeGroups.AddRange(groups.Select(g => new RhymeGroup
+        {
+            RhymeKey = g.Key,
+            Word = g.Word,
+            WordType = g.Type,
+            CreatedAt = now
+        }));
+        db.SaveChanges();
+    }
+
+    public static void SeedPoemTemplates(PokeChatDbContext db)
+    {
+        var now = DateTime.UtcNow.ToString("o");
+        db.PoemTemplates.AddRange(
+            new PoemTemplate
+            {
+                Template = "an {adj} {noun} falls\n{adj} {noun} {verb}ing in the {noun}\n{adj} {noun} {verb}s",
+                PoemType = "haiku",
+                CreatedAt = now
+            },
+            new PoemTemplate
+            {
+                Template = "the {adj} {noun} pond\n{art} {noun} jumps into the {noun}\n{noun} {verb}s {adv}",
+                PoemType = "haiku",
+                CreatedAt = now
+            },
+            new PoemTemplate
+            {
+                Template = "there once was {art} {a_rhyme} from {place}\nwho had {art} {a_rhyme} all over {pron} face\n{pron} would {verb} every {noun}\nin {art} {b_rhyme} {noun}\nand {verb} with {adj} {a_rhyme} grace",
+                PoemType = "limerick",
+                CreatedAt = now
+            },
+            new PoemTemplate
+            {
+                Template = "{art} {adj} {noun} from {place}\nfound {art} {a_rhyme} with {adj} grace\n{pron} {verb}ed {art} {noun}\nand {art} {b_rhyme} {noun}\nand smiled with {art} {a_rhyme} face",
+                PoemType = "limerick",
                 CreatedAt = now
             }
         );

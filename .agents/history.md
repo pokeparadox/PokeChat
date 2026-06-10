@@ -1187,3 +1187,30 @@ Two content-driven diversions: dad jokes (setup→punchline, 2-turn) and riddles
 - `TryHandleJokeStart_TriggersOnPhrase`, `TryHandleJokeStart_NoJokes_ReturnsEmpty`, `TryHandleJokeStart_NonTrigger_ReturnsFalse`, `HandleJokeTurn_ReturnsPunchline`, `ProcessInput_JokeFlow_ThroughProcessInput`
 - `TryHandleRiddleStart_TriggersOnPhrase`, `TryHandleRiddleStart_NoRiddles_ReturnsEmpty`, `HandleRiddleTurn_CorrectGuess_Wins`, `HandleRiddleTurn_WrongGuess_LetsTryAgain`, `HandleRiddleTurn_GiveUp_RevealsAnswer`, `HandleRiddleTurn_AfterThreeAttempts_GivesUp`, `HandleRiddleTurn_Hint_ReturnsHint`, `TryHandleRiddleStart_AlreadyActive_ReturnsPrompt`, `ProcessInput_RiddleFlow_ThroughProcessInput`
 - 1 pre-existing flaky game start test (template randomization)
+
+---
+
+## Phase 35 — Poetry Generation (Haiku & Limerick) ✅
+
+Algorithmic haiku (5-7-5 syllables) and DB-backed limerick (AABBA rhyme) generation without LLM.
+
+### Changes
+- `Stories/SyllableCounter.cs` (new): Algorithmic syllable counter with vowel-group counting, silent-e/-le/-ed/-sm/diphthong adjustments, exception lists
+- `Stories/RhymeMatcher.cs` (new): Rhyme key extraction (handles silent-e), DB-first word matching with syllable filter fallback
+- `Data/Entities/RhymeGroup.cs` (new): Rhyme DB entity (GroupKey, Word, Type)
+- `Data/Entities/PoemTemplate.cs` (new): Poem template entity (Template, PoemType)
+- `Data/PokeChatDbContext.cs`: added DbSet mappings + OnModelCreating for RhymeGroup/PoemTemplate
+- `Data/DbSeeder.cs`: `SeedRhymeGroups()` (130+ entries across 20+ groups), `SeedPoemTemplates()` (12 haiku + 10 limerick templates), bot responses (haiku_response×3, limerick_response×3, poem_time×2), POS entries (haiku, limerick, poem, poetry, verse)
+- `Knowledge/KnowledgeStore.cs`: added `GetAllRhymeGroupWords()`, `GetRhymeGroupWords()`, `GetWordsByTypeAndSyllables()`, `GetPoemTemplates()`
+- `Stories/PoetryGenerator.cs` (new): Template-based generator resolving `{noun_2}`, `{adj_1}`, `{verb_2ing}`, `{a_rhyme}`, `{b_rhyme}` slots with syllable-count suffix support, automatic suffix handling (`{verb}ing`→gerund, `{verb}s`→3P, `{verb}ed`→past)
+- `Responses/ResponseEngine.cs`: Added `_poetryGenerator` field/init, `HandlePoetryRequest()` (trigger phrases: "write a haiku/limerick", "make a poem", "tell me a poem", "haiku"/"limerick"), combined creative slot (1/5 chance, 50% story / 25% haiku / 25% limerick), LLM prompts for haiku/limerick, `IsDeadEndCategory` entries
+- EF Core migration: `AddPoemAndRhymeTables`
+- `tests/Helpers/TestDataHelper.cs`: added bot response categories (haiku_response, limerick_response, poem_time)
+
+### Tests (12 new + 1 flaky fix, 484/484 pass)
+- `SyllableCounterTests.cs`: 75 tests covering vowel groups, silent-e, -le, -ed, -sm, diphthongs, exceptions
+- `RhymeMatcherTests.cs`: 8 tests covering rhyme key extraction, group matching, syllable fallback
+- `PoetryGeneratorTests.cs`: 9 tests covering haiku (user context, no context), limerick, all slot types, suffix handling, missing data
+- `ResponseEngineTests.cs`: `HandlePoetryRequest_ExplicitHaiku_ReturnsPoem`, `HandlePoetryRequest_ExplicitLimerick_ReturnsPoem`, `HandlePoetryRequest_HaikuViaLLM_WhenAvailable`, `HandlePoetryRequest_LimerickViaLLM_WhenAvailable`
+- `ChatSessionTests.cs`: `PoetryRequest_Haiku_ReturnsNonEmptyResponse`, `PoetryRequest_Limerick_ReturnsNonEmptyResponse`, `PoetryRequest_JustHaikuWord_TriggersPoem`
+- Fixed flaky `TryHandleGameStart_TriggersOnPhrase` test (accept either "word game" or "story" in response)

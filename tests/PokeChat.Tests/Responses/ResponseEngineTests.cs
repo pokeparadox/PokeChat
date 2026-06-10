@@ -495,6 +495,110 @@ public class ResponseEngineTests
     }
 
     [Fact]
+    public void HandlePoetryRequest_ExplicitHaiku_ReturnsPoem()
+    {
+        using var db = new FreshDbContext();
+        TestDataHelper.SeedRhymeGroups(db.Context);
+        TestDataHelper.SeedPoemTemplates(db.Context);
+        TestDataHelper.SeedBotResponses(db.Context);
+        TestDataHelper.SeedPosDictionary(db.Context);
+
+        var context = new ContextTracker();
+        var store = new KnowledgeStore(db.Context);
+        var spellChecker = new SpellChecker();
+        var posEntries = store.GetPosDictionary();
+        spellChecker.Initialise(new HashSet<string>(posEntries.Select(e => e.Word), StringComparer.OrdinalIgnoreCase), []);
+        var posTagger = new PosTagger(posEntries);
+        var tokeniser = new Tokeniser();
+        var svoExtractor = new SvoExtractor();
+
+        var engine = new ResponseEngine(store, context, spellChecker, posTagger, tokeniser, svoExtractor);
+        var response = engine.GenerateResponse("write a haiku", 1);
+        response.ShouldNotBeNullOrEmpty();
+        response.ShouldNotContain("{");
+    }
+
+    [Fact]
+    public void HandlePoetryRequest_ExplicitLimerick_ReturnsPoem()
+    {
+        using var db = new FreshDbContext();
+        TestDataHelper.SeedRhymeGroups(db.Context);
+        TestDataHelper.SeedPoemTemplates(db.Context);
+        TestDataHelper.SeedBotResponses(db.Context);
+        TestDataHelper.SeedPosDictionary(db.Context);
+
+        var context = new ContextTracker();
+        var store = new KnowledgeStore(db.Context);
+        var spellChecker = new SpellChecker();
+        var posEntries = store.GetPosDictionary();
+        spellChecker.Initialise(new HashSet<string>(posEntries.Select(e => e.Word), StringComparer.OrdinalIgnoreCase), []);
+        var posTagger = new PosTagger(posEntries);
+        var tokeniser = new Tokeniser();
+        var svoExtractor = new SvoExtractor();
+
+        var engine = new ResponseEngine(store, context, spellChecker, posTagger, tokeniser, svoExtractor);
+        var response = engine.GenerateResponse("write a limerick", 1);
+        response.ShouldNotBeNullOrEmpty();
+        response.ShouldNotContain("{");
+    }
+
+    [Fact]
+    public void HandlePoetryRequest_HaikuViaLLM_WhenAvailable()
+    {
+        using var db = new FreshDbContext();
+        TestDataHelper.SeedRhymeGroups(db.Context);
+        TestDataHelper.SeedPoemTemplates(db.Context);
+        TestDataHelper.SeedBotResponses(db.Context);
+        TestDataHelper.SeedPosDictionary(db.Context);
+
+        var context = new ContextTracker();
+        var store = new KnowledgeStore(db.Context);
+        var spellChecker = new SpellChecker();
+        var posEntries = store.GetPosDictionary();
+        spellChecker.Initialise(new HashSet<string>(posEntries.Select(e => e.Word), StringComparer.OrdinalIgnoreCase), []);
+        var posTagger = new PosTagger(posEntries);
+        var tokeniser = new Tokeniser();
+        var svoExtractor = new SvoExtractor();
+
+        var llmCalled = false;
+        Func<string, string?> llmGen = prompt => { llmCalled = true; return "an LLM haiku"; };
+
+        var engine = new ResponseEngine(store, context, spellChecker, posTagger, tokeniser, svoExtractor,
+            llmGenerator: llmGen);
+        var response = engine.GenerateResponse("write a haiku", 1);
+        llmCalled.ShouldBeTrue();
+        response.ShouldContain("haiku");
+    }
+
+    [Fact]
+    public void HandlePoetryRequest_LimerickViaLLM_WhenAvailable()
+    {
+        using var db = new FreshDbContext();
+        TestDataHelper.SeedRhymeGroups(db.Context);
+        TestDataHelper.SeedPoemTemplates(db.Context);
+        TestDataHelper.SeedBotResponses(db.Context);
+        TestDataHelper.SeedPosDictionary(db.Context);
+
+        var context = new ContextTracker();
+        var store = new KnowledgeStore(db.Context);
+        var spellChecker = new SpellChecker();
+        var posEntries = store.GetPosDictionary();
+        spellChecker.Initialise(new HashSet<string>(posEntries.Select(e => e.Word), StringComparer.OrdinalIgnoreCase), []);
+        var posTagger = new PosTagger(posEntries);
+        var tokeniser = new Tokeniser();
+        var svoExtractor = new SvoExtractor();
+
+        var llmCalled = false;
+        Func<string, string?> llmGen = prompt => { llmCalled = true; return "an LLM limerick"; };
+
+        var engine = new ResponseEngine(store, context, spellChecker, posTagger, tokeniser, svoExtractor,
+            llmGenerator: llmGen);
+        var response = engine.GenerateResponse("write a limerick", 1);
+        llmCalled.ShouldBeTrue();
+        response.ShouldContain("limerick");
+    }
+
+    [Fact]
     public void Explicit8Ball_ReturnsAnswer()
     {
         using var db = new FreshDbContext();

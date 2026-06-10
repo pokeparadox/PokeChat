@@ -1,0 +1,206 @@
+using System.Text.RegularExpressions;
+using PokeChat.Knowledge;
+
+namespace PokeChat.Stories;
+
+public class PoetryGenerator
+{
+    private readonly KnowledgeStore _knowledgeStore;
+    private readonly RhymeMatcher _rhymeMatcher;
+
+    private static readonly Regex SlotPattern = new(@"\{(\w+?)(?:_(\d+))?\}(\w+)?", RegexOptions.Compiled);
+    private static readonly HashSet<char> Vowels = new() { 'a', 'e', 'i', 'o', 'u' };
+
+    private static readonly string[] FallbackNouns = { "treasure", "quest", "door", "key" };
+    private static readonly string[] FallbackVerbs = { "explore", "discover", "sing", "dance" };
+    private static readonly string[] FallbackAdjs = { "mysterious", "brave", "golden", "ancient" };
+    private static readonly string[] FallbackAdverbs = { "quickly", "silently", "boldly", "gently" };
+    private static readonly string[] FallbackPlaces = { "forest", "mountain", "ocean", "village" };
+
+    public PoetryGenerator(KnowledgeStore knowledgeStore, RhymeMatcher? rhymeMatcher = null)
+    {
+        _knowledgeStore = knowledgeStore;
+        _rhymeMatcher = rhymeMatcher ?? new RhymeMatcher(knowledgeStore);
+    }
+
+    public string? GenerateHaiku(string? userName = null, int? userId = null)
+    {
+        var templates = _knowledgeStore.GetPoemTemplates("haiku");
+        if (templates.Count == 0) return null;
+
+        var template = templates[Random.Shared.Next(templates.Count)].Template;
+        return ResolvePoemTemplate(template, userName, userId);
+    }
+
+    public string? GenerateLimerick(string? userName = null, int? userId = null)
+    {
+        var templates = _knowledgeStore.GetPoemTemplates("limerick");
+        if (templates.Count == 0) return null;
+
+        var template = templates[Random.Shared.Next(templates.Count)].Template;
+        return ResolvePoemTemplate(template, userName, userId);
+    }
+
+    private string ResolvePoemTemplate(string template, string? userName, int? userId)
+    {
+        var resolvedLines = new List<string>();
+        var usedRhymeA = new List<string>();
+        var usedRhymeB = new List<string>();
+
+        foreach (var line in template.Split('\n'))
+        {
+            var resolvedLine = SlotPattern.Replace(line.Trim(), match =>
+            {
+                var fullSlot = match.Groups[1].Value;
+                var numStr = match.Groups[2].Value;
+                var num = string.IsNullOrEmpty(numStr) ? 0 : int.Parse(numStr);
+                var suffix = match.Groups[3].Value;
+
+                var resolved = ResolveSlot(fullSlot, num, userName, userId, usedRhymeA, usedRhymeB);
+                return ApplySuffix(resolved, suffix);
+            });
+
+            resolvedLines.Add(resolvedLine);
+        }
+
+        return string.Join("\n", resolvedLines);
+    }
+
+    private string ResolveSlot(string slot, int num, string? userName, int? userId,
+        List<string> usedRhymeA, List<string> usedRhymeB)
+    {
+        return slot switch
+        {
+            "noun" => PickWord("noun", num) ?? FallbackNouns[Random.Shared.Next(FallbackNouns.Length)],
+            "verb" => PickWord("verb", num) ?? FallbackVerbs[Random.Shared.Next(FallbackVerbs.Length)],
+            "adj" => PickWord("adjective", num) ?? FallbackAdjs[Random.Shared.Next(FallbackAdjs.Length)],
+            "adv" => PickWord("adverb", num) ?? FallbackAdverbs[Random.Shared.Next(FallbackAdverbs.Length)],
+            "prep" => PickWord("preposition", num) ?? "in",
+            "art" => Random.Shared.Next(2) == 0 ? "a" : "the",
+            "pron" => Random.Shared.Next(3) switch { 0 => "he", 1 => "she", _ => "they" },
+            "det" => PickDeterminer(),
+            "pronoun" => Random.Shared.Next(3) switch { 0 => "my", 1 => "your", _ => "their" },
+            "user" => !string.IsNullOrEmpty(userName) ? userName : "someone",
+            "place" => _knowledgeStore.GetRandomNounByCategory("place") ?? FallbackPlaces[Random.Shared.Next(FallbackPlaces.Length)],
+            "number" => Random.Shared.Next(1, 101).ToString(),
+            "verb_2ing" => ToGerund(PickWord("verb", 2) ?? "sing"),
+            "a_rhyme" => PickRhymeWord("noun", num, usedRhymeA),
+            "b_rhyme" => PickRhymeWord("noun", num, usedRhymeB),
+            _ => $"{{{slot}}}"
+        };
+    }
+
+    private string? PickWord(string wordType, int syllables)
+    {
+        if (syllables <= 0)
+        {
+            var word = _knowledgeStore.GetRandomWord(wordType);
+            return word;
+        }
+
+        var words = _knowledgeStore.GetWordsByTypeAndSyllables(wordType, syllables);
+        if (words.Count > 0)
+            return words[Random.Shared.Next(words.Count)];
+
+        return null;
+    }
+
+    private string PickRhymeWord(string wordType, int syllables, List<string> usedRhymer)
+    {
+        if (usedRhymer.Count > 0)
+        {
+            var last = usedRhymer[^1];
+            var rhyme = _rhymeMatcher.FindRhymeWord(last, wordType, syllables > 0 ? syllables : null);
+            if (rhyme != null && !usedRhymer.Contains(rhyme))
+            {
+                usedRhymer.Add(rhyme);
+                return rhyme;
+            }
+        }
+
+        var rhymeGroupWords = _knowledgeStore.GetAllRhymeGroupWords(wordType);
+        if (rhymeGroupWords.Count > 0)
+        {
+            var available = rhymeGroupWords
+                .Where(w => !usedRhymer.Contains(w))
+                .ToList();
+            if (available.Count > 0)
+            {
+                if (syllables > 0)
+                {
+                    var matching = available.Where(w => SyllableCounter.Count(w) == syllables).ToList();
+                    if (matching.Count > 0)
+                        available = matching;
+                }
+                var pick = available[Random.Shared.Next(available.Count)];
+                usedRhymer.Add(pick);
+                return pick;
+            }
+        }
+
+        var candidates = _knowledgeStore.GetWordsByTypeAndSyllables(wordType, syllables > 0 ? syllables : 1);
+        if (candidates.Count > 0)
+        {
+            var pick = candidates[Random.Shared.Next(candidates.Count)];
+            usedRhymer.Add(pick);
+            return pick;
+        }
+
+        var fallback = FallbackNouns[Random.Shared.Next(FallbackNouns.Length)];
+        usedRhymer.Add(fallback);
+        return fallback;
+    }
+
+    private static string PickDeterminer()
+    {
+        return Random.Shared.Next(3) switch
+        {
+            0 => "this",
+            1 => "that",
+            _ => "some"
+        };
+    }
+
+    private static string ApplySuffix(string word, string suffix)
+    {
+        if (string.IsNullOrEmpty(suffix))
+            return word;
+
+        return suffix.ToLowerInvariant() switch
+        {
+            "ing" => ToGerund(word),
+            "s" => ToThirdPerson(word),
+            "ed" => ToPastTense(word),
+            _ => word + suffix
+        };
+    }
+
+    private static string ToThirdPerson(string word)
+    {
+        var lower = word.ToLowerInvariant();
+        if (lower.EndsWith("s") || lower.EndsWith("sh") || lower.EndsWith("ch") ||
+            lower.EndsWith("x") || lower.EndsWith("z") || lower.EndsWith("o"))
+            return word + "es";
+        if (lower.EndsWith("y") && lower.Length > 2 && !"aeiou".Contains(lower[lower.Length - 2]))
+            return word[..^1] + "ies";
+        return word + "s";
+    }
+
+    private static string ToPastTense(string word)
+    {
+        var lower = word.ToLowerInvariant();
+        if (lower.EndsWith("e"))
+            return word + "d";
+        if (lower.EndsWith("y") && lower.Length > 2 && !"aeiou".Contains(lower[lower.Length - 2]))
+            return word[..^1] + "ied";
+        return word + "ed";
+    }
+
+    private static string ToGerund(string word)
+    {
+        var lower = word.ToLowerInvariant();
+        if (lower.EndsWith("e") && lower.Length > 2 && !lower.EndsWith("ee"))
+            return word[..^1] + "ing";
+        return word + "ing";
+    }
+}

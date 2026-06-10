@@ -11510,5 +11510,25 @@
   {
     "Word": "facts",
     "Type": "noun"
+  },
+  {
+    "Word": "haiku",
+    "Type": "noun"
+  },
+  {
+    "Word": "limerick",
+    "Type": "noun"
+  },
+  {
+    "Word": "poem",
+    "Type": "noun"
+  },
+  {
+    "Word": "poetry",
+    "Type": "noun"
+  },
+  {
+    "Word": "verse",
+    "Type": "noun"
   }
 ]

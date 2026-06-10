@@ -59,6 +59,8 @@ public sealed class PokeChatDbContext : DbContext
     public DbSet<MadLibTemplate> MadLibTemplates => Set<MadLibTemplate>();
     public DbSet<Joke> Jokes => Set<Joke>();
     public DbSet<Riddle> Riddles => Set<Riddle>();
+    public DbSet<RhymeGroup> RhymeGroups => Set<RhymeGroup>();
+    public DbSet<PoemTemplate> PoemTemplates => Set<PoemTemplate>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -370,6 +372,24 @@ public sealed class PokeChatDbContext : DbContext
             entity.Property(e => e.Answer).IsRequired();
             entity.Property(e => e.Hint);
             entity.Property(e => e.Difficulty);
+            entity.Property(e => e.CreatedAt).IsRequired();
+        });
+
+        modelBuilder.Entity<RhymeGroup>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.RhymeKey, e.Word }).IsUnique();
+            entity.Property(e => e.RhymeKey).IsRequired();
+            entity.Property(e => e.Word).IsRequired();
+            entity.Property(e => e.WordType).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+        });
+
+        modelBuilder.Entity<PoemTemplate>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Template).IsRequired();
+            entity.Property(e => e.PoemType).IsRequired();
             entity.Property(e => e.CreatedAt).IsRequired();
         });
     }
