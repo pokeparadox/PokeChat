@@ -145,6 +145,7 @@ A completed improvement history is maintained in `.agents/history.md`. Active pl
 - **Phase 36:** Mad Libs + Would You Rather + Magic 8 Ball ✅ (MadLibTemplate/WordSlot entities, multi-turn Mad Libs with POS slot prompts; WYR questions from user facts; Magic 8 Ball with 20 responses)
 - **Phase 37:** Cross-Session Recall ✅ (30% chance to recall a fact from previous sessions at session start. `GetPreviousSessions`/`GetRandomFactFromSession` in KnowledgeStore, `TryBuildCrossSessionRecall` in ChatSession, `cross_session_recall` bot responses. 8 new tests)
 - **Phase 38:** Emoji Personality ✅ (category-appropriate emoji on bot responses via `AddEmoji`/`GetStaticEmoji` in ResponseEngine. 117 categories mapped, sentiment-aware for emotion categories. 4 new tests, 496/496 pass)
+- **Interview Mode (post-Phase 38):** LLM-driven bot training via `InterviewEngine`; identity-isolated learning under `"Interviewer"` persona; configurable 8-turn limit; stop commands; see `.agents/history.md`
 ## Known Fixes
 - **ContractionExpander:** Loaded from `contractions` table via `KnowledgeStore.GetContractions()`. Expands contracted forms before tokenisation using regex replace with `IgnoreCase`. The expander uses lowercase expansion text (`"i am"`, not `"I am"`) since the tokeniser lowercases afterward. Seeded via `DbSeeder.SeedContractions()` and `TestDataHelper.SeedContractions()`.
 - **Math operators in tokeniser:** `+`, `-`, `*`, `/`, `^` are extracted as standalone tokens by Tokeniser regex. `GetUnknownWords` in `SpellChecker` must skip math operators to prevent false unknown-word prompts before math evaluation. Fixed via `SpellChecker.MathOperators` HashSet.
@@ -191,6 +192,17 @@ A completed improvement history is maintained in `.agents/history.md`. Active pl
 - **When creating a new phase plan:** Create new phase file in `.plans/`, file the plan to MemPalace (`wing: pokechat, room: plans`), and update this file's Improvement Plan section.
 - **When a phase is completed:** Append a summarised version to `.agents/history.md`, then delete the plan file from `.plans/`.
 - **After each phase or significant milestone:** Update `README.md` to reflect current architecture, completed phases, and any relevant changes.
+- **Run log analysis during cleanup:** After completing a phase, scan `logs/*.log` for response abnormalities. Read each log file and inspect every `### Bot` response for known bad patterns:
+  - **Spell checker false positives** — common short words flagged as unknown (hi→he, oh→of, why→way, ate→age, later→late, really→reality, everything→N/A)
+  - **Garbage follow-ups** — bot asking about function-word objects ("not and any", "i someti ames and trains")
+  - **Interview Mode** — 0 facts / 0 rules at session end, Interviewer messages getting spell-checked or unknown-word-blocked
+  - **Magic 8 Ball** — firing on non-prediction questions ("Can I have a banana?")
+  - **Identity issues** — name not established (first input treated as name), identity loop ("Tell me about yourself, bob" → "bob" → same)
+  - **Story/poem slot garbage** — modal verbs ("mighting"), adjective/noun swaps ("searched bison"), LLM interpolation failure
+  - **Emoji overuse** — too many emoji per response, inappropriate category emoji
+  - **Context loop** — same follow-up repeating across 5+ turns
+  - **Empty/nonsense responses** — bot says nothing useful, single-word dead-ends
+  - If any new abnormality category emerges (not already in `.plans/` or `.agents/history.md`), create a plan file in `.plans/phaseN-name.md` documenting the symptoms, affected logs, root cause hypothesis, and proposed fix. File the plan to MemPalace (`wing: pokechat, room: plans`).
 
 ## Known Fixes (cont.)
 - **ToolRegistry config loading:** Two bugs fixed. (1) Default config path was `"tools/tools.json"` (lowercase `t`), but the directory is `Tools/` (uppercase) — path is now `"Tools/tools.json"`. (2) `System.Text.Json` is case-sensitive by default; `"enabled"` in JSON didn't bind to `Enabled` property. Fixed with `PropertyNameCaseInsensitive = true` in `JsonSerializerOptions`.

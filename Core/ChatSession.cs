@@ -53,7 +53,14 @@ public class ChatSession : IDisposable
         { "no", "nope", "nah", "no thanks", "no thank you" };
 
     private static readonly HashSet<string> FunctionWords = new(StringComparer.OrdinalIgnoreCase)
-        { "not", "never", "no" };
+        { "not", "never", "no", "and", "or", "any", "all", "some", "the",
+          "a", "an", "this", "that", "these", "those", "it", "its",
+          "there", "here", "then", "than", "also", "too", "very",
+          "so", "but", "yet", "for", "with", "without", "just" };
+
+    private static readonly HashSet<string> ContentWordIndicators = new(StringComparer.OrdinalIgnoreCase)
+        { "i", "you", "he", "she", "we", "they", "me", "him", "her", "us", "them",
+          "my", "your", "his", "her", "our", "their" };
 
     private static readonly HashSet<string> CancellationPhrases = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -297,6 +304,8 @@ public class ChatSession : IDisposable
 
                 input = _interviewEngine.GenerateUserInput();
                 if (input == null) { EndInterviewMode(); continue; }
+
+                ClearPendingState();
 
                 Console.ForegroundColor = ConsoleColor.DarkGray;
                 Console.WriteLine($"[Interviewer]: {input}");
@@ -551,6 +560,18 @@ public class ChatSession : IDisposable
         return response;
     }
 
+    private void ClearPendingState()
+    {
+        _context.SetContext(ContextKeys.PendingClarificationWord, null);
+        _context.SetContext(ContextKeys.PendingClarificationSuggestion, null);
+        _context.SetContext(ContextKeys.PendingClassificationWord, null);
+        _context.SetContext(ContextKeys.PendingPlaceWord, null);
+        _context.SetContext(ContextKeys.PendingLLMOffer, null);
+        _context.SetContext(ContextKeys.PendingDictionarySave, null);
+        _context.SetContext(ContextKeys.PendingDictionaryWord, null);
+        _context.SetContext(ContextKeys.UnknownWords, null);
+    }
+
     internal void LearnGreetingWords(string input)
     {
         var tokens = _tokeniser.Tokenise(input);
@@ -622,6 +643,16 @@ public class ChatSession : IDisposable
             _context.UpdateLastSubject(word);
         }
 
+        if (_interviewModeActive && unknownWords.Count > 0)
+        {
+            foreach (var uw in unknownWords.ToList())
+            {
+                _spellChecker.AddToDictionary(uw);
+                _knowledgeStore.AddLearnedWord(uw);
+            }
+            unknownWords.Clear();
+        }
+
         if (unknownWords.Count > 0)
         {
             var existing = _context.GetContext(ContextKeys.UnknownWords) ?? "";
@@ -640,12 +671,16 @@ public class ChatSession : IDisposable
             if (timeContext != null)
                 _context.SetContext(ContextKeys.CurrentTimeContext, timeContext);
 
-            if (predicateType is PredicateType.General or PredicateType.GeneralFact)
-            {
-                var lowerObj = resolvedObject.ToLowerInvariant();
-                if (FunctionWords.Any(w => lowerObj.StartsWith(w + " ") || lowerObj.Equals(w)))
-                    continue;
-            }
+            var lowerObj = resolvedObject.ToLowerInvariant();
+            var objTokens = lowerObj.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            bool allFunctionWords = objTokens.Length > 0 && objTokens.All(t => FunctionWords.Contains(t));
+            bool subjectIsFunctionOnly = !ContentWordIndicators.Contains(resolvedSubject.ToLowerInvariant()) &&
+                resolvedSubject.Split(' ', StringSplitOptions.RemoveEmptyEntries).All(t => FunctionWords.Contains(t));
+            if (allFunctionWords || subjectIsFunctionOnly)
+                continue;
+
+            if (FunctionWords.Any(w => lowerObj.StartsWith(w + " ") || lowerObj.Equals(w)))
+                continue;
 
             var fact = new Fact
             {
@@ -686,7 +721,6 @@ public class ChatSession : IDisposable
 
             if (predicateType is PredicateType.GeneralFact or PredicateType.PersonalAttribute)
             {
-                var lowerObj = resolvedObject.ToLowerInvariant();
                 if (lowerObj is "a person" or "person")
                     _nounCategoriser.CategoriseNoun(resolvedSubject);
                 else if (lowerObj is "a place" or "place")
@@ -716,9 +750,12 @@ public class ChatSession : IDisposable
         else if (correctedTokens.Count == 1 && tags[0] == PosTag.Noun)
         {
             var noun = correctedTokens[0];
-            _context.UpdateLastSubject(noun);
-            var cat = _nounCategoriser.CategoriseNoun(noun);
-            _context.SetContext(ContextKeys.ObjectCategory, cat);
+            if (!string.Equals(noun, _currentUserName, StringComparison.OrdinalIgnoreCase))
+            {
+                _context.UpdateLastSubject(noun);
+                var cat = _nounCategoriser.CategoriseNoun(noun);
+                _context.SetContext(ContextKeys.ObjectCategory, cat);
+            }
         }
 
     }
@@ -759,7 +796,7 @@ public class ChatSession : IDisposable
         _context.SetContext(ContextKeys.LLMOriginalInput, originalInput);
     }
 
-    internal static string StemVerb(string verb)
+    public static string StemVerb(string verb)
     {
         var lower = verb.ToLowerInvariant();
         return lower switch
@@ -779,8 +816,21 @@ public class ChatSession : IDisposable
             "tells" => "tell",
             "gets" => "get",
             _ when lower.Length > 3 && lower.EndsWith("ies") => lower[..^3] + "y",
-            _ when lower.Length > 2 && lower.EndsWith("es") => lower[..^2],
+            _ when lower.Length > 3 && lower.EndsWith("sses") => lower[..^2],
+            _ when lower.Length > 3 && lower.EndsWith("shes") => lower[..^2],
+            _ when lower.Length > 3 && lower.EndsWith("ches") => lower[..^2],
+            _ when lower.Length > 3 && lower.EndsWith("xes") => lower[..^2],
+            _ when lower.Length > 3 && lower.EndsWith("zzes") => lower[..^2],
             _ when lower.Length > 3 && lower.EndsWith("s") && !lower.EndsWith("ss") => lower[..^1],
+            _ when lower.Length > 4 && lower.EndsWith("ied") => lower[..^3] + "y",
+            _ when lower.Length > 4 && lower.EndsWith("pped") => lower[..^2],
+            _ when lower.Length > 4 && lower.EndsWith("tted") => lower[..^2],
+            _ when lower.Length > 4 && lower.EndsWith("gged") => lower[..^2],
+            _ when lower.Length > 4 && lower.EndsWith("lled") => lower[..^2],
+            _ when lower.Length > 4 && lower.EndsWith("mmed") => lower[..^2],
+            _ when lower.Length > 4 && lower.EndsWith("nned") => lower[..^2],
+            _ when lower.Length > 4 && lower.EndsWith("rred") => lower[..^2],
+            _ when lower.Length > 4 && lower.EndsWith("ed") && !lower.EndsWith("eed") => lower[..^2],
             _ => lower
         };
     }
@@ -1237,6 +1287,8 @@ public class ChatSession : IDisposable
             {
                 if (IsCloseToGreeting(lowerToken))
                     return string.Empty;
+                if (NameBlockers.Contains(lowerToken))
+                    return string.Empty;
                 return tokens[0];
             }
             return string.Empty;
@@ -1244,6 +1296,17 @@ public class ChatSession : IDisposable
 
         return string.Empty;
     }
+
+    private static readonly HashSet<string> NameBlockers = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "tell", "make", "give", "ask", "do", "play", "say", "crack", "start", "stop",
+        "funny", "joke", "riddle", "limerick", "haiku", "poem", "story", "game",
+        "interview", "train", "mad", "wyr", "would",
+        "what", "who", "where", "when", "why", "how", "which",
+        "hello", "hey", "hi", "goodbye", "bye", "thanks", "thank",
+        "yes", "no", "yep", "nope", "sure", "ok", "okay", "nah",
+        "quit", "exit",
+    };
 
     private static readonly HashSet<string> StopWords = new(StringComparer.OrdinalIgnoreCase)
         { "a", "an", "the", "is", "am", "are", "was", "were", "be", "been", "being" };
@@ -1470,6 +1533,7 @@ public class ChatSession : IDisposable
         if (_currentUserName != null)
             _responseEngine.SetCurrentUserName(_currentUserName);
         _responseEngine.SetBotName(_botName);
+        _context.Clear();
         _knowledgeStore.Save();
 
         var facts = _interviewEngine?.FactsLearned ?? 0;

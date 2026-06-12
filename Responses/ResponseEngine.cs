@@ -1,3 +1,5 @@
+using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using PokeChat.Core;
 using PokeChat.Knowledge;
@@ -977,24 +979,101 @@ public class ResponseEngine
                 return GetRandomResponse("tool_unavailable");
             }
 
-            if (_llmGenerator != null && _summariseToolResults && !string.IsNullOrEmpty(result.Output))
+            var sanitised = SanitiseToolOutput(result.Output);
+
+            if (_llmGenerator != null && _summariseToolResults && !string.IsNullOrEmpty(sanitised))
             {
                 var prompt = $"The user asked to use the tool '{toolName}'" +
                     (args.Length > 0 ? $" with query '{args[0]}'" : "") +
-                    $". Summarise this result naturally and concisely in 1-3 sentences:\n{result.Output}";
+                    $". Summarise this result naturally and concisely in 1-3 sentences:\n{sanitised}";
                 var summary = _llmGenerator(prompt);
                 if (!string.IsNullOrEmpty(summary))
                     return summary;
             }
 
-            return result.Output;
+            return sanitised;
         });
+    }
+
+    private static string SanitiseToolOutput(string output)
+    {
+        if (string.IsNullOrWhiteSpace(output))
+            return output;
+
+        var trimmed = output.Trim();
+        if (trimmed.Length == 0)
+            return output;
+
+        if (trimmed[0] is not '[' and not '{')
+            return output;
+
+        try
+        {
+            if (trimmed[0] == '[')
+            {
+                using var doc = JsonDocument.Parse(trimmed);
+                var sb = new StringBuilder();
+                foreach (var element in doc.RootElement.EnumerateArray())
+                    ExtractTextParts(element, sb);
+                var result = sb.ToString().Trim();
+                return result.Length > 0 ? result : "I found some results.";
+            }
+
+            if (trimmed[0] == '{')
+            {
+                using var doc = JsonDocument.Parse(trimmed);
+                var sb = new StringBuilder();
+                ExtractTextParts(doc.RootElement, sb);
+                var result = sb.ToString().Trim();
+                return result.Length > 0 ? result : "I found a result.";
+            }
+        }
+        catch
+        {
+            // Not valid JSON — return as-is
+        }
+
+        return output;
+    }
+
+    private static void ExtractTextParts(JsonElement element, StringBuilder sb)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.String:
+                var s = element.GetString();
+                if (!string.IsNullOrWhiteSpace(s) && s.Length > 1)
+                    sb.Append(s).Append(' ');
+                break;
+            case JsonValueKind.Object:
+                foreach (var prop in element.EnumerateObject())
+                {
+                    if (prop.NameEquals("text") || prop.NameEquals("content") ||
+                        prop.NameEquals("name") || prop.NameEquals("title") ||
+                        prop.NameEquals("snippet") || prop.NameEquals("summary"))
+                    {
+                        ExtractTextParts(prop.Value, sb);
+                    }
+                    else if (prop.Value.ValueKind is JsonValueKind.Object or JsonValueKind.Array)
+                    {
+                        ExtractTextParts(prop.Value, sb);
+                    }
+                }
+                break;
+            case JsonValueKind.Array:
+                foreach (var item in element.EnumerateArray())
+                    ExtractTextParts(item, sb);
+                break;
+        }
     }
 
     private static readonly HashSet<string> PredictionTriggers = new(StringComparer.OrdinalIgnoreCase)
     {
         "magic 8 ball", "8 ball", "magic eight ball", "shake the ball",
-        "predict", "my fortune", "tell my fortune"
+        "predict", "my fortune", "tell my fortune",
+        "will it", "will there", "will i", "will we", "will they",
+        "is it going to", "am i going to", "are we going to",
+        "should i", "should we"
     };
 
     private string? HandlePredictionRequest(string input)
@@ -1006,9 +1085,6 @@ public class ResponseEngine
             if (lower.Contains(trigger))
                 return Get8BallResponse();
         }
-
-        if (lower.EndsWith("?") && lower != "?")
-            return Get8BallResponse();
 
         return null;
     }

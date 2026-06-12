@@ -1267,3 +1267,89 @@ Bot responses are now decorated with category-appropriate emoji for personality 
 - `tests/PokeChat.Tests/Responses/ResponseEngineTests.cs` — 4 new emoji tests
 
 ### Tests (4 new, 496/496 pass)
+
+---
+
+## Interview Mode (completed post-Phase 38)
+
+Bot can be placed into an "interview mode" where the LLM acts as a conversation partner, training the bot through the normal `ProcessInput` pipeline. All learning is isolated under a dedicated `"Interviewer"` identity.
+
+### New files
+- `Core/InterviewEngine.cs` — manages persona prompt, conversation history, turn counting
+
+### Modified files
+- `LLM/LLMOrchestrator.cs` — added `GenerateInterviewInput(string prompt)` (bypasses MaxCallsPerSession)
+- `Core/ChatSession.cs` — `_interviewEngine`, `_interviewModeActive` fields; `StartInterviewMode()`/`EndInterviewMode()`/`IsInterviewTrigger()`/`IsInterviewStopCommand()`; modified `Start()` main loop with branch for interview turns; trigger detection ("interview mode", "train the bot", etc.)
+- `Data/DbSeeder.cs` — 4 `interview_*` response categories seeded (intro/complete/stopped/no_llm)
+
+### Key details
+- **Turn limit:** Default 8 exchanges (configurable const)
+- **Stop commands:** "stop", "end interview", "cancel", "enough", "stop training"
+- **Identity isolation:** `_currentUserId` swapped to `"Interviewer"` during interview; restored on end
+- **Edge cases:** LLM unavailable (null return → end), user not identified (trigger ignored), user interrupt between turns (Console.KeyAvailable), multiple interviews (facts accumulate per Interviewer)
+- **No new tables, no migration needed**
+
+### Tests
+- `InterviewEngineTests.cs` — 3 tests (basic flow, stops when exhausted)
+- `ChatSessionTests.cs` — 14 tests (triggers, stop commands, no-interference)
+
+### Verify
+- `dotnet build && dotnet test` — all pass
+
+---
+
+## Phase 39 — Real-User Bug Fix Batch (10 fixes from session logs) ✅
+
+Ten bugs found by analysing 50 session logs from real user conversations. Fixed across 7 files.
+
+### Plan files (deleted after implementation)
+- `phase39a-interview-mode.md` — Interviewer messages misinterpreted as clarification responses
+- `phase39b-mempalace-json-leak.md` — Raw MemPalace JSON dumped to user
+- `phase39c-spell-checker-false-positives.md` — `hi→he`, `oh→of`, `why→way`, `ate→age`, `later→late`
+- `phase39d-garbage-context-followups.md` — "Tell me more about not and any"
+- `phase39e-exit-recap-nonsense.md` — "Kev joineds the circus", "not knows anything"
+- `phase39f-user-identity-establishment.md` — "limerick" treated as user name
+- `phase39g-story-poem-slot-garbage.md` — "Alice was a searched bison who dreamed of mighting"
+- `phase39h-magic8ball-detection.md` — "Can I have a banana?" → Magic 8 Ball
+- `phase39i-identity-loop.md` — "Tell me about yourself, bob" → "bob" → same prompt infinite loop
+- `phase39j-missing-pos-words.md` — 16 common words missing from dictionary
+
+### 39a — Interview Mode
+`Core/ChatSession.cs`: Added `ClearPendingState()` method clearing 8 pending context keys (ClarificationWord, Suggestion, ClassificationWord, PlaceWord, LLMOffer, DictionarySave, DictionaryWord, UnknownWords). Called before processing Interviewer input, preventing Interviewer messages from being treated as clarification/classification responses.
+
+### 39b — MemPalace JSON Leak
+`Responses/ResponseEngine.cs`: Added `SanitiseToolOutput()` and `ExtractTextParts()`. Detects JSON output (starts with `[` or `{`), parses it, extracts readable text from `text/content/name/title/snippet/summary` properties. Non-JSON output passes through. `ProcessToolMarkers` uses sanitised output.
+
+### 39c — Spell Checker False Positives
+`NLP/SpellChecker.cs`: Added `ShortWordAllowlist` (~80 common 2-3 letter words). `GetUnknownWords()` skips `Length <= 2` and allowlist words.
+
+### 39d — Garbage Context Follow-ups
+`Core/ChatSession.cs`: Expanded `FunctionWords` from 3 to ~30 (and, or, any, all, some, the, a, an, this, that, these, those, it, its, there, here, then, than, also, too, very, so, but, yet, for, with, without, just). Added `ContentWordIndicators` set. Added all-function-word subject/object filtering.
+
+### 39e — Exit Recap Nonsense
+`Core/ChatSession.cs`: Made `StemVerb` public. `Knowledge/KnowledgeStore.cs`: `FormatFact` uses `ChatSession.StemVerb()` + `ResponseEngine.ConjugateVerb()` pipeline. `StemVerb` expanded with specific `sses/shes/ches/xes/zzes` patterns (removed overly broad `es` rule), past tense `-ed` handling (double-consonant patterns + general `ed`→stem), and `ied`→`y` rule.
+
+### 39f — User Identity Establishment
+`Core/ChatSession.cs`: Added `NameBlockers` HashSet (~40 words: tell, make, give, funny, joke, riddle, limerick, haiku, poem, interview, hello, hey, hi, goodbye, quit, exit, etc.). Single-token name detection checks `NameBlockers` — blocks commands/triggers/greetings from being treated as names.
+
+### 39g — Story/Poem Slot Garbage
+`Stories/StoryGenerator.cs`: Added `StoryExcludedVerbs` (modals + common auxiliaries), `GetStoryVerb()`, `GetStoryAdjective()` helpers. `Stories/PoetryGenerator.cs`: Same `PoetryExcludedVerbs`, updated `PickWord()` to exclude modals from verb picks and `-ed` words from adjective picks.
+
+### 39h — Magic 8 Ball Detection
+`Responses/ResponseEngine.cs`: Removed catch-all `if (lower.EndsWith("?"))` trigger. Magic 8 Ball now only fires on explicit triggers: `magic 8 ball`, `8 ball`, `magic eight ball`, `shake the ball`, `predict`, `my fortune`, `tell my fortune`.
+
+### 39i — Identity Loop
+`Core/ChatSession.cs`: Single-noun `ProcessSentence` case checks if noun equals `_currentUserName` (case-insensitive). If so, skips `UpdateLastSubject`.
+
+### 39j — Missing POS Words
+`Data/pos_dictionary.json`: Added 25 missing words: `ah, ate, cooking, fascinating, faster, favourite, freaking, gonna, gotta, ha, haha, hate, hated, hey, hi, joined, later, lol, nah, oh, ooh, oooh, wanna, why, wow, yeah`. Fixed `searched` from `adjective` → `verb`.
+
+### Build fixes applied
+- `ChatSession.cs:714` — `var lowerObj` redeclaration conflict with enclosing scope (removed `var`)
+- `KnowledgeStore.cs:739` — missing `using PokeChat.Core` for `ChatSession.StemVerb` reference
+
+### Test fixes applied
+- `ResponseEngineTests.QuestionFallthrough_Returns8Ball` — changed `"Will I get the job?"` → `"shake the ball"` since catch-all `?` trigger was removed
+
+### Verify
+- `dotnet build && dotnet test` — 521/521 pass

@@ -2,6 +2,7 @@ using Facet.Extensions;
 using Microsoft.EntityFrameworkCore;
 using PokeChat.Data;
 using PokeChat.Data.Entities;
+using PokeChat.Core;
 using PokeChat.Responses;
 using PokeChat.Stories;
 
@@ -736,7 +737,8 @@ public class KnowledgeStore(PokeChatDbContext context)
 
     private static string FormatFact(Fact fact)
     {
-        var conjVerb = ResponseEngine.ConjugateVerb(fact.Verb, fact.Subject);
+        var stemmed = ChatSession.StemVerb(fact.Verb);
+        var conjVerb = ResponseEngine.ConjugateVerb(stemmed, fact.Subject);
         return $"{fact.Subject} {conjVerb} {fact.Object}";
     }
 

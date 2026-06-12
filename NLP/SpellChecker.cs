@@ -5,6 +5,22 @@ public class SpellChecker
     private static readonly HashSet<string> MathOperators = new(StringComparer.OrdinalIgnoreCase)
         { "+", "-", "*", "/", "^" };
 
+    private static readonly HashSet<string> ShortWordAllowlist = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "oh", "hi", "ok", "okay", "yeah", "nah", "hey", "wow", "hmm",
+        "why", "how", "who", "what", "when", "where",
+        "ate", "get", "got", "let", "put", "set", "use",
+        "fix", "run", "say", "see", "try", "buy", "ask",
+        "big", "new", "old", "hot", "bad", "low", "far",
+        "few", "any", "all", "and", "but", "for", "nor",
+        "not", "yet", "can", "may", "now", "too", "very",
+        "yes", "red", "fun", "sad", "bus", "car", "dog",
+        "cat", "day", "way", "lot", "bit", "top", "end",
+        "age", "ago", "yet", "its", "let", "man", "men",
+        "own", "per", "etc", "via", "was", "yet", "had",
+        "did", "has", "his", "her"
+    };
+
     private HashSet<string> _dictionary;
     private Dictionary<string, string> _misspellings;
 
@@ -132,6 +148,12 @@ public class SpellChecker
                 continue;
 
             if (token.Length > 0 && char.IsDigit(token[0]))
+                continue;
+
+            if (token.Length <= 2)
+                continue;
+
+            if (ShortWordAllowlist.Contains(token))
                 continue;
 
             if (!_dictionary.Contains(token))

@@ -17,6 +17,14 @@ public class PoetryGenerator
     private static readonly string[] FallbackAdverbs = { "quickly", "silently", "boldly", "gently" };
     private static readonly string[] FallbackPlaces = { "forest", "mountain", "ocean", "village" };
 
+    private static readonly HashSet<string> PoetryExcludedVerbs = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "can", "could", "may", "might", "must", "shall", "should", "will", "would",
+        "be", "am", "is", "are", "was", "were", "been", "being",
+        "have", "has", "had", "do", "does", "did", "doing", "done",
+        "get", "got", "gotten", "make", "made", "let", "put"
+    };
+
     public PoetryGenerator(KnowledgeStore knowledgeStore, RhymeMatcher? rhymeMatcher = null)
     {
         _knowledgeStore = knowledgeStore;
@@ -95,10 +103,18 @@ public class PoetryGenerator
         if (syllables <= 0)
         {
             var word = _knowledgeStore.GetRandomWord(wordType);
+            if (wordType == "verb" && PoetryExcludedVerbs.Contains(word))
+                return null;
+            if (wordType == "adjective" && word != null && word.EndsWith("ed", StringComparison.OrdinalIgnoreCase))
+                return null;
             return word;
         }
 
         var words = _knowledgeStore.GetWordsByTypeAndSyllables(wordType, syllables);
+        if (wordType == "verb")
+            words = words.Where(w => !PoetryExcludedVerbs.Contains(w)).ToList();
+        if (wordType == "adjective")
+            words = words.Where(w => !w.EndsWith("ed", StringComparison.OrdinalIgnoreCase)).ToList();
         if (words.Count > 0)
             return words[Random.Shared.Next(words.Count)];
 

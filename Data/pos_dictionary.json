@@ -5273,7 +5273,7 @@
   },
   {
     "Word": "searched",
-    "Type": "adjective"
+    "Type": "verb"
   },
   {
     "Word": "explored",
@@ -11529,6 +11529,166 @@
   },
   {
     "Word": "verse",
+    "Type": "noun"
+  },
+  {
+    "Word": "ah",
+    "Type": "interjection"
+  },
+  {
+    "Word": "ate",
+    "Type": "verb"
+  },
+  {
+    "Word": "cooking",
+    "Type": "verb"
+  },
+  {
+    "Word": "fascinating",
+    "Type": "adjective"
+  },
+  {
+    "Word": "faster",
+    "Type": "adjective"
+  },
+  {
+    "Word": "favourite",
+    "Type": "adjective"
+  },
+  {
+    "Word": "freaking",
+    "Type": "adjective"
+  },
+  {
+    "Word": "gonna",
+    "Type": "contraction"
+  },
+  {
+    "Word": "gotta",
+    "Type": "contraction"
+  },
+  {
+    "Word": "ha",
+    "Type": "interjection"
+  },
+  {
+    "Word": "haha",
+    "Type": "interjection"
+  },
+  {
+    "Word": "hate",
+    "Type": "verb"
+  },
+  {
+    "Word": "hated",
+    "Type": "verb"
+  },
+  {
+    "Word": "hey",
+    "Type": "interjection"
+  },
+  {
+    "Word": "hi",
+    "Type": "interjection"
+  },
+  {
+    "Word": "joined",
+    "Type": "verb"
+  },
+  {
+    "Word": "later",
+    "Type": "adverb"
+  },
+  {
+    "Word": "lol",
+    "Type": "interjection"
+  },
+  {
+    "Word": "nah",
+    "Type": "interjection"
+  },
+  {
+    "Word": "oh",
+    "Type": "interjection"
+  },
+  {
+    "Word": "ooh",
+    "Type": "interjection"
+  },
+  {
+    "Word": "oooh",
+    "Type": "interjection"
+  },
+  {
+    "Word": "wanna",
+    "Type": "contraction"
+  },
+  {
+    "Word": "why",
+    "Type": "adverb"
+  },
+  {
+    "Word": "wow",
+    "Type": "interjection"
+  },
+  {
+    "Word": "yeah",
+    "Type": "interjection"
+  },
+  {
+    "Word": "really",
+    "Type": "adverb"
+  },
+  {
+    "Word": "catching",
+    "Type": "verb"
+  },
+  {
+    "Word": "developed",
+    "Type": "verb"
+  },
+  {
+    "Word": "exploring",
+    "Type": "verb"
+  },
+  {
+    "Word": "understanding",
+    "Type": "noun"
+  },
+  {
+    "Word": "everything",
+    "Type": "pronoun"
+  },
+  {
+    "Word": "classed",
+    "Type": "verb"
+  },
+  {
+    "Word": "there",
+    "Type": "adverb"
+  },
+  {
+    "Word": "theoretical",
+    "Type": "adjective"
+  },
+  {
+    "Word": "abstract",
+    "Type": "adjective"
+  },
+  {
+    "Word": "endlessly",
+    "Type": "adverb"
+  },
+  {
+    "Word": "civilizations",
+    "Type": "noun"
+  },
+  {
+    "Word": "mind-blowing",
+    "Type": "adjective"
+  },
+  {
+    "Word": "learning",
     "Type": "noun"
   }
 ]

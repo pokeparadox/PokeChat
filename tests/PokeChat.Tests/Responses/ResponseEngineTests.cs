@@ -636,7 +636,7 @@ public class ResponseEngineTests
         using var db = new FreshDbContext();
         var context = new ContextTracker();
         var engine = CreateEngine(db.Context, context);
-        var response = engine.GenerateResponse("Will I get the job?", null);
+        var response = engine.GenerateResponse("shake the ball", null);
         response.ShouldNotBeNullOrEmpty();
         var seededAnswers = new[] { "Yes.", "No.", "Maybe.", "Ask again later.", "It is certain." };
         seededAnswers.ShouldContain(Strip8BallEmoji(response));

@@ -15,6 +15,14 @@ public class StoryGenerator
     private static readonly string[] FallbackAdverbs = { "quickly", "silently", "boldly", "gently", "suddenly" };
     private static readonly string[] FallbackPlaces = { "forest", "mountain", "ocean", "village", "castle", "valley" };
 
+    private static readonly HashSet<string> StoryExcludedVerbs = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "can", "could", "may", "might", "must", "shall", "should", "will", "would",
+        "be", "am", "is", "are", "was", "were", "been", "being",
+        "have", "has", "had", "do", "does", "did", "doing", "done",
+        "get", "got", "gotten", "make", "made", "let", "put"
+    };
+
     public StoryGenerator(KnowledgeStore knowledgeStore)
     {
         _knowledgeStore = knowledgeStore;
@@ -65,8 +73,8 @@ public class StoryGenerator
         {
             "noun" => _knowledgeStore.GetRandomWord("noun") ?? FallbackNouns[Random.Shared.Next(FallbackNouns.Length)],
             "noun_plural" => PluraliseNoun(_knowledgeStore.GetRandomWord("noun") ?? FallbackNouns[Random.Shared.Next(FallbackNouns.Length)]),
-            "verb" => _knowledgeStore.GetRandomWord("verb") ?? FallbackVerbs[Random.Shared.Next(FallbackVerbs.Length)],
-            "adj" => _knowledgeStore.GetRandomWord("adjective") ?? FallbackAdjs[Random.Shared.Next(FallbackAdjs.Length)],
+            "verb" => GetStoryVerb() ?? FallbackVerbs[Random.Shared.Next(FallbackVerbs.Length)],
+            "adj" => GetStoryAdjective() ?? FallbackAdjs[Random.Shared.Next(FallbackAdjs.Length)],
             "adverb" => _knowledgeStore.GetRandomWord("adverb") ?? FallbackAdverbs[Random.Shared.Next(FallbackAdverbs.Length)],
             "place" => _knowledgeStore.GetRandomNounByCategory("place") ?? FallbackPlaces[Random.Shared.Next(FallbackPlaces.Length)],
             "character" => GetRandomCharacter(),
@@ -124,5 +132,21 @@ public class StoryGenerator
         var lower = noun.ToLowerInvariant();
         var isVowel = lower.Length > 0 && "aeiou".Contains(lower[0]);
         return isVowel ? "an " + noun : "a " + noun;
+    }
+
+    private string GetStoryVerb()
+    {
+        var word = _knowledgeStore.GetRandomWord("verb");
+        if (word != null && !StoryExcludedVerbs.Contains(word))
+            return word;
+        return FallbackVerbs[Random.Shared.Next(FallbackVerbs.Length)];
+    }
+
+    private string GetStoryAdjective()
+    {
+        var word = _knowledgeStore.GetRandomWord("adjective");
+        if (word != null && !word.EndsWith("ed", StringComparison.OrdinalIgnoreCase))
+            return word;
+        return FallbackAdjs[Random.Shared.Next(FallbackAdjs.Length)];
     }
 }
