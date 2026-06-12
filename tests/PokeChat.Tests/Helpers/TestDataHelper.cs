@@ -159,6 +159,10 @@ internal static class TestDataHelper
             ("interview_complete", "I learned {0} facts and {1} rules."),
             ("interview_stopped", "Interview stopped."),
             ("interview_no_llm", "AI not available."),
+            ("user_fact_list", "You told me:\n{0}"),
+            ("user_fact_none", "I don't know much about you yet!"),
+            ("user_stats", "Here's what I know:\n{0}"),
+            ("compliment", "You're great at {0}!"),
         };
         db.BotResponses.AddRange(responses.Select(r => new BotResponse
         {

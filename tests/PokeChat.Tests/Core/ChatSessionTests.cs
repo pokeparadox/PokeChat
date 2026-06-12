@@ -2089,4 +2089,111 @@ public class ChatSessionTests
             response.ShouldNotBeNullOrEmpty();
         }
     }
+
+    [Fact]
+    public void ProcessInput_TellMeAboutMyself_ReturnsFacts()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("I like pizza");
+            var response = session.ProcessInput("tell me about myself");
+            response.ShouldContain("pizza");
+        }
+    }
+
+    [Fact]
+    public void ProcessInput_WhatDoYouKnowAboutMe_ReturnsFacts()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("I like pizza");
+            session.ProcessInput("I like cake");
+            var response = session.ProcessInput("what do you know about me");
+            response.ShouldContain("pizza");
+            response.ShouldContain("cake");
+        }
+    }
+
+    [Fact]
+    public void ProcessInput_WhatDoYouKnow_WhenNoFacts_ReturnsNoneMessage()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            var response = session.ProcessInput("what do you know");
+            Assert.True(response.Contains("don't know much") || response.Contains("haven't learned"));
+        }
+    }
+
+    [Fact]
+    public void ProcessInput_ConversationStats_ReturnsStats()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("I like pizza");
+            var response = session.ProcessInput("conversation stats");
+            Assert.True(response.Contains("Facts") || response.Contains("Total facts") || response.Contains("Stats"));
+        }
+    }
+
+    [Fact]
+    public void ProcessInput_ComplimentMe_ReturnsCompliment()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("I like pizza");
+            var response = session.ProcessInput("compliment me");
+            response.ShouldNotBeNullOrEmpty();
+            Assert.True(response.Contains("pizza") || response.Contains("great") || response.Contains("love") || response.Contains("awesome"));
+        }
+    }
+
+    [Fact]
+    public void ProcessInput_SaySomethingNice_ReturnsCompliment()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("I like pizza");
+            var response = session.ProcessInput("say something nice");
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void ProcessInput_Compliment_NoFacts_FallsThrough()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            var response = session.ProcessInput("compliment me");
+            // No positive facts to draw from, should fall through to normal response
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void ProcessInput_HowManyFacts_ReturnsCount()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("I like pizza");
+            session.ProcessInput("I like cats");
+            var response = session.ProcessInput("how many facts do you know");
+            Assert.True(response.Contains("2") || response.Contains("facts") || response.Contains("Facts"));
+        }
+    }
 }

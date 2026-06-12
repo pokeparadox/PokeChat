@@ -1195,6 +1195,16 @@ public static class DbSeeder
             ("interview_complete", "That's the end of training. I picked up {0} facts and {1} new patterns."),
             ("interview_stopped", "Interview stopped. I'll keep what I learned so far."),
             ("interview_no_llm", "I need my AI available to run the interview. Try again later."),
+            ("user_fact_list", "Here's what I know about you:\n{0}"),
+            ("user_fact_list", "You told me:\n{0}"),
+            ("user_fact_none", "I don't know much about you yet — we've only just met!"),
+            ("user_fact_none", "I haven't learned much about you yet. Tell me something!"),
+            ("user_stats", "Here's what I know about you:\n{0}"),
+            ("user_stats", "Here are your stats:\n{0}"),
+            ("compliment", "You're great at {0}!"),
+            ("compliment", "I love that you {0}!"),
+            ("compliment", "It's awesome that you {0}!"),
+            ("compliment", "You have amazing taste — {0}!"),
         };
 
         context.BotResponses.AddRange(responses.Select(r => new BotResponse

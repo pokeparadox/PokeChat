@@ -63,4 +63,5 @@ public static class ContextKeys
     public const string PendingWyrQuestion = "pending_wyr_question";
     public const string PendingWyrOptionA = "pending_wyr_option_a";
     public const string PendingWyrOptionB = "pending_wyr_option_b";
+    public const string PendingCompliment = "pending_compliment";
 }

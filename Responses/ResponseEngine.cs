@@ -182,6 +182,8 @@ public class ResponseEngine
             not null when category.StartsWith("bot_rename_") => "\U0001F3F7\uFE0F",
             not null when category.StartsWith("bot_reset_") => "\U0001F504",
             not null when category.StartsWith("temporal_") => "\U0001F550",
+            not null when category is "user_fact_list" or "user_fact_none" or "user_stats" => "\U0001F4CA",
+            not null when category == "compliment" => "\U0001F49B",
             _ => null
         };
     }
@@ -398,6 +400,14 @@ public class ResponseEngine
 
         var inferenceResult = HandleInferenceResponse();
         if (inferenceResult != null) return inferenceResult;
+
+        var pendingCompliment = _context.GetContext(ContextKeys.PendingCompliment);
+        if (pendingCompliment != null)
+        {
+            _context.SetContext(ContextKeys.PendingCompliment, null);
+            var compliment = GetRandomCompliment(userId);
+            if (compliment != null) return compliment;
+        }
 
         var rule = ResponseRules.MatchRule(input, _knowledgeStore, _toolTriggers);
 
@@ -1075,6 +1085,69 @@ public class ResponseEngine
         "is it going to", "am i going to", "are we going to",
         "should i", "should we"
     };
+
+    internal string? HandleSelfKnowledgeRequest(string input, int? userId)
+    {
+        if (userId == null) return null;
+
+        var lower = input.ToLowerInvariant().Trim();
+
+        var selfTriggers = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "tell me about myself", "what do you know about me", "what do you know",
+            "what have i told you", "what do you remember", "what do you know about us"
+        };
+
+        var statsTriggers = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "how many facts do you know", "what's my most talked about topic",
+            "conversation stats", "how much do you know about me",
+            "tell me some statistics", "what are my stats"
+        };
+
+        var complimentTriggers = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "compliment me", "say something nice", "make my day",
+            "give me a compliment", "say something kind"
+        };
+
+        if (selfTriggers.Any(t => lower.Contains(t)))
+        {
+            var formatted = _knowledgeStore.GetUserFactsFormatted(userId.Value);
+            if (formatted != null)
+                return GetRandomResponse("user_fact_list", formatted);
+            return GetRandomResponse("user_fact_none");
+        }
+
+        if (statsTriggers.Any(t => lower.Contains(t)))
+        {
+            var stats = _knowledgeStore.GetUserStatsFormatted(userId.Value);
+            if (stats != null)
+                return GetRandomResponse("user_stats", stats);
+            return GetRandomResponse("user_fact_none");
+        }
+
+        if (complimentTriggers.Any(t => lower.Contains(t)))
+        {
+            var compliment = GetRandomCompliment(userId);
+            if (compliment != null)
+                return compliment;
+        }
+
+        return null;
+    }
+
+    private string? GetRandomCompliment(int? userId)
+    {
+        if (userId == null) return null;
+
+        var positiveFact = _knowledgeStore.GetRandomPositiveFact(userId.Value);
+        if (positiveFact == null) return null;
+
+        var conjVerb = ConjugateVerb(positiveFact.Verb, positiveFact.Subject);
+        var description = $"{conjVerb} {positiveFact.Object}";
+        return GetRandomResponse("compliment", description);
+    }
 
     private string? HandlePredictionRequest(string input)
     {

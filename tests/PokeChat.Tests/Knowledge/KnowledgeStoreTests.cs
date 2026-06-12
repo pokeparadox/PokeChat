@@ -725,4 +725,139 @@ public class KnowledgeStoreTests
         best[0].ShouldBe("rule_match");
         best[1].ShouldBe("context_followup");
     }
+
+    [Fact]
+    public void GetUserFactsFormatted_ReturnsNumberedList()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var user = new User { Name = "Alice", FirstSeen = DateTime.UtcNow.ToString("o"), LastSeen = DateTime.UtcNow.ToString("o") };
+        db.Context.Users.Add(user);
+        db.Context.SaveChanges();
+
+        store.StoreFact(new Fact { UserId = user.Id, Subject = "Alice", Verb = "likes", Object = "pizza", PredicateType = "Preference", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.StoreFact(new Fact { UserId = user.Id, Subject = "Alice", Verb = "has", Object = "a cat", PredicateType = "Possession", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.Save();
+
+        var result = store.GetUserFactsFormatted(user.Id);
+        result.ShouldNotBeNull();
+        result.ShouldContain("1)");
+        result.ShouldContain("likes");
+        result.ShouldContain("pizza");
+        result.ShouldContain("has");
+        result.ShouldContain("a cat");
+    }
+
+    [Fact]
+    public void GetUserFactsFormatted_ReturnsNull_WhenNoFacts()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+
+        var result = store.GetUserFactsFormatted(1);
+        result.ShouldBeNull();
+    }
+
+    [Fact]
+    public void GetUserFactsFormatted_GroupsByPredicateType_WhenMoreThan10()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var user = new User { Name = "Bob", FirstSeen = DateTime.UtcNow.ToString("o"), LastSeen = DateTime.UtcNow.ToString("o") };
+        db.Context.Users.Add(user);
+        db.Context.SaveChanges();
+
+        for (int i = 0; i < 12; i++)
+        {
+            store.StoreFact(new Fact { UserId = user.Id, Subject = "Bob", Verb = "likes", Object = $"thing{i}", PredicateType = "Preference", CreatedAt = DateTime.UtcNow.ToString("o") });
+        }
+        store.Save();
+
+        var result = store.GetUserFactsFormatted(user.Id);
+        result.ShouldNotBeNull();
+        result.ShouldContain("Preference:");
+        result.ShouldNotContain("1)");
+    }
+
+    [Fact]
+    public void GetUserStatsFormatted_ReturnsFormattedStats()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var user = new User { Name = "Charlie", FirstSeen = DateTime.UtcNow.ToString("o"), LastSeen = DateTime.UtcNow.ToString("o") };
+        db.Context.Users.Add(user);
+        db.Context.SaveChanges();
+
+        store.StoreFact(new Fact { UserId = user.Id, Subject = "Charlie", Verb = "likes", Object = "dogs", PredicateType = "Preference", Sentiment = "positive", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.StoreFact(new Fact { UserId = user.Id, Subject = "Charlie", Verb = "likes", Object = "cats", PredicateType = "Preference", Sentiment = "positive", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.StoreConversation(user.Id, "hello", "hi", "session1");
+        store.StoreConversation(user.Id, "I like dogs", "Nice!", "session1");
+        store.Save();
+
+        var result = store.GetUserStatsFormatted(user.Id);
+        result.ShouldNotBeNull();
+        result.ShouldContain("Total facts");
+        result.ShouldContain("2");
+        result.ShouldContain("Conversations");
+        result.ShouldContain("2");
+        result.ShouldContain("Sessions");
+        result.ShouldContain("1");
+        result.ShouldContain("Most talked about");
+    }
+
+    [Fact]
+    public void GetUserStatsFormatted_ReturnsNull_WhenNoFacts()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+
+        var result = store.GetUserStatsFormatted(1);
+        result.ShouldBeNull();
+    }
+
+    [Fact]
+    public void GetPositiveFacts_ReturnsOnlyPositiveVerbs()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var user = new User { Name = "Dave", FirstSeen = DateTime.UtcNow.ToString("o"), LastSeen = DateTime.UtcNow.ToString("o") };
+        db.Context.Users.Add(user);
+        db.Context.SaveChanges();
+
+        store.StoreFact(new Fact { UserId = user.Id, Subject = "Dave", Verb = "like", Object = "pizza", PredicateType = "Preference", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.StoreFact(new Fact { UserId = user.Id, Subject = "Dave", Verb = "hate", Object = "broccoli", PredicateType = "Dislike", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.StoreFact(new Fact { UserId = user.Id, Subject = "Dave", Verb = "enjoy", Object = "running", PredicateType = "Preference", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.Save();
+
+        var positive = store.GetPositiveFacts(user.Id);
+        positive.Count.ShouldBe(2);
+        positive.All(f => f.Verb is "like" or "love" or "enjoy" or "prefer").ShouldBeTrue();
+    }
+
+    [Fact]
+    public void GetRandomPositiveFact_ReturnsFact_WhenExists()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var user = new User { Name = "Eve", FirstSeen = DateTime.UtcNow.ToString("o"), LastSeen = DateTime.UtcNow.ToString("o") };
+        db.Context.Users.Add(user);
+        db.Context.SaveChanges();
+
+        store.StoreFact(new Fact { UserId = user.Id, Subject = "Eve", Verb = "like", Object = "music", PredicateType = "Preference", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.Save();
+
+        var fact = store.GetRandomPositiveFact(user.Id);
+        fact.ShouldNotBeNull();
+        fact.Object.ShouldBe("music");
+    }
+
+    [Fact]
+    public void GetRandomPositiveFact_ReturnsNull_WhenNoPositiveFacts()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+
+        var fact = store.GetRandomPositiveFact(1);
+        fact.ShouldBeNull();
+    }
 }

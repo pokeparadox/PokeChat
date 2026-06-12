@@ -61,6 +61,105 @@ public class KnowledgeStore(PokeChatDbContext context)
             .ToList();
     }
 
+    public string? GetUserFactsFormatted(int userId)
+    {
+        var facts = GetFactsByUser(userId);
+        if (facts.Count == 0) return null;
+
+        if (facts.Count > 10)
+        {
+            var grouped = facts
+                .GroupBy(f => f.PredicateType)
+                .Select(g =>
+                {
+                    var items = string.Join(", ", g.Select(f => $"{f.Subject} {f.Verb} {f.Object}"));
+                    return $"{g.Key}: {items}";
+                });
+            return string.Join("\n", grouped);
+        }
+
+        var numbered = facts.Select((f, i) => $"{i + 1}) {f.Subject} {f.Verb} {f.Object}");
+        return string.Join("\n", numbered);
+    }
+
+    public string? GetUserStatsFormatted(int userId)
+    {
+        var facts = context.Facts.Where(f => f.UserId == userId);
+        var totalFacts = facts.Count();
+
+        if (totalFacts == 0) return null;
+
+        var totalConversations = context.Conversations.Count(c => c.UserId == userId);
+
+        var totalSessions = context.Conversations
+            .Where(c => c.UserId == userId)
+            .Select(c => c.SessionId)
+            .Distinct()
+            .Count();
+
+        var mostTalkedSubject = facts
+            .GroupBy(f => f.Subject)
+            .OrderByDescending(g => g.Count())
+            .Select(g => g.Key)
+            .FirstOrDefault();
+
+        var sentiments = facts
+            .Where(f => f.Sentiment != null && f.Sentiment != "neutral")
+            .GroupBy(f => f.Sentiment)
+            .Select(g => $"{g.Key}: {g.Count()}")
+            .ToList();
+        var sentimentBreakdown = sentiments.Count > 0 ? string.Join(", ", sentiments) : null;
+
+        var allConversations = context.Conversations
+            .Where(c => c.UserId == userId)
+            .OrderBy(c => c.Timestamp)
+            .ToList();
+
+        string? firstDate = null;
+        string? lastDate = null;
+        if (allConversations.Count > 0)
+        {
+            if (DateTime.TryParse(allConversations[0].Timestamp, out var first))
+                firstDate = first.ToString("MMM dd yyyy");
+            if (DateTime.TryParse(allConversations[^1].Timestamp, out var last))
+                lastDate = last.ToString("MMM dd yyyy");
+        }
+
+        var lines = new List<string>
+        {
+            $"Total facts: {totalFacts}",
+            $"Conversations: {totalConversations}",
+            $"Sessions: {totalSessions}",
+        };
+
+        if (mostTalkedSubject != null)
+            lines.Add($"Most talked about: {mostTalkedSubject}");
+        if (sentimentBreakdown != null)
+            lines.Add($"Sentiment: {sentimentBreakdown}");
+        if (firstDate != null)
+            lines.Add($"First chat: {firstDate}");
+        if (lastDate != null)
+            lines.Add($"Last chat: {lastDate}");
+
+        return string.Join("\n", lines);
+    }
+
+    public List<Fact> GetPositiveFacts(int userId)
+    {
+        var positiveVerbs = new[] { "like", "love", "enjoy", "prefer" };
+        return context.Facts
+            .Where(f => f.UserId == userId && positiveVerbs.Contains(f.Verb))
+            .SelectFacet<Fact>()
+            .ToList();
+    }
+
+    public Fact? GetRandomPositiveFact(int userId)
+    {
+        var facts = GetPositiveFacts(userId);
+        if (facts.Count == 0) return null;
+        return facts[Random.Shared.Next(facts.Count)];
+    }
+
     public Fact? GetFact(string subject, string verb, string obj)
     {
         var entity = context.Facts

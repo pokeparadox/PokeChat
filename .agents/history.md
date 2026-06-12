@@ -1353,3 +1353,38 @@ Ten bugs found by analysing 50 session logs from real user conversations. Fixed 
 
 ### Verify
 - `dotnet build && dotnet test` — 521/521 pass
+
+---
+
+## Phase 39: Self-Knowledge (Tell Me About Myself + Stats + Compliments)
+
+Three features that query the user's existing data — facts, conversations, metrics — and present it back in different ways.
+
+### Part A — Tell Me About Myself
+- **Triggers:** `"tell me about myself"`, `"what do you know about me"`, `"what do you know"`, `"what have I told you"`, `"what do you remember"`, `"what do you know about us"`
+- Lists all user facts (numbered 1-N if ≤10, grouped by predicate type if >10)
+- Falls back to `"I don't know much about you yet"` if empty
+
+### Part B — On-Demand Stats
+- **Triggers:** `"how many facts do you know"`, `"conversation stats"`, `"what's my most talked about topic"`, `"how much do you know about me"`, `"tell me some statistics"`, `"what are my stats"`
+- Returns total facts, conversation count, sessions, most-talked subject, sentiment breakdown, first/last chat dates
+
+### Part C — Compliments
+- **Explicit triggers:** `"compliment me"`, `"say something nice"`, `"make my day"`, `"give me a compliment"`, `"say something kind"`
+- **Passive:** 1-in-7 chance after user shares a new preference fact
+- Picks a random fact with positive verb (like/love/enjoy/prefer), wraps in `ConjugateVerb`-conjugated compliment
+
+### Files modified
+- `Data/DbSeeder.cs` — added `user_fact_list`, `user_fact_none`, `user_stats`, `compliment` bot response categories
+- `Knowledge/KnowledgeStore.cs` — added `GetUserFactsFormatted`, `GetUserStatsFormatted`, `GetPositiveFacts`, `GetRandomPositiveFact`
+- `Responses/ResponseEngine.cs` — added `HandleSelfKnowledgeRequest`, `GetRandomCompliment`, emoji mapping for new categories
+- `Core/ChatSession.cs` — early trigger detection before `ProcessSentence`, pending compliment flag in `ProcessSentence`
+- `Core/ContextKeys.cs` — added `PendingCompliment`
+
+### Tests
+- `KnowledgeStoreTests.cs` — 6 new tests (fact formatting, grouping, stats, positive fact queries)
+- `ChatSessionTests.cs` — 8 new tests (tell-me-about-myself, stats, compliments, edge cases)
+- `TestDataHelper.cs` — seed data for new categories
+
+### Verification
+- `dotnet build && dotnet test` — **537/537 pass** (521 original + 16 new)

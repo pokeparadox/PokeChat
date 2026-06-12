@@ -498,6 +498,9 @@ public class ChatSession : IDisposable
         if (TryHandleInsult(input, sentiment, intensity, out var insultResponse))
             return insultResponse;
 
+        var selfKnowledgeResponse = _responseEngine.HandleSelfKnowledgeRequest(input, _currentUserId);
+        if (selfKnowledgeResponse != null) return selfKnowledgeResponse;
+
         var sentences = _sentenceSplitter.Split(input);
 
         foreach (var sentence in sentences)
@@ -728,6 +731,9 @@ public class ChatSession : IDisposable
                 else if (lowerObj is "a thing" or "thing")
                     _nounCategoriser.CategoriseNoun(resolvedSubject);
             }
+
+            if (predicateType is PredicateType.Preference && Random.Shared.Next(7) == 0)
+                _context.SetContext(ContextKeys.PendingCompliment, "true");
 
             _context.UpdateLastSubject(resolvedSubject);
             _context.UpdateLastObject(resolvedObject);
