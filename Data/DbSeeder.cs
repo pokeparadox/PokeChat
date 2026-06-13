@@ -29,6 +29,7 @@ public static class DbSeeder
         SeedRhymeGroups(context, now);
         SeedPoemTemplates(context, now);
         SeedBotResponses(context, now);
+        SeedHangmanBotResponses(context, now);
 
         context.SaveChanges();
     }
@@ -221,6 +222,37 @@ public static class DbSeeder
             return Path.Combine(root, "Data", fileName);
 
         return outputPath;
+    }
+
+    private static void SeedHangmanBotResponses(PokeChatDbContext context, string now)
+    {
+        if (context.BotResponses.Any(r => r.Category == "hangman_welcome")) return;
+
+        var responses = new (string Category, string ResponseText)[]
+        {
+            ("hangman_welcome", "Let's play Hangman! The word has {0} letters.\n{1}\nWrong guesses: {2}"),
+            ("hangman_welcome", "Time for Hangman! I'm thinking of a word with {0} letters.\n{1}\nWrong: {2}"),
+            ("hangman_correct", "Good guess! The letter '{0}' is in the word.\n{1}"),
+            ("hangman_correct", "Nice! '{0}' is there.\n{1}"),
+            ("hangman_wrong", "Sorry, '{0}' is not in the word. {1} wrong guesses left.\n{2}\nWrong letters: {3}"),
+            ("hangman_wrong", "Nope, no '{0}'. {1} attempts remaining.\n{2}\nWrong: {3}"),
+            ("hangman_win", "Congratulations! You got it! The word was '{0}'."),
+            ("hangman_win", "You win! '{0}' was the word. Well done!"),
+            ("hangman_lose", "Game over! The word was '{0}'. Better luck next time!"),
+            ("hangman_lose", "Sorry, you ran out of guesses. The word was '{0}'."),
+            ("hangman_play_again", "Want to play again? Say 'yes' or 'no'."),
+            ("hangman_already_active", "You're already playing Hangman! Guess a letter or the whole word."),
+            ("hangman_surrender", "No problem! The word was '{0}'. Maybe next time!"),
+            ("hangman_invalid", "Please guess a single letter or the whole word."),
+            ("hangman_repeat_letter", "You already guessed '{0}'. Try a different letter."),
+        };
+
+        context.BotResponses.AddRange(responses.Select(r => new BotResponse
+        {
+            Category = r.Category,
+            ResponseText = r.ResponseText,
+            CreatedAt = now
+        }));
     }
 
     private class PosDictionaryEntryJson

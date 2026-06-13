@@ -2196,4 +2196,135 @@ public class ChatSessionTests
             Assert.True(response.Contains("2") || response.Contains("facts") || response.Contains("Facts"));
         }
     }
+
+    [Fact]
+    public void PlayHangman_StartsGame()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            var response = session.ProcessInput("play hangman");
+            Assert.Contains("Let's play", response);
+            Assert.Contains("letters", response);
+        }
+    }
+
+    [Fact]
+    public void Hangman_AlreadyActive()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("play hangman");
+            var response = session.ProcessInput("play hangman");
+            Assert.Contains("already playing", response);
+        }
+    }
+
+    [Fact]
+    public void Hangman_Surrender()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("play hangman");
+            var response = session.ProcessInput("I give up");
+            Assert.Contains("The word was", response);
+        }
+    }
+
+    [Fact]
+    public void Hangman_InvalidInput()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("play hangman");
+            var response = session.ProcessInput("hello world");
+            Assert.Contains("single letter", response);
+        }
+    }
+
+    [Fact]
+    public void Hangman_RepeatLetter()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("play hangman");
+            session.ProcessInput("z");
+            var response = session.ProcessInput("z");
+            Assert.Contains("already guessed", response);
+        }
+    }
+
+    [Fact]
+    public void Hangman_WrongLetter()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("play hangman");
+            var response = session.ProcessInput("z");
+            Assert.Contains("not in the word", response);
+            Assert.Contains("5 wrong guesses left", response);
+        }
+    }
+
+    [Fact]
+    public void Hangman_CorrectGuess_ReturnsValidResponse()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("play hangman");
+            var response = session.ProcessInput("e");
+            Assert.False(string.IsNullOrEmpty(response));
+            Assert.DoesNotContain("single letter", response);
+        }
+    }
+
+    [Fact]
+    public void Hangman_Lose()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("play hangman");
+            session.ProcessInput("zzzzz");
+            session.ProcessInput("qqqqq");
+            session.ProcessInput("xxxxx");
+            session.ProcessInput("jjjjj");
+            session.ProcessInput("vvvvv");
+            var response = session.ProcessInput("wwwww");
+            Assert.Contains("Game over", response);
+        }
+    }
+
+    [Fact]
+    public void Hangman_CanRestartAfterGameEnds()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("play hangman");
+            session.ProcessInput("zzzzz");
+            session.ProcessInput("qqqqq");
+            session.ProcessInput("xxxxx");
+            session.ProcessInput("jjjjj");
+            session.ProcessInput("vvvvv");
+            session.ProcessInput("wwwww");
+            var response = session.ProcessInput("play hangman");
+            Assert.Contains("Let's play", response);
+        }
+    }
 }

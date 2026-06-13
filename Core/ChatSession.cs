@@ -138,6 +138,14 @@ public class ChatSession : IDisposable
         "stop", "end interview", "cancel", "enough", "stop training"
     };
 
+    private static readonly HashSet<string> HangmanStartPhrases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "let's play hangman", "play hangman", "hangman", "let's play hang man",
+        "play hang man", "hang man", "i want to play hangman", "let's do hangman"
+    };
+
+    private const int HangmanMaxAttempts = 6;
+
     private static readonly HashSet<string> SurrenderPhrases = new(StringComparer.OrdinalIgnoreCase)
     {
         "i give up", "give up", "i surrender", "surrender", "i don't know",
@@ -457,6 +465,10 @@ public class ChatSession : IDisposable
         if (wyrActive != null)
             return HandleWouldYouRatherAnswer(input);
 
+        var hangmanActive = _context.GetContext(ContextKeys.HangmanActive);
+        if (hangmanActive != null)
+            return HandleHangmanTurn(input);
+
         _context.SetContext(ContextKeys.UnknownWords, null);
 
         if (TryHandleResetRequest(input, out var resetResponse))
@@ -479,6 +491,9 @@ public class ChatSession : IDisposable
 
         if (TryHandleWouldYouRather(input, out var wyrResponse))
             return wyrResponse;
+
+        if (TryHandleHangmanStart(input, out var hangmanResponse))
+            return hangmanResponse;
 
         if (TryHandleCorrection(input, out var correctionResponse))
             return correctionResponse;
@@ -575,6 +590,11 @@ public class ChatSession : IDisposable
         _context.SetContext(ContextKeys.PendingLLMOffer, null);
         _context.SetContext(ContextKeys.PendingDictionarySave, null);
         _context.SetContext(ContextKeys.PendingDictionaryWord, null);
+        _context.SetContext(ContextKeys.HangmanActive, null);
+        _context.SetContext(ContextKeys.HangmanWord, null);
+        _context.SetContext(ContextKeys.HangmanGuessed, null);
+        _context.SetContext(ContextKeys.HangmanWrongLetters, null);
+        _context.SetContext(ContextKeys.HangmanWrongCount, null);
         _context.SetContext(ContextKeys.UnknownWords, null);
     }
 
@@ -1321,7 +1341,7 @@ public class ChatSession : IDisposable
     private static readonly HashSet<string> NameBlockers = new(StringComparer.OrdinalIgnoreCase)
     {
         "tell", "make", "give", "ask", "do", "play", "say", "crack", "start", "stop",
-        "funny", "joke", "riddle", "limerick", "haiku", "poem", "story", "game",
+        "funny", "joke", "riddle", "limerick", "haiku", "poem", "story", "game", "hangman",
         "interview", "train", "mad", "wyr", "would",
         "what", "who", "where", "when", "why", "how", "which",
         "hello", "hey", "hi", "goodbye", "bye", "thanks", "thank",
@@ -2543,6 +2563,203 @@ public class ChatSession : IDisposable
         if (botResponses.TryGetValue(category, out var responses) && responses.Count > 0)
         {
             var template = responses[Random.Shared.Next(responses.Count)];
+            return args.Length > 0 ? string.Format(template, args) : template;
+        }
+
+        return string.Empty;
+    }
+
+    internal bool TryHandleHangmanStart(string input, out string response)
+    {
+        var lowerInput = input.ToLowerInvariant().Trim();
+        foreach (var phrase in HangmanStartPhrases)
+        {
+            if (lowerInput.Contains(phrase))
+            {
+                var existing = _context.GetContext(ContextKeys.HangmanActive);
+                if (existing != null)
+                {
+                    response = GetHangmanResponse("hangman_already_active");
+                    return true;
+                }
+
+                response = StartHangman();
+                return true;
+            }
+        }
+
+        response = string.Empty;
+        return false;
+    }
+
+    private string StartHangman()
+    {
+        var word = PickHangmanWord();
+        if (string.IsNullOrEmpty(word))
+            return "I don't have any words to play with right now!";
+
+        _context.SetContext(ContextKeys.HangmanActive, "true");
+        _context.SetContext(ContextKeys.HangmanWord, word);
+        _context.SetContext(ContextKeys.HangmanGuessed, "");
+        _context.SetContext(ContextKeys.HangmanWrongLetters, "");
+        _context.SetContext(ContextKeys.HangmanWrongCount, "0");
+
+        var display = BuildHangmanDisplay(word, new HashSet<string>());
+        return GetHangmanResponse("hangman_welcome", word.Length, display, "(none)");
+    }
+
+    internal string HandleHangmanTurn(string input)
+    {
+        var lowerInput = input.Trim().ToLowerInvariant();
+
+        foreach (var phrase in HangmanStartPhrases)
+        {
+            if (lowerInput.Contains(phrase))
+                return GetHangmanResponse("hangman_already_active");
+        }
+
+        foreach (var phrase in SurrenderPhrases)
+        {
+            if (lowerInput.Contains(phrase))
+            {
+                var surrenderWord = _context.GetContext(ContextKeys.HangmanWord) ?? "";
+                ClearHangmanState();
+                return GetHangmanResponse("hangman_surrender", surrenderWord);
+            }
+        }
+
+        var word = _context.GetContext(ContextKeys.HangmanWord) ?? "";
+        var guessedRaw = _context.GetContext(ContextKeys.HangmanGuessed) ?? "";
+        var wrongLettersRaw = _context.GetContext(ContextKeys.HangmanWrongLetters) ?? "";
+        var wrongCountRaw = _context.GetContext(ContextKeys.HangmanWrongCount) ?? "0";
+        int.TryParse(wrongCountRaw, out var wrongCount);
+
+        var guessed = string.IsNullOrEmpty(guessedRaw)
+            ? new HashSet<string>()
+            : guessedRaw.Split(' ').ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var wrongLetters = string.IsNullOrEmpty(wrongLettersRaw)
+            ? new HashSet<string>()
+            : wrongLettersRaw.Split(',').Select(w => w.Trim())
+                .Where(w => w.Length > 0).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        if (lowerInput.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length == 1)
+        {
+            var guess = lowerInput.Trim();
+
+            if (guess.Length == 1 && char.IsLetter(guess[0]))
+            {
+                if (guessed.Contains(guess))
+                    return GetHangmanResponse("hangman_repeat_letter", guess);
+
+                guessed.Add(guess);
+                _context.SetContext(ContextKeys.HangmanGuessed, string.Join(" ", guessed));
+
+                if (word.Contains(guess))
+                {
+                    var display = BuildHangmanDisplay(word, guessed);
+                    if (!display.Contains('_'))
+                    {
+                        ClearHangmanState();
+                        return GetHangmanResponse("hangman_win", word);
+                    }
+                    return GetHangmanResponse("hangman_correct", guess, display);
+                }
+
+                wrongCount++;
+                wrongLetters.Add(guess);
+                _context.SetContext(ContextKeys.HangmanWrongCount, wrongCount.ToString());
+                _context.SetContext(ContextKeys.HangmanWrongLetters, string.Join(",", wrongLetters));
+
+                if (wrongCount >= HangmanMaxAttempts)
+                {
+                    ClearHangmanState();
+                    return GetHangmanResponse("hangman_lose", word);
+                }
+
+                var wrongDisplay = BuildHangmanDisplay(word, guessed);
+                var remaining = HangmanMaxAttempts - wrongCount;
+                return GetHangmanResponse("hangman_wrong", guess, remaining, wrongDisplay, string.Join(", ", wrongLetters));
+            }
+
+            if (guess.Length > 1 && guess.All(char.IsLetter))
+            {
+                if (guess == word)
+                {
+                    ClearHangmanState();
+                    return GetHangmanResponse("hangman_win", word);
+                }
+
+                wrongCount++;
+                _context.SetContext(ContextKeys.HangmanWrongCount, wrongCount.ToString());
+
+                if (wrongCount >= HangmanMaxAttempts)
+                {
+                    ClearHangmanState();
+                    return GetHangmanResponse("hangman_lose", word);
+                }
+
+                var wordDisplay = BuildHangmanDisplay(word, guessed);
+                var remaining = HangmanMaxAttempts - wrongCount;
+                return GetHangmanResponse("hangman_wrong", guess, remaining, wordDisplay, string.Join(", ", wrongLetters));
+            }
+        }
+
+        return GetHangmanResponse("hangman_invalid");
+    }
+
+    private void ClearHangmanState()
+    {
+        _context.SetContext(ContextKeys.HangmanActive, null);
+        _context.SetContext(ContextKeys.HangmanWord, null);
+        _context.SetContext(ContextKeys.HangmanGuessed, null);
+        _context.SetContext(ContextKeys.HangmanWrongLetters, null);
+        _context.SetContext(ContextKeys.HangmanWrongCount, null);
+    }
+
+    private static string BuildHangmanDisplay(string word, HashSet<string> guessed)
+    {
+        return string.Join(" ", word.Select(c => guessed.Contains(c.ToString()) ? c.ToString() : "_"));
+    }
+
+    private string PickHangmanWord()
+    {
+        var words = _dbContext.PosDictionary
+            .Where(e => e.Word.Length >= 6 && e.WordType == "noun")
+            .AsEnumerable()
+            .Where(e => e.Word.All(char.IsLetter))
+            .Select(e => e.Word.ToLowerInvariant())
+            .Distinct()
+            .ToList();
+        if (words.Count == 0) return string.Empty;
+        return words[Random.Shared.Next(words.Count)];
+    }
+
+    private string GetHangmanResponse(string category, params object[] args)
+    {
+        var botResponses = GetCachedBotResponses();
+        if (botResponses.TryGetValue(category, out var responses) && responses.Count > 0)
+        {
+            var template = responses[Random.Shared.Next(responses.Count)];
+            return args.Length > 0 ? string.Format(template, args) : template;
+        }
+
+        var fallbacks = new Dictionary<string, List<string>>
+        {
+            ["hangman_welcome"] = new() { $"Let's play Hangman! The word has {{0}} letters.\n{{1}}\nWrong: {{2}}" },
+            ["hangman_correct"] = new() { $"Good guess! The letter '{{0}}' is in the word.\n{{1}}" },
+            ["hangman_wrong"] = new() { $"Sorry, '{{0}}' is not in the word. {{1}} wrong guesses left.\n{{2}}\nWrong: {{3}}" },
+            ["hangman_win"] = new() { $"You got it! The word was '{{0}}'. Nice!" },
+            ["hangman_lose"] = new() { $"Game over! The word was '{{0}}'." },
+            ["hangman_already_active"] = new() { "You're already playing Hangman! Guess a letter." },
+            ["hangman_surrender"] = new() { $"The word was '{{0}}'. Maybe next time!" },
+            ["hangman_invalid"] = new() { "Guess a single letter or the whole word." },
+            ["hangman_repeat_letter"] = new() { $"You already guessed '{{0}}'. Try a different letter." },
+        };
+
+        if (fallbacks.TryGetValue(category, out var fb) && fb.Count > 0)
+        {
+            var template = fb[Random.Shared.Next(fb.Count)];
             return args.Length > 0 ? string.Format(template, args) : template;
         }
 

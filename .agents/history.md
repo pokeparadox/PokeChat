@@ -1388,3 +1388,44 @@ Three features that query the user's existing data — facts, conversations, met
 
 ### Verification
 - `dotnet build && dotnet test` — **537/537 pass** (521 original + 16 new)
+
+---
+
+## Phase 40 — Word List Consolidation ✅
+
+Shared `GenerationUtils.cs` with `ExcludedVerbs` + fallback arrays, deduped `StoryExcludedVerbs`/`PoetryExcludedVerbs`, cleaned `ShortWordAllowlist` duplicates. `dotnet build` only.
+
+---
+
+## Phase 41 — Universal LLM Thinking Indicator ✅
+
+`LlmCallWithIndicator(Func<string?>)` wrapper in ChatSession, wraps all 6 LLM call sites. `dotnet build` only.
+
+---
+
+## Phase 42 — Non-LLM Interview Mode ✅
+
+`IInterviewEngine` interface, `NonLlmInterviewEngine` with 30-question bank, 8 new tests, **545/545 pass**.
+
+---
+
+## Phase 43 — Hang-Man Word Guessing Game ✅
+
+Multi-turn hang-man game using POS dictionary nouns (≥6 letters) as word source. Trigger phrases in `HangmanStartPhrases`, surrender phrases in `SurrenderPhrases`, 6 wrong attempts max. Game routing in `ProcessInput` (activity check → `HandleHangmanTurn`; start check → `TryHandleHangmanStart`). Fix: already-active detection in `HandleHangmanTurn` (start phrase during active game now says "already playing" instead of "invalid").
+
+### New/modified files
+- **`Core/ContextKeys.cs`** — 5 hangman state keys (HangmanActive, HangmanWord, HangmanGuessed, HangmanWrongLetters, HangmanWrongCount)
+- **`Core/ChatSession.cs`** — `HangmanStartPhrases`, `SurrenderPhrases`, `HangmanMaxAttempts=6`, `NameBlockers` includes `"hangman"`, routing in ProcessInput, `TryHandleHangmanStart`, `HandleHangmanTurn`, `StartHangman`, `ClearHangmanState`, `BuildHangmanDisplay`, `PickHangmanWord`, `GetHangmanResponse`
+- **`Responses/ResponseEngine.cs`** — 🎮 emoji for `hangman_*` categories
+- **`Data/DbSeeder.cs`** — `SeedHangmanBotResponses()` with 15 fallback responses across 9 categories
+
+### Tests (9 new, 554/554 pass)
+- `PlayHangman_StartsGame` — welcome message contains "Let's play" + "letters"
+- `Hangman_AlreadyActive` — start + start again → "already playing"
+- `Hangman_Surrender` — "I give up" → "The word was"
+- `Hangman_InvalidInput` — multi-word input → "single letter or the whole word"
+- `Hangman_RepeatLetter` — same letter twice → "already guessed"
+- `Hangman_WrongLetter` — "z" → "not in the word" + "5 wrong guesses left"
+- `Hangman_CorrectGuess_ReturnsValidResponse` — "e" → valid non-error response
+- `Hangman_Lose` — 6 wrong word guesses → "Game over"
+- `Hangman_CanRestartAfterGameEnds` — lose → restart → "Let's play"

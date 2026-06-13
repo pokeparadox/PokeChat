@@ -180,6 +180,7 @@ public class ResponseEngine
             not null when category == "cross_session_recall" => "\U0001F4AD",
             not null when category == "existing_fact" => "\U0001F4A1",
             not null when category.StartsWith("bot_rename_") => "\U0001F3F7\uFE0F",
+            not null when category.StartsWith("hangman_") => "\U0001F3AE",
             not null when category.StartsWith("bot_reset_") => "\U0001F504",
             not null when category.StartsWith("temporal_") => "\U0001F550",
             not null when category is "user_fact_list" or "user_fact_none" or "user_stats" => "\U0001F4CA",
