@@ -16,8 +16,8 @@ public class SpellChecker
         "not", "yet", "can", "may", "now", "too", "very",
         "yes", "red", "fun", "sad", "bus", "car", "dog",
         "cat", "day", "way", "lot", "bit", "top", "end",
-        "age", "ago", "yet", "its", "let", "man", "men",
-        "own", "per", "etc", "via", "was", "yet", "had",
+        "age", "ago", "its", "let", "man", "men",
+        "own", "per", "etc", "via", "was", "had",
         "did", "has", "his", "her"
     };
 

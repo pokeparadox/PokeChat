@@ -37,7 +37,7 @@ public class ChatSession : IDisposable
     private readonly SessionLogger? _sessionLogger;
     private readonly McpRegistry? _mcpRegistry;
     private readonly LLMOrchestrator? _llmOrchestrator;
-    private InterviewEngine? _interviewEngine;
+    private IInterviewEngine? _interviewEngine;
     private int? _savedUserId;
     private bool _interviewModeActive;
 
@@ -302,7 +302,10 @@ public class ChatSession : IDisposable
                     }
                 }
 
-                input = _interviewEngine.GenerateUserInput();
+                if (_interviewEngine is InterviewEngine llmEngine)
+                    input = LlmCallWithIndicator(() => llmEngine.GenerateUserInput());
+                else
+                    input = _interviewEngine.GenerateUserInput();
                 if (input == null) { EndInterviewMode(); continue; }
 
                 ClearPendingState();
@@ -387,7 +390,7 @@ public class ChatSession : IDisposable
                     _context.SetContext(ContextKeys.PendingLLMOffer, null);
                     _context.SetContext(ContextKeys.LLMOriginalInput, null);
                     _llmOrchestrator.MarkAccepted();
-                    var llmResult = _llmOrchestrator.GenerateResponse(originalInput ?? input);
+                    var llmResult = LlmCallWithIndicator(() => _llmOrchestrator.GenerateResponse(originalInput ?? input));
                     if (llmResult != null)
                     {
                         LearnFromLLMResponse(originalInput ?? input, llmResult);
@@ -523,7 +526,7 @@ public class ChatSession : IDisposable
         {
             if (_llmOrchestrator.Config.AlwaysOn || _llmOrchestrator.IsAccepted)
             {
-                var llmResult = _llmOrchestrator.GenerateResponse(input);
+                var llmResult = LlmCallWithIndicator(() => _llmOrchestrator.GenerateResponse(input));
                 if (llmResult != null)
                 {
                     LearnFromLLMResponse(input, llmResult);
@@ -1189,12 +1192,24 @@ public class ChatSession : IDisposable
 
         if (string.IsNullOrEmpty(name))
         {
-            if (tokens.Count > 0 && tokens.Any(t => _greetingWords.Contains(t.ToLowerInvariant())))
+            if (tokens.Count == 1 && !IsStopWord(tokens[0]))
             {
-                var greeting = GreetingPool.GetRandomGreeting(_knowledgeStore, _botName);
-                return $"{greeting} What's your name?";
+                var lowerToken = tokens[0].ToLowerInvariant();
+                if (!_greetingWords.Contains(lowerToken) && !IsCloseToGreeting(lowerToken))
+                {
+                    name = tokens[0];
+                }
             }
-            return "I didn't catch your name. Could you tell me again?";
+
+            if (string.IsNullOrEmpty(name))
+            {
+                if (tokens.Count > 0 && tokens.Any(t => _greetingWords.Contains(t.ToLowerInvariant())))
+                {
+                    var greeting = GreetingPool.GetRandomGreeting(_knowledgeStore, _botName);
+                    return $"{greeting} What's your name?";
+                }
+                return "I didn't catch your name. Could you tell me again?";
+            }
         }
 
         _currentUserName = char.ToUpper(name[0]) + name.Substring(1).ToLowerInvariant();
@@ -1507,13 +1522,6 @@ public class ChatSession : IDisposable
 
     private void StartInterviewMode()
     {
-        if (_llmOrchestrator == null || !_llmOrchestrator.IsAvailable)
-        {
-            var noLlm = GetInterviewResponse("interview_no_llm") ?? "I need my AI available to run the interview. Try again later.";
-            Console.WriteLine($"{_botName}: {noLlm}");
-            return;
-        }
-
         var interviewerId = _knowledgeStore.GetOrCreateUser("Interviewer");
         if (interviewerId == null) return;
         _savedUserId = _currentUserId;
@@ -1522,7 +1530,16 @@ public class ChatSession : IDisposable
         _responseEngine.SetBotName(_botName);
 
         _context.Clear();
-        _interviewEngine = new InterviewEngine(_llmOrchestrator);
+
+        if (_llmOrchestrator?.IsAvailable == true)
+        {
+            _interviewEngine = new InterviewEngine(_llmOrchestrator);
+        }
+        else
+        {
+            _interviewEngine = new NonLlmInterviewEngine();
+        }
+
         _interviewModeActive = true;
 
         var intro = GetInterviewResponse("interview_intro") ?? "Interview mode started! I'll chat with my AI to learn new things. Type 'stop' to end.";
@@ -1698,12 +1715,20 @@ public class ChatSession : IDisposable
     private bool AlwaysOnLLmAvailable() =>
         _llmOrchestrator?.Config.AlwaysOn == true && _llmOrchestrator.IsAvailable && !_llmOrchestrator.UserDeclined;
 
+    private string? LlmCallWithIndicator(Func<string?> llmCall)
+    {
+        Console.Write($"\r{_botName} is thinking...");
+        var result = llmCall();
+        Console.Write("\r" + new string(' ', 40) + "\r");
+        return result;
+    }
+
     private bool GetLLMCorrectionReflection(string trigger, string template, out string response)
     {
         var prompt = $"The user just taught you: when they say '{trigger}', you should respond like '{template}'. " +
             "Acknowledge this naturally in 1 sentence — like 'Got it, I'll do that next time' or 'Thanks, that makes sense'. " +
             "Do not over-explain. Be natural.";
-        var llmResult = _llmOrchestrator!.GenerateResponse(prompt);
+        var llmResult = LlmCallWithIndicator(() => _llmOrchestrator!.GenerateResponse(prompt));
         if (!string.IsNullOrEmpty(llmResult))
         {
             response = llmResult;
@@ -1917,7 +1942,7 @@ public class ChatSession : IDisposable
 
         if (_llmOrchestrator?.IsAvailable == true && !string.IsNullOrEmpty(filteredStory))
         {
-            var llmSummary = _llmOrchestrator.GenerateGameStorySummary(filteredStory);
+            var llmSummary = LlmCallWithIndicator(() => _llmOrchestrator.GenerateGameStorySummary(filteredStory));
             if (!string.IsNullOrEmpty(llmSummary))
                 return GetGameResponse("game_stop_llm", filteredStory, llmSummary);
         }
@@ -2538,7 +2563,7 @@ public class ChatSession : IDisposable
         var prompt = BuildHomeworkCheckPrompt();
         if (string.IsNullOrEmpty(prompt)) return;
 
-        var llmResult = _llmOrchestrator.GenerateHomeworkCheck(prompt);
+        var llmResult = LlmCallWithIndicator(() => _llmOrchestrator.GenerateHomeworkCheck(prompt));
         if (string.IsNullOrEmpty(llmResult)) return;
 
         var result = ParseHomeworkCheckResult(llmResult);

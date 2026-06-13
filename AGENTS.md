@@ -146,6 +146,10 @@ A completed improvement history is maintained in `.agents/history.md`. Active pl
 - **Phase 37:** Cross-Session Recall ✅ (30% chance to recall a fact from previous sessions at session start. `GetPreviousSessions`/`GetRandomFactFromSession` in KnowledgeStore, `TryBuildCrossSessionRecall` in ChatSession, `cross_session_recall` bot responses. 8 new tests)
 - **Phase 38:** Emoji Personality ✅ (category-appropriate emoji on bot responses via `AddEmoji`/`GetStaticEmoji` in ResponseEngine. 117 categories mapped, sentiment-aware for emotion categories. 4 new tests, 496/496 pass)
 - **Interview Mode (post-Phase 38):** LLM-driven bot training via `InterviewEngine`; identity-isolated learning under `"Interviewer"` persona; configurable 8-turn limit; stop commands; see `.agents/history.md`
+- **Phase 40:** Word List Consolidation ✅ (shared `GenerationUtils.cs` with `ExcludedVerbs`+fallback arrays, deduped `StoryExcludedVerbs`/`PoetryExcludedVerbs`, cleaned `ShortWordAllowlist` duplicates)
+- **Phase 41:** Universal LLM Thinking Indicator ✅ (`LlmCallWithIndicator(Func<string?>)` wrapper in ChatSession, wraps all 6 LLM call sites)
+- **Phase 42:** Non-LLM Interview Mode ✅ (`IInterviewEngine` interface, `NonLlmInterviewEngine` with 30-question bank, 8 new tests, 545/545 pass)
+- **Phase 43:** Hang-Man Game 🚧 (planned; POS-dictionary-based word guessing, multi-turn letter/word guesses, 6 attempts, 9 tests)
 ## Known Fixes
 - **ContractionExpander:** Loaded from `contractions` table via `KnowledgeStore.GetContractions()`. Expands contracted forms before tokenisation using regex replace with `IgnoreCase`. The expander uses lowercase expansion text (`"i am"`, not `"I am"`) since the tokeniser lowercases afterward. Seeded via `DbSeeder.SeedContractions()` and `TestDataHelper.SeedContractions()`.
 - **Math operators in tokeniser:** `+`, `-`, `*`, `/`, `^` are extracted as standalone tokens by Tokeniser regex. `GetUnknownWords` in `SpellChecker` must skip math operators to prevent false unknown-word prompts before math evaluation. Fixed via `SpellChecker.MathOperators` HashSet.

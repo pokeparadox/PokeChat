@@ -11,20 +11,6 @@ public class PoetryGenerator
     private static readonly Regex SlotPattern = new(@"\{(\w+?)(?:_(\d+))?\}(\w+)?", RegexOptions.Compiled);
     private static readonly HashSet<char> Vowels = new() { 'a', 'e', 'i', 'o', 'u' };
 
-    private static readonly string[] FallbackNouns = { "treasure", "quest", "door", "key" };
-    private static readonly string[] FallbackVerbs = { "explore", "discover", "sing", "dance" };
-    private static readonly string[] FallbackAdjs = { "mysterious", "brave", "golden", "ancient" };
-    private static readonly string[] FallbackAdverbs = { "quickly", "silently", "boldly", "gently" };
-    private static readonly string[] FallbackPlaces = { "forest", "mountain", "ocean", "village" };
-
-    private static readonly HashSet<string> PoetryExcludedVerbs = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "can", "could", "may", "might", "must", "shall", "should", "will", "would",
-        "be", "am", "is", "are", "was", "were", "been", "being",
-        "have", "has", "had", "do", "does", "did", "doing", "done",
-        "get", "got", "gotten", "make", "made", "let", "put"
-    };
-
     public PoetryGenerator(KnowledgeStore knowledgeStore, RhymeMatcher? rhymeMatcher = null)
     {
         _knowledgeStore = knowledgeStore;
@@ -79,17 +65,17 @@ public class PoetryGenerator
     {
         return slot switch
         {
-            "noun" => PickWord("noun", num) ?? FallbackNouns[Random.Shared.Next(FallbackNouns.Length)],
-            "verb" => PickWord("verb", num) ?? FallbackVerbs[Random.Shared.Next(FallbackVerbs.Length)],
-            "adj" => PickWord("adjective", num) ?? FallbackAdjs[Random.Shared.Next(FallbackAdjs.Length)],
-            "adv" => PickWord("adverb", num) ?? FallbackAdverbs[Random.Shared.Next(FallbackAdverbs.Length)],
+            "noun" => PickWord("noun", num) ?? GenerationUtils.FallbackNouns[Random.Shared.Next(GenerationUtils.FallbackNouns.Length)],
+            "verb" => PickWord("verb", num) ?? GenerationUtils.FallbackVerbs[Random.Shared.Next(GenerationUtils.FallbackVerbs.Length)],
+            "adj" => PickWord("adjective", num) ?? GenerationUtils.FallbackAdjs[Random.Shared.Next(GenerationUtils.FallbackAdjs.Length)],
+            "adv" => PickWord("adverb", num) ?? GenerationUtils.FallbackAdverbs[Random.Shared.Next(GenerationUtils.FallbackAdverbs.Length)],
             "prep" => PickWord("preposition", num) ?? "in",
             "art" => Random.Shared.Next(2) == 0 ? "a" : "the",
             "pron" => Random.Shared.Next(3) switch { 0 => "he", 1 => "she", _ => "they" },
             "det" => PickDeterminer(),
             "pronoun" => Random.Shared.Next(3) switch { 0 => "my", 1 => "your", _ => "their" },
             "user" => !string.IsNullOrEmpty(userName) ? userName : "someone",
-            "place" => _knowledgeStore.GetRandomNounByCategory("place") ?? FallbackPlaces[Random.Shared.Next(FallbackPlaces.Length)],
+            "place" => _knowledgeStore.GetRandomNounByCategory("place") ?? GenerationUtils.FallbackPlaces[Random.Shared.Next(GenerationUtils.FallbackPlaces.Length)],
             "number" => Random.Shared.Next(1, 101).ToString(),
             "verb_2ing" => ToGerund(PickWord("verb", 2) ?? "sing"),
             "a_rhyme" => PickRhymeWord("noun", num, usedRhymeA),
@@ -103,7 +89,7 @@ public class PoetryGenerator
         if (syllables <= 0)
         {
             var word = _knowledgeStore.GetRandomWord(wordType);
-            if (wordType == "verb" && PoetryExcludedVerbs.Contains(word))
+            if (wordType == "verb" && GenerationUtils.ExcludedVerbs.Contains(word))
                 return null;
             if (wordType == "adjective" && word != null && word.EndsWith("ed", StringComparison.OrdinalIgnoreCase))
                 return null;
@@ -112,7 +98,7 @@ public class PoetryGenerator
 
         var words = _knowledgeStore.GetWordsByTypeAndSyllables(wordType, syllables);
         if (wordType == "verb")
-            words = words.Where(w => !PoetryExcludedVerbs.Contains(w)).ToList();
+            words = words.Where(w => !GenerationUtils.ExcludedVerbs.Contains(w)).ToList();
         if (wordType == "adjective")
             words = words.Where(w => !w.EndsWith("ed", StringComparison.OrdinalIgnoreCase)).ToList();
         if (words.Count > 0)
@@ -162,7 +148,7 @@ public class PoetryGenerator
             return pick;
         }
 
-        var fallback = FallbackNouns[Random.Shared.Next(FallbackNouns.Length)];
+        var fallback = GenerationUtils.FallbackNouns[Random.Shared.Next(GenerationUtils.FallbackNouns.Length)];
         usedRhymer.Add(fallback);
         return fallback;
     }

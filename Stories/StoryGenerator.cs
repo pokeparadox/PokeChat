@@ -8,20 +8,6 @@ public class StoryGenerator
 {
     private readonly KnowledgeStore _knowledgeStore;
     private static readonly Regex SlotPattern = new(@"\{(\w+)\}(ing)?", RegexOptions.Compiled);
-    private static readonly string[] FallbackNames = { "Finn", "Luna", "Asher", "Nova", "Riley", "Sam", "Jordan", "Avery" };
-    private static readonly string[] FallbackNouns = { "treasure", "quest", "door", "key", "garden", "river", "star", "cave" };
-    private static readonly string[] FallbackVerbs = { "explore", "discover", "sing", "dance", "run", "fly", "shine", "dream" };
-    private static readonly string[] FallbackAdjs = { "mysterious", "brave", "golden", "ancient", "magical", "dark" };
-    private static readonly string[] FallbackAdverbs = { "quickly", "silently", "boldly", "gently", "suddenly" };
-    private static readonly string[] FallbackPlaces = { "forest", "mountain", "ocean", "village", "castle", "valley" };
-
-    private static readonly HashSet<string> StoryExcludedVerbs = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "can", "could", "may", "might", "must", "shall", "should", "will", "would",
-        "be", "am", "is", "are", "was", "were", "been", "being",
-        "have", "has", "had", "do", "does", "did", "doing", "done",
-        "get", "got", "gotten", "make", "made", "let", "put"
-    };
 
     public StoryGenerator(KnowledgeStore knowledgeStore)
     {
@@ -71,18 +57,18 @@ public class StoryGenerator
     {
         return slot switch
         {
-            "noun" => _knowledgeStore.GetRandomWord("noun") ?? FallbackNouns[Random.Shared.Next(FallbackNouns.Length)],
-            "noun_plural" => PluraliseNoun(_knowledgeStore.GetRandomWord("noun") ?? FallbackNouns[Random.Shared.Next(FallbackNouns.Length)]),
-            "verb" => GetStoryVerb() ?? FallbackVerbs[Random.Shared.Next(FallbackVerbs.Length)],
-            "adj" => GetStoryAdjective() ?? FallbackAdjs[Random.Shared.Next(FallbackAdjs.Length)],
-            "adverb" => _knowledgeStore.GetRandomWord("adverb") ?? FallbackAdverbs[Random.Shared.Next(FallbackAdverbs.Length)],
-            "place" => _knowledgeStore.GetRandomNounByCategory("place") ?? FallbackPlaces[Random.Shared.Next(FallbackPlaces.Length)],
+            "noun" => _knowledgeStore.GetRandomWord("noun") ?? GenerationUtils.FallbackNouns[Random.Shared.Next(GenerationUtils.FallbackNouns.Length)],
+            "noun_plural" => PluraliseNoun(_knowledgeStore.GetRandomWord("noun") ?? GenerationUtils.FallbackNouns[Random.Shared.Next(GenerationUtils.FallbackNouns.Length)]),
+            "verb" => GetStoryVerb() ?? GenerationUtils.FallbackVerbs[Random.Shared.Next(GenerationUtils.FallbackVerbs.Length)],
+            "adj" => GetStoryAdjective() ?? GenerationUtils.FallbackAdjs[Random.Shared.Next(GenerationUtils.FallbackAdjs.Length)],
+            "adverb" => _knowledgeStore.GetRandomWord("adverb") ?? GenerationUtils.FallbackAdverbs[Random.Shared.Next(GenerationUtils.FallbackAdverbs.Length)],
+            "place" => _knowledgeStore.GetRandomNounByCategory("place") ?? GenerationUtils.FallbackPlaces[Random.Shared.Next(GenerationUtils.FallbackPlaces.Length)],
             "character" => GetRandomCharacter(),
             "user" => !string.IsNullOrEmpty(userName) ? userName : "someone",
             "user_like" => ResolveUserLike(userId),
             "number" => Random.Shared.Next(1, 1001).ToString(),
-            "a_noun" => AddArticle(_knowledgeStore.GetRandomWord("noun") ?? FallbackNouns[Random.Shared.Next(FallbackNouns.Length)]),
-            "a_adj" => AddArticle(_knowledgeStore.GetRandomWord("adjective") ?? FallbackAdjs[Random.Shared.Next(FallbackAdjs.Length)]),
+            "a_noun" => AddArticle(_knowledgeStore.GetRandomWord("noun") ?? GenerationUtils.FallbackNouns[Random.Shared.Next(GenerationUtils.FallbackNouns.Length)]),
+            "a_adj" => AddArticle(_knowledgeStore.GetRandomWord("adjective") ?? GenerationUtils.FallbackAdjs[Random.Shared.Next(GenerationUtils.FallbackAdjs.Length)]),
             _ => $"{{{slot}}}"
         };
     }
@@ -90,7 +76,7 @@ public class StoryGenerator
     private string GetRandomCharacter()
     {
         var name = _knowledgeStore.GetRandomName();
-        return name ?? FallbackNames[Random.Shared.Next(FallbackNames.Length)];
+        return name ?? GenerationUtils.FallbackNames[Random.Shared.Next(GenerationUtils.FallbackNames.Length)];
     }
 
     private string ResolveUserLike(int? userId)
@@ -102,7 +88,7 @@ public class StoryGenerator
                 return fact.Object;
         }
 
-        return _knowledgeStore.GetRandomWord("noun") ?? FallbackNouns[Random.Shared.Next(FallbackNouns.Length)];
+        return _knowledgeStore.GetRandomWord("noun") ?? GenerationUtils.FallbackNouns[Random.Shared.Next(GenerationUtils.FallbackNouns.Length)];
     }
 
     private static string PluraliseNoun(string noun)
@@ -137,9 +123,9 @@ public class StoryGenerator
     private string GetStoryVerb()
     {
         var word = _knowledgeStore.GetRandomWord("verb");
-        if (word != null && !StoryExcludedVerbs.Contains(word))
+        if (word != null && !GenerationUtils.ExcludedVerbs.Contains(word))
             return word;
-        return FallbackVerbs[Random.Shared.Next(FallbackVerbs.Length)];
+        return GenerationUtils.FallbackVerbs[Random.Shared.Next(GenerationUtils.FallbackVerbs.Length)];
     }
 
     private string GetStoryAdjective()
@@ -147,6 +133,6 @@ public class StoryGenerator
         var word = _knowledgeStore.GetRandomWord("adjective");
         if (word != null && !word.EndsWith("ed", StringComparison.OrdinalIgnoreCase))
             return word;
-        return FallbackAdjs[Random.Shared.Next(FallbackAdjs.Length)];
+        return GenerationUtils.FallbackAdjs[Random.Shared.Next(GenerationUtils.FallbackAdjs.Length)];
     }
 }

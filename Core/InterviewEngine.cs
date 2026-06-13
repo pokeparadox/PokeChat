@@ -2,7 +2,7 @@ using PokeChat.LLM;
 
 namespace PokeChat.Core;
 
-public class InterviewEngine
+public class InterviewEngine : IInterviewEngine
 {
     private readonly LLMOrchestrator _orchestrator;
     private readonly List<(string Role, string Text)> _conversationHistory;
