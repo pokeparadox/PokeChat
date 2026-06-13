@@ -40,6 +40,9 @@ public class ChatSession : IDisposable
     private IInterviewEngine? _interviewEngine;
     private int? _savedUserId;
     private bool _interviewModeActive;
+    private string? _lastInterviewQuestion;
+    private string? _pendingFollowUp;
+    private int _followUpCount;
 
     private static readonly Regex InsultPattern = new(
         @"^(you(?:'re| are) (?:a|an) \w+|shut\s+up|shut\s+it)",
@@ -299,19 +302,46 @@ public class ChatSession : IDisposable
         while (true)
         {
             string input;
-            if (_interviewModeActive && _interviewEngine != null && _interviewEngine.TurnsRemaining > 0)
+            if (_interviewModeActive && _interviewEngine != null)
             {
-                if (_interviewEngine is InterviewEngine llmEngine)
-                    input = LlmCallWithIndicator(() => llmEngine.GenerateUserInput());
+                string question;
+                if (_pendingFollowUp != null)
+                {
+                    question = _pendingFollowUp;
+                    _pendingFollowUp = null;
+                }
                 else
-                    input = _interviewEngine.GenerateUserInput();
-                if (input == null) { EndInterviewMode(); continue; }
+                {
+                    if (_interviewEngine.TurnsRemaining <= 0) { EndInterviewMode(); continue; }
+                    question = _interviewEngine.GenerateQuestion();
+                    if (question == null) { EndInterviewMode(); continue; }
+                }
+
+                _lastInterviewQuestion = question;
+                Console.WriteLine($"{_botName}: {question}");
 
                 ClearPendingState();
 
-                Console.ForegroundColor = ConsoleColor.DarkGray;
-                Console.WriteLine($"[Interviewer]: {input}");
-                Console.ResetColor();
+                if (_interviewEngine is InterviewEngine llmEngine)
+                {
+                    input = LlmCallWithIndicator(() => llmEngine.GenerateAnswer(question)) ?? "";
+                    if (string.IsNullOrEmpty(input)) { EndInterviewMode(); continue; }
+                    Console.ForegroundColor = ConsoleColor.DarkGray;
+                    Console.WriteLine($"[You]: {input}");
+                    Console.ResetColor();
+                }
+                else
+                {
+                    Console.Write("\nYou: ");
+                    input = Console.ReadLine();
+                    if (input == null) break;
+                    if (string.IsNullOrWhiteSpace(input)) continue;
+                    if (IsInterviewStopCommand(input.Trim()))
+                    {
+                        EndInterviewMode();
+                        continue;
+                    }
+                }
             }
             else
             {
@@ -347,22 +377,40 @@ public class ChatSession : IDisposable
                 continue;
             }
 
+            var interviewUserId = _currentUserId;
+            if (_interviewModeActive && _savedUserId.HasValue)
+                _currentUserId = _savedUserId;
             var response = ProcessInput(input);
+            if (_interviewModeActive)
+                _currentUserId = interviewUserId;
             _context.SetContext(ContextKeys.LastResponse, response);
             Console.WriteLine($"{_botName}: {response}");
 
             if (_interviewModeActive && _interviewEngine != null)
             {
-                _interviewEngine.AddExchange(input, response);
-
-                Console.Write("\n[Interview: Press Enter for next, or type 'stop' to end]: ");
-                var cmd = Console.ReadLine();
-                if (cmd != null)
+                if (_interviewEngine is InterviewEngine && _pendingFollowUp == null && _followUpCount < 2 && IsInterviewFollowUp(response))
                 {
-                    cmd = cmd.Trim().ToLowerInvariant();
-                    if (cmd.Length > 0 && IsInterviewStopCommand(cmd))
+                    _pendingFollowUp = response;
+                    _followUpCount++;
+                }
+                else if (_pendingFollowUp == null)
+                {
+                    _followUpCount = 0;
+                }
+
+                _interviewEngine.AddExchange(_lastInterviewQuestion ?? "", input, response);
+
+                if (_interviewEngine is InterviewEngine)
+                {
+                    Console.Write("\n[Interview: Press Enter for next, or type 'stop' to end]: ");
+                    var cmd = Console.ReadLine();
+                    if (cmd != null)
                     {
-                        EndInterviewMode();
+                        cmd = cmd.Trim().ToLowerInvariant();
+                        if (cmd.Length > 0 && IsInterviewStopCommand(cmd))
+                        {
+                            EndInterviewMode();
+                        }
                     }
                 }
             }
@@ -1552,14 +1600,16 @@ public class ChatSession : IDisposable
         _responseEngine.SetBotName(_botName);
 
         _context.Clear();
+        _pendingFollowUp = null;
+        _followUpCount = 0;
 
         if (_llmOrchestrator?.IsAvailable == true)
         {
-            _interviewEngine = new InterviewEngine(_llmOrchestrator);
+            _interviewEngine = new InterviewEngine(_llmOrchestrator, _knowledgeStore, _nounCategoriser);
         }
         else
         {
-            _interviewEngine = new NonLlmInterviewEngine();
+            _interviewEngine = new NonLlmInterviewEngine(_knowledgeStore, _nounCategoriser);
         }
 
         _interviewModeActive = true;
@@ -1574,6 +1624,8 @@ public class ChatSession : IDisposable
         if (!_interviewModeActive) return;
 
         _interviewModeActive = false;
+        _pendingFollowUp = null;
+        _followUpCount = 0;
         _currentUserId = _savedUserId;
         if (_currentUserName != null)
             _responseEngine.SetCurrentUserName(_currentUserName);
@@ -1609,6 +1661,21 @@ public class ChatSession : IDisposable
     {
         var lower = input.ToLowerInvariant().Trim();
         return InterviewStopPhrases.Contains(lower);
+    }
+
+    private static bool IsInterviewFollowUp(string response)
+    {
+        if (string.IsNullOrEmpty(response)) return false;
+        var lower = response.ToLowerInvariant();
+
+        if (lower.Contains('?')) return true;
+
+        return lower.Contains("tell me more") ||
+               lower.Contains("what else") ||
+               lower.Contains("anything else") ||
+               lower.Contains("how about") ||
+               lower.Contains("what about") ||
+               lower.StartsWith("why");
     }
 
     private string GetLLMResponse(string category)

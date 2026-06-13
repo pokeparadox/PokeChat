@@ -1,77 +1,121 @@
+using PokeChat.Knowledge;
+
 namespace PokeChat.Core;
 
 public class NonLlmInterviewEngine : IInterviewEngine
 {
-    private readonly List<string> _askedQuestions;
+    private readonly KnowledgeStore _knowledgeStore;
+    private readonly INounCategoriser _nounCategoriser;
     private readonly int _maxTurns;
+    private readonly List<string> _askedNouns;
+    private readonly List<(string Question, string Answer, string BotResponse)> _exchanges;
 
     public int TurnsRemaining { get; private set; }
     public int FactsLearned { get; set; }
     public int RulesLearned { get; set; }
 
-    public NonLlmInterviewEngine(int maxTurns = 8)
+    public NonLlmInterviewEngine(KnowledgeStore knowledgeStore, INounCategoriser nounCategoriser, int maxTurns = 8)
     {
-        _askedQuestions = new List<string>();
+        _knowledgeStore = knowledgeStore;
+        _nounCategoriser = nounCategoriser;
         _maxTurns = maxTurns;
         TurnsRemaining = maxTurns;
+        _askedNouns = new List<string>();
+        _exchanges = new List<(string, string, string)>();
     }
 
-    public string? GenerateUserInput()
+    public string? GenerateQuestion()
     {
         if (TurnsRemaining <= 0) return null;
 
-        var available = QuestionBank.Where(q => !_askedQuestions.Contains(q)).ToList();
+        var nouns = GetAvailableNouns();
+        var available = nouns.Where(n => !_askedNouns.Any(a => string.Equals(a, n.Word, StringComparison.OrdinalIgnoreCase))).ToList();
         if (available.Count == 0) return null;
 
-        var question = available[Random.Shared.Next(available.Count)];
-        _askedQuestions.Add(question);
+        var noun = available[Random.Shared.Next(available.Count)];
+        _askedNouns.Add(noun.Word);
         TurnsRemaining--;
-        return question;
+
+        var category = noun.Category;
+        if (category == null)
+            category = _nounCategoriser.CategoriseNoun(noun.Word);
+
+        return BuildQuestion(noun.Word, category);
     }
 
-    public void AddExchange(string userInput, string botResponse)
+    private List<(string Word, string? Category)> GetAvailableNouns()
     {
+        var nouns = new List<(string Word, string? Category)>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        var categorised = _knowledgeStore.GetNounCategories();
+        foreach (var nc in categorised)
+        {
+            if (seen.Add(nc.Noun))
+                nouns.Add((nc.Noun, nc.Category));
+        }
+
+        var posEntries = _knowledgeStore.GetPosDictionary()
+            .Where(e => e.WordType == "noun");
+
+        foreach (var entry in posEntries)
+        {
+            if (seen.Add(entry.Word))
+                nouns.Add((entry.Word, null));
+        }
+
+        return nouns;
+    }
+
+    private static string BuildQuestion(string noun, string category)
+    {
+        var templates = category.ToLowerInvariant() switch
+        {
+            "person" => PersonTemplates,
+            "place" => PlaceTemplates,
+            _ => ThingTemplates
+        };
+
+        var template = templates[Random.Shared.Next(templates.Length)];
+        return string.Format(template, noun);
+    }
+
+    public string? GenerateAnswer(string question) => null;
+
+    public void AddExchange(string question, string answer, string botResponse)
+    {
+        _exchanges.Add((question, answer, botResponse));
     }
 
     public void Reset()
     {
-        _askedQuestions.Clear();
+        _askedNouns.Clear();
+        _exchanges.Clear();
         TurnsRemaining = _maxTurns;
         FactsLearned = 0;
         RulesLearned = 0;
     }
 
-    private static readonly string[] QuestionBank =
-    {
-        "What's your favourite colour?",
-        "What's your favourite food?",
-        "What's your favourite movie?",
-        "What's your favourite book?",
-        "What's your favourite animal?",
-        "What's your favourite season?",
-        "Do you have any hobbies?",
-        "What do you do for fun?",
-        "Do you like reading?",
-        "Do you play any sports?",
-        "Do you like cats or dogs?",
-        "Do you prefer sweet or savoury?",
-        "Do you prefer summer or winter?",
-        "Are you a morning person or a night owl?",
-        "Do you prefer tea or coffee?",
-        "Have you travelled anywhere interesting?",
-        "Do you play any musical instruments?",
-        "Have you read any good books lately?",
-        "What do you think about AI?",
-        "Do you enjoy coding?",
-        "What's your favourite place you've ever visited?",
-        "Do you have any pets?",
-        "What kind of music do you like?",
-        "Do you prefer the mountains or the beach?",
-        "What's something you've always wanted to learn?",
-        "Do you like cooking?",
-        "What's your favourite game?",
-        "Do you enjoy spending time outdoors?",
-        "What's the best advice you've ever received?",
-        "If you could travel anywhere, where would you go?"
-    };
+    private static readonly string[] PersonTemplates =
+    [
+        "Tell me about {0}.",
+        "Who is {0}?",
+        "What's {0} like?",
+        "How do you know {0}?"
+    ];
+
+    private static readonly string[] PlaceTemplates =
+    [
+        "Have you been to {0}?",
+        "What do you think about {0}?",
+        "What's {0} like?"
+    ];
+
+    private static readonly string[] ThingTemplates =
+    [
+        "Do you like {0}?",
+        "What do you think of {0}?",
+        "Tell me more about {0}.",
+        "What can you tell me about {0}?"
+    ];
 }

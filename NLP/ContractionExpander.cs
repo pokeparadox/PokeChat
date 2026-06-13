@@ -23,7 +23,7 @@ public class ContractionExpander
         var result = input;
         foreach (var (contraction, expansion) in _expansions)
         {
-            var pattern = Regex.Escape(contraction);
+            var pattern = @"\b" + Regex.Escape(contraction) + @"\b";
             result = Regex.Replace(result, pattern, expansion, RegexOptions.IgnoreCase);
         }
 

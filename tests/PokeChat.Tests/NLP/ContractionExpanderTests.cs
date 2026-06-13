@@ -134,4 +134,14 @@ public class ContractionExpanderTests
         var expander = CreateExpander();
         expander.Expand("it isn't working").ShouldBe("it is not working");
     }
+
+    [Fact]
+    public void Expand_DoesNotMatchInsideWords()
+    {
+        var expander = CreateExpander();
+        expander.Expand("animal").ShouldBe("animal");
+        expander.Expand("extensively").ShouldBe("extensively");
+        expander.Expand("give").ShouldBe("give");
+        expander.Expand("active").ShouldBe("active");
+    }
 }
