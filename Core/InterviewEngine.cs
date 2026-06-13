@@ -51,8 +51,8 @@ public class InterviewEngine : IInterviewEngine
     {
         if (_conversationHistory.Count == 0)
         {
-            return "Start the conversation. Introduce yourself naturally — say hi, share something about yourself, " +
-                   "and ask the bot a question. Keep it to 1-2 sentences.";
+            return "Start the conversation. Introduce yourself naturally — say hi and share one thing about yourself, " +
+                   "like a hobby or interest. Keep it to a single sentence.";
         }
 
         var sb = new System.Text.StringBuilder();

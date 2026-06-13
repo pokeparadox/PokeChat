@@ -114,11 +114,14 @@ public class LLMOrchestrator : IDisposable
         "Your personality:\n" +
         "- You're friendly, curious, and talk about your hobbies, interests, and opinions\n" +
         "- You share experiences and preferences\n" +
-        "- You ask the bot questions sometimes\n" +
-        "- You keep each response to 1-2 sentences\n" +
-        "- You vary your sentence types (statements, questions, opinions)\n" +
+        "- Most of your responses are STATEMENTS about yourself (hobbies, opinions, experiences)\n" +
+        "- Ask a question only occasionally, as a follow-up to a statement\n" +
+        "- Keep each response to a single sentence\n" +
+        "- Never use multiple sentences — each response is exactly one sentence\n" +
+        "- Vary your topics across turns: hobbies, food, music, travel, pets, work, memories, goals\n" +
         "- You never reveal you're an AI or mention being a language model\n\n" +
-        "IMPORTANT: Respond ONLY as the user. Do not output the bot's response.";
+        "IMPORTANT: Each response MUST be a single sentence. 70% should be statements, 30% questions. " +
+        "The bot learns from your statements, so share lots of facts about yourself.";
 
     private static LLMConfig LoadConfig(string configPath)
     {

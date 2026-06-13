@@ -207,6 +207,7 @@ A completed improvement history is maintained in `.agents/history.md`. Active pl
   - **Context loop** — same follow-up repeating across 5+ turns
   - **Empty/nonsense responses** — bot says nothing useful, single-word dead-ends
   - If any new abnormality category emerges (not already in `.plans/` or `.agents/history.md`), create a plan file in `.plans/phaseN-name.md` documenting the symptoms, affected logs, root cause hypothesis, and proposed fix. File the plan to MemPalace (`wing: pokechat, room: plans`).
+  - After all abnormalities are documented (plans created or fixes applied), delete the log files from `logs/`.
 
 ## Known Fixes (cont.)
 - **ToolRegistry config loading:** Two bugs fixed. (1) Default config path was `"tools/tools.json"` (lowercase `t`), but the directory is `Tools/` (uppercase) — path is now `"Tools/tools.json"`. (2) `System.Text.Json` is case-sensitive by default; `"enabled"` in JSON didn't bind to `Enabled` property. Fixed with `PropertyNameCaseInsensitive = true` in `JsonSerializerOptions`.

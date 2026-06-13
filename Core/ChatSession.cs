@@ -135,7 +135,8 @@ public class ChatSession : IDisposable
 
     private static readonly HashSet<string> InterviewStopPhrases = new(StringComparer.OrdinalIgnoreCase)
     {
-        "stop", "end interview", "cancel", "enough", "stop training"
+        "stop", "end interview", "cancel", "enough", "stop training",
+        "quit", "exit", "q"
     };
 
     private static readonly HashSet<string> HangmanStartPhrases = new(StringComparer.OrdinalIgnoreCase)
@@ -300,16 +301,6 @@ public class ChatSession : IDisposable
             string input;
             if (_interviewModeActive && _interviewEngine != null && _interviewEngine.TurnsRemaining > 0)
             {
-                if (Console.KeyAvailable)
-                {
-                    var stopInput = Console.ReadLine() ?? "";
-                    if (IsInterviewStopCommand(stopInput))
-                    {
-                        EndInterviewMode();
-                        continue;
-                    }
-                }
-
                 if (_interviewEngine is InterviewEngine llmEngine)
                     input = LlmCallWithIndicator(() => llmEngine.GenerateUserInput());
                 else
@@ -363,6 +354,17 @@ public class ChatSession : IDisposable
             if (_interviewModeActive && _interviewEngine != null)
             {
                 _interviewEngine.AddExchange(input, response);
+
+                Console.Write("\n[Interview: Press Enter for next, or type 'stop' to end]: ");
+                var cmd = Console.ReadLine();
+                if (cmd != null)
+                {
+                    cmd = cmd.Trim().ToLowerInvariant();
+                    if (cmd.Length > 0 && IsInterviewStopCommand(cmd))
+                    {
+                        EndInterviewMode();
+                    }
+                }
             }
         }
     }
