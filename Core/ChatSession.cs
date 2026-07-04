@@ -43,6 +43,7 @@ public class ChatSession : IDisposable
     private string? _lastInterviewQuestion;
     private string? _pendingFollowUp;
     private int _followUpCount;
+    private readonly ML.IntentClassifier _intentClassifier;
 
     private static readonly Regex InsultPattern = new(
         @"^(you(?:'re| are) (?:a|an) \w+|shut\s+up|shut\s+it)",
@@ -59,7 +60,12 @@ public class ChatSession : IDisposable
         { "not", "never", "no", "and", "or", "any", "all", "some", "the",
           "a", "an", "this", "that", "these", "those", "it", "its",
           "there", "here", "then", "than", "also", "too", "very",
-          "so", "but", "yet", "for", "with", "without", "just" };
+          "so", "but", "yet", "for", "with", "without", "just",
+          "to", "about", "how", "what", "why", "when", "where", "who",
+          "of", "in", "on", "at", "by", "from", "as", "into", "onto" };
+
+    private static readonly HashSet<string> NegationWords = new(StringComparer.OrdinalIgnoreCase)
+        { "not", "never", "no" };
 
     private static readonly HashSet<string> ContentWordIndicators = new(StringComparer.OrdinalIgnoreCase)
         { "i", "you", "he", "she", "we", "they", "me", "him", "her", "us", "them",
@@ -196,6 +202,9 @@ public class ChatSession : IDisposable
         _mcpRegistry = new McpRegistry();
         var toolRegistry = new ToolRegistry(mcpRegistry: _mcpRegistry);
         var toolTriggers = _mcpRegistry.GetToolTriggers();
+        _intentClassifier = new ML.IntentClassifier();
+        _intentClassifier.LoadOrCreate();
+
         _llmOrchestrator = new LLMOrchestrator();
         var llmGenerator = _llmOrchestrator.Config.AlwaysOn && _llmOrchestrator.IsAvailable
             ? new Func<string, string?>(prompt => _llmOrchestrator.GenerateResponse(prompt))
@@ -203,7 +212,7 @@ public class ChatSession : IDisposable
         var enhancedCats = _llmOrchestrator.Config.EnhancedCategories.Count > 0
             ? new HashSet<string>(_llmOrchestrator.Config.EnhancedCategories, StringComparer.OrdinalIgnoreCase)
             : new HashSet<string>();
-        _responseEngine = new ResponseEngine(_knowledgeStore, _context, _spellChecker, _posTagger, _tokeniser, _svoExtractor, toolRegistry: toolRegistry, toolTriggers: toolTriggers, llmGenerator: llmGenerator, enhancedCategories: enhancedCats, summariseToolResults: _llmOrchestrator.Config.SummariseToolResults);
+        _responseEngine = new ResponseEngine(_knowledgeStore, _context, _spellChecker, _posTagger, _tokeniser, _svoExtractor, toolRegistry: toolRegistry, toolTriggers: toolTriggers, llmGenerator: llmGenerator, enhancedCategories: enhancedCats, summariseToolResults: _llmOrchestrator.Config.SummariseToolResults, intentClassifier: _intentClassifier);
         AutoSeedPosDictionary(_mcpRegistry);
 
         var spellDict = new HashSet<string>(posEntries.Select(e => e.Word), StringComparer.OrdinalIgnoreCase);
@@ -237,7 +246,8 @@ public class ChatSession : IDisposable
         string sessionId = "",
         SessionLogger? sessionLogger = null,
         ToolRegistry? toolRegistry = null,
-        LLMOrchestrator? llmOrchestrator = null)
+        LLMOrchestrator? llmOrchestrator = null,
+        ML.IntentClassifier? intentClassifier = null)
     {
         _dbContext = dbContext;
         _sessionLogger = sessionLogger;
@@ -260,6 +270,7 @@ public class ChatSession : IDisposable
         _responseEngine.SetBotName(_botName);
         _currentUserNameLower = _currentUserName.ToLowerInvariant();
         _llmOrchestrator = llmOrchestrator;
+        _intentClassifier = intentClassifier ?? new ML.IntentClassifier();
     }
 
     private void AutoSeedPosDictionary(McpRegistry registry)
@@ -755,7 +766,9 @@ public class ChatSession : IDisposable
             if (allFunctionWords || subjectIsFunctionOnly)
                 continue;
 
-            if (FunctionWords.Any(w => lowerObj.StartsWith(w + " ") || lowerObj.Equals(w)))
+            if (NegationWords.Any(w => lowerObj.StartsWith(w + " ") || lowerObj.Equals(w)))
+                continue;
+            if (objTokens.Length == 1 && FunctionWords.Contains(lowerObj))
                 continue;
 
             var fact = new Fact

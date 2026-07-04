@@ -1429,3 +1429,33 @@ Multi-turn hang-man game using POS dictionary nouns (≥6 letters) as word sourc
 - `Hangman_CorrectGuess_ReturnsValidResponse` — "e" → valid non-error response
 - `Hangman_Lose` — 6 wrong word guesses → "Game over"
 - `Hangman_CanRestartAfterGameEnds` — lose → restart → "Let's play"
+
+---
+
+## Phase 44 — Neural Intent Classifier ✅
+
+Lightweight neural intent classifier (pure C#, no external ML deps) for efficient specialised routing. Optional — no model file means existing rule cascade runs unmodified.
+
+### New files
+- **`ML/SimpleNeuralNet.cs`** — 2-layer FFN (Xavier init, ReLU hidden, Softmax output, cross-entropy SGD, binary save/load)
+- **`ML/IntentClassifier.cs`** — BoW vectorisation (2000-word vocab), train/predict with 0.85 confidence threshold, JSON vocab+category metadata, save/load
+- **`ML/IntentCategory.cs`** — 25 default intent categories with `BuildIndex()` helper
+
+### Modified files
+- **`Core/ContextKeys.cs`** — added `CurrentIntent`, `IntentConfidence` constants
+- **`Responses/ResponseRules.cs`** — new 5-param `MatchRule` overload accepting `IntentClassifier?` + `ContextTracker?`; sets `CurrentIntent` in context when confident
+- **`Responses/ResponseEngine.cs`** — constructor accepts optional `IntentClassifier`, passes to `MatchRule`
+- **`Core/ChatSession.cs`** — creates `_intentClassifier` field in both constructors, wires into `ResponseEngine`
+- **`LLM/LLMOrchestrator.cs`** — added `GenerateTrainingLabels()` method with `TrainingLabelsSystemPrompt`
+
+### Key details
+- **No dependencies:** Pure C# — no ML.NET, ONNX, or new NuGet packages
+- **Cold start:** If `intent_model.bin` doesn't exist, `LoadOrCreate()` returns without loading; `IsReady` stays false
+- **Additive only:** Classifier stores intent in `ContextTracker` but doesn't change routing yet — safe first step
+- **Training:** 300 epochs at 0.1f LR, 64 hidden neurons, binary weight serialization (~540KB model)
+
+### Tests (18 new, 576/576 pass)
+- `SimpleNeuralNetTests.cs` (8): Predict output size, Softmax sum, Train reduces loss, Learns two classes, Save/Load roundtrip, Load nonexistent returns null, Xavier init range, ReLU negatives zero
+- `IntentClassifierTests.cs` (6): Classify null when not ready, Train and classify, BuildVocab size, Vectorise dimensions, Low confidence returns null, Empty train does not crash
+- `ResponseRulesTests.cs` (2): classifier sets intent in context when confident; not ready does not set
+- `ChatSessionTests.cs` (2): cold start (no model) does not affect flow; explicit classifier does not throw

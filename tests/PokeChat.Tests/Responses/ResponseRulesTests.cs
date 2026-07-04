@@ -132,6 +132,57 @@ public class ResponseRulesTests
         result.InputType.ShouldBe(InputType.Greeting);
     }
 
+    [Fact]
+    public void MatchRule_WithClassifier_SetsIntentInContext()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        SeedRule(db.Context, "^(hi|hello)", "Greeting", ["Hello!"]);
+
+        var classifier = new PokeChat.ML.IntentClassifier();
+        classifier.Train(new List<(string Input, string Category)>
+        {
+            ("hello", "greeting"),
+            ("hi there", "greeting"),
+            ("hey how are you", "greeting"),
+            ("good morning", "greeting"),
+            ("good evening", "greeting"),
+            ("howdy", "greeting"),
+            ("whats up", "greeting"),
+            ("goodbye", "farewell"),
+            ("see you later", "farewell"),
+            ("talk to you later", "farewell"),
+            ("catch you later", "farewell"),
+            ("i have to go", "farewell"),
+            ("got to run", "farewell"),
+        });
+
+        var context = new PokeChat.Knowledge.ContextTracker();
+        var result = ResponseRules.MatchRule("hi", store, null, classifier, context);
+
+        result.ShouldNotBeNull();
+        result.InputType.ShouldBe(InputType.Greeting);
+        var intent = context.GetContext("current_intent");
+        intent.ShouldBe("greeting");
+    }
+
+    [Fact]
+    public void MatchRule_WithClassifierNotReady_DoesNotSetIntent()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        SeedRule(db.Context, "^(hi|hello)", "Greeting", ["Hello!"]);
+
+        var classifier = new PokeChat.ML.IntentClassifier();
+        var context = new PokeChat.Knowledge.ContextTracker();
+        var result = ResponseRules.MatchRule("hi", store, null, classifier, context);
+
+        result.ShouldNotBeNull();
+        result.InputType.ShouldBe(InputType.Greeting);
+        var intent = context.GetContext("current_intent");
+        intent.ShouldBeNull();
+    }
+
     private static void SeedRule(PokeChat.Data.PokeChatDbContext context, string pattern, string inputType, string[] responses)
     {
         var rule = new ResponseRule

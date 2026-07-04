@@ -27,6 +27,7 @@ public class ResponseEngine
     private readonly Func<string, string?>? _llmGenerator;
     private readonly HashSet<string> _enhancedCategories;
     private readonly bool _summariseToolResults;
+    private readonly ML.IntentClassifier? _intentClassifier;
     private string _currentUserName = string.Empty;
     private string _botName = "PokeChat";
     private string? _currentUserInput;
@@ -59,7 +60,7 @@ public class ResponseEngine
             || (category != null && category.StartsWith("proactive_"));
     }
 
-    public ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker context, SpellChecker spellChecker, IPosTagger posTagger, ITokeniser tokeniser, ISvoExtractor svoExtractor, IMathEngine? mathEngine = null, StoryGenerator? storyGenerator = null, ToolRegistry? toolRegistry = null, List<ResponseRuleRecord>? toolTriggers = null, Func<string, string?>? llmGenerator = null, HashSet<string>? enhancedCategories = null, bool summariseToolResults = false)
+    public ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker context, SpellChecker spellChecker, IPosTagger posTagger, ITokeniser tokeniser, ISvoExtractor svoExtractor, IMathEngine? mathEngine = null, StoryGenerator? storyGenerator = null, ToolRegistry? toolRegistry = null, List<ResponseRuleRecord>? toolTriggers = null, Func<string, string?>? llmGenerator = null, HashSet<string>? enhancedCategories = null, bool summariseToolResults = false, ML.IntentClassifier? intentClassifier = null)
     {
         _knowledgeStore = knowledgeStore;
         _context = context;
@@ -76,6 +77,7 @@ public class ResponseEngine
         _llmGenerator = llmGenerator;
         _enhancedCategories = enhancedCategories ?? new HashSet<string>();
         _summariseToolResults = summariseToolResults;
+        _intentClassifier = intentClassifier;
     }
 
     private static readonly HashSet<string> ModalVerbs = new(StringComparer.OrdinalIgnoreCase)
@@ -410,7 +412,7 @@ public class ResponseEngine
             if (compliment != null) return compliment;
         }
 
-        var rule = ResponseRules.MatchRule(input, _knowledgeStore, _toolTriggers);
+        var rule = ResponseRules.MatchRule(input, _knowledgeStore, _toolTriggers, _intentClassifier, _context);
 
         if (rule != null && rule.Responses.Count > 0)
         {

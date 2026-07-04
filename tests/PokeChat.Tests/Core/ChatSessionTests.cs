@@ -2327,4 +2327,68 @@ public class ChatSessionTests
             Assert.Contains("Let's play", response);
         }
     }
+
+    [Fact]
+    public void IntentClassifier_ColdStart_NoModel_DoesNotAffectFlow()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            var response = session.ProcessInput("I like pizza");
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void IntentClassifier_PassedExplicitly_DoesNotThrow()
+    {
+        var db = new FreshDbContext();
+        TestDataHelper.SeedBotResponses(db.Context);
+        TestDataHelper.SeedPosDictionary(db.Context);
+        var store = new KnowledgeStore(db.Context);
+        var contextTracker = new ContextTracker();
+        var spellChecker = new SpellChecker();
+        var posEntries = store.GetPosDictionary();
+        var posTagger = new PosTagger(posEntries);
+        var spellDict = new HashSet<string>(posEntries.Select(e => e.Word), StringComparer.OrdinalIgnoreCase);
+        var misspellings = store.GetMisspellings();
+        spellChecker.Initialise(spellDict, misspellings);
+        var tokeniser = new Tokeniser();
+        var sentenceSplitter = new SentenceSplitter();
+        var svoExtractor = new SvoExtractor();
+        var nounCategoriser = new NounCategoriser(store);
+        var responseEngine = new ResponseEngine(store, contextTracker, spellChecker, posTagger, tokeniser, svoExtractor);
+
+        var classifier = new PokeChat.ML.IntentClassifier();
+        classifier.Train(new List<(string Input, string Category)>
+        {
+            ("hello", "greeting"),
+            ("goodbye", "farewell"),
+        });
+
+        var session = new ChatSession(
+            db.Context,
+            store,
+            responseEngine,
+            spellChecker,
+            posTagger,
+            tokeniser,
+            sentenceSplitter,
+            svoExtractor,
+            contextTracker,
+            nounCategoriser,
+            new List<string> { "my name is", "i am", "i'm", "call me" },
+            new List<string> { "quit", "exit" }.ToHashSet(StringComparer.OrdinalIgnoreCase),
+            new List<string> { "hi", "hello" }.ToHashSet(StringComparer.OrdinalIgnoreCase),
+            intentClassifier: classifier
+        );
+
+        using (db)
+        {
+            session.HandleNameInput("my name is Charlie");
+            var response = session.ProcessInput("hello");
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
 }

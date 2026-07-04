@@ -108,6 +108,28 @@ public class LLMOrchestrator : IDisposable
         return _provider.GenerateResponse(prompt, InterviewSystemPrompt);
     }
 
+    public string? GenerateTrainingLabels(string conversationJson)
+    {
+        if (_provider == null || UserDeclined) return null;
+
+        var prompt = "Review this conversation and label each user turn with an intent category. " +
+            "Categories: greeting, name_intro, preference_statement, dislike_statement, possession_statement, " +
+            "belief_statement, personal_attribute, general_fact, math_query, dictionary_query, thesaurus_query, " +
+            "story_request, poetry_request, joke_request, riddle_start, game_start, hangman_start, " +
+            "correction_pattern, farewell, reset_request, compliment_request, about_me_query, stats_query, " +
+            "yes_no_affirmation, question_about_bot.\n\n" +
+            "Return ONLY valid JSON (no markdown):\n" +
+            "{\"labels\":[{\"input\":\"user said this\",\"intent\":\"category\"}]}\n\n" +
+            $"Conversation:\n{conversationJson}";
+
+        return _provider.GenerateResponse(prompt, TrainingLabelsSystemPrompt);
+    }
+
+    public static readonly string TrainingLabelsSystemPrompt =
+        "You are a conversation analyst. Given a chat log, label each user message " +
+        "with the correct intent category from the provided list. Be accurate and specific. " +
+        "Return only valid JSON.";
+
     public static readonly string InterviewSystemPrompt =
         "You are playing the role of a person being interviewed by a learning chatbot called PokeChat. " +
         "You are NOT an AI. You are a real person answering questions.\n\n" +

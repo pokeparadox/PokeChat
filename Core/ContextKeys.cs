@@ -69,4 +69,6 @@ public static class ContextKeys
     public const string HangmanGuessed = "hangman_guessed";
     public const string HangmanWrongLetters = "hangman_wrong_letters";
     public const string HangmanWrongCount = "hangman_wrong_count";
+    public const string CurrentIntent = "current_intent";
+    public const string IntentConfidence = "intent_confidence";
 }

@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using PokeChat.Knowledge;
+using PokeChat.Core;
 
 namespace PokeChat.Responses;
 
@@ -25,11 +26,28 @@ public static class ResponseRules
 {
     public static ResponseRuleRecord? MatchRule(string input, KnowledgeStore knowledgeStore)
     {
-        return MatchRule(input, knowledgeStore, null);
+        return MatchRule(input, knowledgeStore, null, null, null);
     }
 
     public static ResponseRuleRecord? MatchRule(string input, KnowledgeStore knowledgeStore, List<ResponseRuleRecord>? toolTriggers)
     {
+        return MatchRule(input, knowledgeStore, toolTriggers, null, null);
+    }
+
+    public static ResponseRuleRecord? MatchRule(string input, KnowledgeStore knowledgeStore, List<ResponseRuleRecord>? toolTriggers, ML.IntentClassifier? classifier, ContextTracker? context)
+    {
+        if (classifier != null && classifier.IsReady && context != null)
+        {
+            var intent = classifier.Classify(input);
+            if (intent != null)
+            {
+                context.SetContext(ContextKeys.CurrentIntent, intent);
+            }
+        }
+        else if (context != null)
+        {
+            context.SetContext(ContextKeys.CurrentIntent, null);
+        }
         var lowerInput = input.ToLowerInvariant();
 
         var learnedRules = knowledgeStore.GetLearnedRules();
