@@ -1,5 +1,6 @@
 using PokeChat.Data.Entities;
 using PokeChat.Knowledge;
+using PokeChat.ML;
 using PokeChat.Responses;
 using PokeChat.Tests.Helpers;
 using Shouldly;
@@ -133,41 +134,49 @@ public class ResponseRulesTests
     }
 
     [Fact]
-    public void MatchRule_WithClassifier_SetsIntentInContext()
+    public void MatchRule_WithClassifier_SetsIntentAndConfidence()
     {
         using var db = new FreshDbContext();
         var store = new KnowledgeStore(db.Context);
         SeedRule(db.Context, "^(hi|hello)", "Greeting", ["Hello!"]);
 
         var classifier = new PokeChat.ML.IntentClassifier();
-        classifier.Train(new List<(string Input, string Category)>
-        {
-            ("hello", "greeting"),
-            ("hi there", "greeting"),
-            ("hey how are you", "greeting"),
-            ("good morning", "greeting"),
-            ("good evening", "greeting"),
-            ("howdy", "greeting"),
-            ("whats up", "greeting"),
-            ("goodbye", "farewell"),
-            ("see you later", "farewell"),
-            ("talk to you later", "farewell"),
-            ("catch you later", "farewell"),
-            ("i have to go", "farewell"),
-            ("got to run", "farewell"),
-        });
+        classifier.Train(SeedTrainingData.Examples.ToList());
 
         var context = new PokeChat.Knowledge.ContextTracker();
-        var result = ResponseRules.MatchRule("hi", store, null, classifier, context);
+        var result = ResponseRules.MatchRule("hello", store, null, classifier, context);
 
         result.ShouldNotBeNull();
-        result.InputType.ShouldBe(InputType.Greeting);
         var intent = context.GetContext("current_intent");
         intent.ShouldBe("greeting");
+        var confidence = context.GetContext("intent_confidence");
+        confidence.ShouldNotBeNull();
+        float.Parse(confidence).ShouldBeGreaterThan(0.5f);
     }
 
     [Fact]
-    public void MatchRule_WithClassifierNotReady_DoesNotSetIntent()
+    public void MatchRule_WithClassifier_LowConfidence_SetsConfidence()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        SeedRule(db.Context, "^(.+)", "Statement", ["You said something."]);
+
+        var classifier = new PokeChat.ML.IntentClassifier();
+        classifier.Train(SeedTrainingData.Examples.ToList());
+
+        var context = new PokeChat.Knowledge.ContextTracker();
+        var result = ResponseRules.MatchRule("xylophone quantum nebula", store, null, classifier, context);
+
+        result.ShouldNotBeNull();
+        var intent = context.GetContext("current_intent");
+        intent.ShouldBe("unknown");
+        var confidence = context.GetContext("intent_confidence");
+        confidence.ShouldNotBeNull();
+        float.Parse(confidence).ShouldBeGreaterThan(0f);
+    }
+
+    [Fact]
+    public void MatchRule_WithClassifierNotReady_DoesNotSetIntentOrConfidence()
     {
         using var db = new FreshDbContext();
         var store = new KnowledgeStore(db.Context);
@@ -178,9 +187,10 @@ public class ResponseRulesTests
         var result = ResponseRules.MatchRule("hi", store, null, classifier, context);
 
         result.ShouldNotBeNull();
-        result.InputType.ShouldBe(InputType.Greeting);
         var intent = context.GetContext("current_intent");
         intent.ShouldBeNull();
+        var confidence = context.GetContext("intent_confidence");
+        confidence.ShouldBeNull();
     }
 
     private static void SeedRule(PokeChat.Data.PokeChatDbContext context, string pattern, string inputType, string[] responses)

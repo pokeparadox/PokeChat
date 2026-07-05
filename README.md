@@ -15,6 +15,105 @@ dotnet run
 
 Type `quit` or `exit` to leave.
 
+## Feature Reference
+
+### Starting & Stopping
+| If you say… | The bot will… |
+|---|---|
+| `hi` / `hello` / `hey` | Greet you and ask your name |
+| `my name is X` / `I'm X` / `call me X` | Remember your name |
+| `quit` / `exit` | Show a session summary and goodbye |
+| `start fresh` / `reset everything` / `forget everything` | Warn then wipe your data |
+
+### Learning New Words
+| If you say… | The bot will… |
+|---|---|
+| *(any word it doesn't know)* | Ask what it means, or suggest a correction |
+| `typo` / `never mind` / `forget it` | Cancel and move on |
+| *(after teaching a word)* `person` / `place` / `thing` / `verb` | Classify the word |
+| `what is the definition of X` / `define X` | Look up or ask you for a definition |
+| `what is another word for X` / `synonym for X` | Show related words |
+
+### Teaching the Bot
+| If you say… | The bot will… |
+|---|---|
+| `you should say X` / `say X instead` / `try saying X` | Learn a new response pattern |
+| `that's not right` / `not what I meant` | Reduce confidence in its last response |
+| `that's better` / `now you've got it` | Reinforce the last response |
+
+### Maths
+| If you say… | The bot will… |
+|---|---|
+| `2 + 2` / `10 * 5` / `3 ^ 4` | Calculate the result |
+| `2 + 2 = 5` (wrong answer) | Correct you |
+| `2 + 2 = 4` (right answer) | Confirm |
+
+### Games & Fun
+| If you say… | The bot will… |
+|---|---|
+| `tell me a story` / `make up a story` | Generate a short story |
+| `write a haiku` / `write a limerick` | Compose a poem |
+| `let's play a word game` / `story chain` | Start a collaborative story chain |
+| `let's play mad libs` | Start a Mad Libs game |
+| `tell me a joke` / `make me laugh` | Tell a dad joke (setup → punchline) |
+| `tell me a riddle` / `riddle me` | Pose a riddle (up to 3 attempts + hints) |
+| `would you rather` / `wyr` | Ask a Would You Rather from your facts |
+| `let's play hangman` | Start a Hangman game |
+| `magic 8 ball` / `will it` / `should i` | Fortune-telling prediction |
+
+### Quiz
+| If you say… | The bot will… |
+|---|---|
+| `quiz me` / `test me` / `give me a quiz` | Quiz you on facts it's learned |
+
+### Temporal & Timeline
+| If you say… | The bot will… |
+|---|---|
+| `what did I do yesterday` / `what happened today` | Recall facts with that time context |
+| `recap my day` / `what happened this week` / `timeline` | Show a timeline |
+
+### Inference & Entity Queries
+| If you say… | The bot will… |
+|---|---|
+| `does X verb Y` (e.g. "does Alice like cats") | Check if that relation exists |
+| `how is X connected to Y` | Find a path between entities |
+| `tell me about X` / `what is X` | List known connections for that entity |
+
+### Bot Configuration
+| If you say… | The bot will… |
+|---|---|
+| `can I call you X` / `I'll call you X` / `rename yourself X` | Rename the bot (per-user) |
+| `switch to coding mode` / `enter coding mode` | Switch to coding persona |
+| `switch to chat mode` / `enter chat mode` | Switch back to chat persona |
+| `interview mode` / `train the bot` | Start interactive bot training |
+
+### Self-Knowledge & Stats
+| If you say… | The bot will… |
+|---|---|
+| `what do you know about me` / `tell me about myself` | List everything it knows about you |
+| `how many facts do you know` / `what are my stats` | Show conversation statistics |
+| `what did we talk about` / `summarise our conversation` | Summarise the session |
+| `compliment me` / `say something nice` | Give a compliment based on your facts |
+
+### Error Knowledge
+| If you say… | The bot will… |
+|---|---|
+| *(paste a compiler error like `CS1009`, `CS0161`, `NullReferenceException`)* | Identify the error and suggest a fix |
+| *(paste an error it doesn't recognise)* | Ask you to explain the fix |
+| `the fix for that was X` (after an error suggestion) | Learn the new error pattern |
+
+### Advanced Features
+| If you say… | The bot will… |
+|---|---|
+| `search X` / `look up X` / `find X` | Perform a web search |
+| `run command X` / `shell command X` | Execute a shell command |
+
+### Emotion & Sentiment
+| If you express strong emotion… | The bot will… |
+|---|---|
+| *(sad / angry / happy / afraid / surprised phrasing)* | Respond with empathy |
+| *(you're an idiot / shut up)* | Respond with a calm deflection |
+
 ## Tests
 
 ```bash
@@ -80,6 +179,7 @@ All conversational data is persisted:
 - **User bot names** — per-user custom bot name assignment
 - **Story templates** — 10 slot-based templates for short story generation
 - **Learned response rules** — user-taught response patterns with confidence tracking
+- **Error knowledge base** — ~60 seeded compiler/runtime errors with regex patterns and fixes
 
 ## Improvements (Phases)
 
@@ -118,5 +218,7 @@ All conversational data is persisted:
 | 30 | Enhanced LLM Integration (AlwaysOn, summarisation, inference) | ✅ |
 | 31 | Clarification/Classification Cancel | ✅ |
 | 32 | Word Game (Story Chain — turn-based POS-cycling) | ✅ |
+| 51 | File Operations Tool (read/write/list/search via ITool, path traversal protection) | ✅ |
+| 52 | Error Knowledge Base (~60 common compiler errors, regex matching, self-learning) | ✅ |
 
 See `.agents/history.md` for completed improvements. 

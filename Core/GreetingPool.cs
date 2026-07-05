@@ -4,9 +4,9 @@ namespace PokeChat.Core;
 
 public static class GreetingPool
 {
-    public static string GetRandomGreeting(KnowledgeStore knowledgeStore, string botName)
+    public static string GetRandomGreeting(KnowledgeStore knowledgeStore, string botName, string? persona = null)
     {
-        var greetings = knowledgeStore.GetGreetings();
+        var greetings = knowledgeStore.GetGreetings(persona);
         if (greetings.Count == 0)
         {
             return $"Hello! I'm {botName}. What's your name?";

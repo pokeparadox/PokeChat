@@ -192,4 +192,53 @@ public class ContextTrackerTests
         tracker.Clear();
         tracker.TopicStack.Count.ShouldBe(0);
     }
+
+    [Fact]
+    public void ResolveFilePronoun_ThatFile_ReturnsCurrentFile()
+    {
+        var tracker = new ContextTracker();
+        tracker.SetContext(ContextKeys.CurrentFile, "Program.cs");
+        tracker.ResolveFilePronoun("what does that file do").ShouldBe("Program.cs");
+        tracker.ResolveFilePronoun("show me this file").ShouldBe("Program.cs");
+    }
+
+    [Fact]
+    public void ResolveFilePronoun_ThatTest_ReturnsCurrentFile_WhenEndsInTest()
+    {
+        var tracker = new ContextTracker();
+        tracker.SetContext(ContextKeys.CurrentFile, "ChatSessionTests.cs");
+        tracker.ResolveFilePronoun("run that test").ShouldBe("ChatSessionTests.cs");
+    }
+
+    [Fact]
+    public void ResolveFilePronoun_ThatTest_ReturnsRecentTestFile()
+    {
+        var tracker = new ContextTracker();
+        tracker.SetContext(ContextKeys.RecentFiles, "[\"Program.cs\",\"ChatSessionTests.cs\"]");
+        tracker.ResolveFilePronoun("run that test").ShouldBe("ChatSessionTests.cs");
+    }
+
+    [Fact]
+    public void ResolveFilePronoun_UnknownPronoun_ReturnsNull()
+    {
+        var tracker = new ContextTracker();
+        tracker.ResolveFilePronoun("what do you think").ShouldBeNull();
+    }
+
+    [Fact]
+    public void ResolveFilePronoun_ThatFunction_ReturnsCurrentFile()
+    {
+        var tracker = new ContextTracker();
+        tracker.SetContext(ContextKeys.CurrentFile, "Program.cs");
+        tracker.ResolveFilePronoun("find that function").ShouldBe("Program.cs");
+        tracker.ResolveFilePronoun("refactor this method").ShouldBe("Program.cs");
+        tracker.ResolveFilePronoun("open that class").ShouldBe("Program.cs");
+    }
+
+    [Fact]
+    public void ResolveFilePronoun_ThatError_ReturnsNull_WhenNoBuildOutput()
+    {
+        var tracker = new ContextTracker();
+        tracker.ResolveFilePronoun("fix that error").ShouldBeNull();
+    }
 }

@@ -8,5 +8,23 @@
   "read_url": {
     "enabled": true,
     "timeoutMs": 15000
+  },
+  "shell_command": {
+    "enabled": true,
+    "timeoutMs": 10000,
+    "allowedCommands": [
+      "ls", "pwd", "whoami", "date", "uptime", "uname",
+      "echo", "cat", "wc", "du", "df", "which", "env",
+      "dotnet", "git", "docker", "npm", "npx", "node",
+      "ps", "kill", "grep", "find", "tree",
+      "zip", "unzip", "tar", "gzip", "gunzip",
+      "free", "ip", "xdg-open", "curl", "wget",
+      "mkdir", "rmdir", "rm", "cp", "mv", "chmod", "chown"
+    ]
+  },
+  "file_ops": {
+    "enabled": true,
+    "timeoutMs": 15000,
+    "allowedPaths": ["."]
   }
 }

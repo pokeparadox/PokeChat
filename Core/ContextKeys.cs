@@ -71,4 +71,22 @@ public static class ContextKeys
     public const string HangmanWrongCount = "hangman_wrong_count";
     public const string CurrentIntent = "current_intent";
     public const string IntentConfidence = "intent_confidence";
+    public const string RecommenderGiven = "recommender_given";
+    public const string TimelineOffered = "timeline_offered";
+    public const string QuizActive = "quiz_active";
+    public const string QuizScore = "quiz_score";
+    public const string QuizQuestionCount = "quiz_question_count";
+    public const string QuizCurrentAnswer = "quiz_current_answer";
+    public const string QuizCurrentQuestion = "quiz_current_question";
+    public const string QuizFacts = "quiz_facts";
+    public const string CurrentPersona = "current_persona";
+    public const string LastErrorEntryId = "last_error_entry_id";
+    public const string CurrentFile = "current_file";
+    public const string RecentFiles = "recent_files";
+    public const string LastBuildOutput = "last_build_output";
+    public const string CurrentBranch = "current_branch";
+    public const string ProjectRoot = "project_root";
+    public const string PendingConfirmation = "pending_confirmation";
+    public const string PendingConfirmationCommand = "pending_confirmation_command";
+    public const string PendingConfirmationArgs = "pending_confirmation_args";
 }

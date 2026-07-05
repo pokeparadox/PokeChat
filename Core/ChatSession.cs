@@ -44,9 +44,27 @@ public class ChatSession : IDisposable
     private string? _pendingFollowUp;
     private int _followUpCount;
     private readonly ML.IntentClassifier _intentClassifier;
+    private readonly List<(string Input, string Response)> _trainingBuffer = new();
+    private const int RetrainThreshold = 25;
+    private string _persona = "chat";
+
+    private static readonly HashSet<string> PersonaTriggers = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "switch to coding mode", "switch to chat mode", "enter coding mode", "enter chat mode",
+        "go to coding mode", "go to chat mode", "change to coding mode", "change to chat mode",
+        "activate coding mode", "activate chat mode", "coding mode", "chat mode",
+    };
 
     private static readonly Regex InsultPattern = new(
-        @"^(you(?:'re| are) (?:a|an) \w+|shut\s+up|shut\s+it)",
+        @"^(?:you(?:'re| are) (?:a|an) \w+|shut\s+up|shut\s+it)",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex FileMentionPattern = new(
+        @"\b[\w/\\-]+\.(cs|json|csproj|slnx|md|txt|py|js|ts|xml|yaml|yml|sql|css|html)\b",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex DestructiveCommandPattern = new(
+        @"\b(push\b(?!.*--force)|deploy|publish|drop\s+\w+|rm\s+-rf|destroy|remove\s+\w+|delete\s+\w+)",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private static readonly HashSet<string> Affirmations = new(StringComparer.OrdinalIgnoreCase)
@@ -62,7 +80,8 @@ public class ChatSession : IDisposable
           "there", "here", "then", "than", "also", "too", "very",
           "so", "but", "yet", "for", "with", "without", "just",
           "to", "about", "how", "what", "why", "when", "where", "who",
-          "of", "in", "on", "at", "by", "from", "as", "into", "onto" };
+          "of", "in", "on", "at", "by", "from", "as", "into", "onto",
+          "sure", "do", "does", "did" };
 
     private static readonly HashSet<string> NegationWords = new(StringComparer.OrdinalIgnoreCase)
         { "not", "never", "no" };
@@ -203,7 +222,7 @@ public class ChatSession : IDisposable
         var toolRegistry = new ToolRegistry(mcpRegistry: _mcpRegistry);
         var toolTriggers = _mcpRegistry.GetToolTriggers();
         _intentClassifier = new ML.IntentClassifier();
-        _intentClassifier.LoadOrCreate();
+        _intentClassifier.LoadOrCreate(ML.SeedTrainingData.Examples);
 
         _llmOrchestrator = new LLMOrchestrator();
         var llmGenerator = _llmOrchestrator.Config.AlwaysOn && _llmOrchestrator.IsAvailable
@@ -247,7 +266,8 @@ public class ChatSession : IDisposable
         SessionLogger? sessionLogger = null,
         ToolRegistry? toolRegistry = null,
         LLMOrchestrator? llmOrchestrator = null,
-        ML.IntentClassifier? intentClassifier = null)
+        ML.IntentClassifier? intentClassifier = null,
+        string persona = "chat")
     {
         _dbContext = dbContext;
         _sessionLogger = sessionLogger;
@@ -271,6 +291,8 @@ public class ChatSession : IDisposable
         _currentUserNameLower = _currentUserName.ToLowerInvariant();
         _llmOrchestrator = llmOrchestrator;
         _intentClassifier = intentClassifier ?? new ML.IntentClassifier();
+        _persona = persona;
+        _context.SetContext(ContextKeys.CurrentPersona, persona);
     }
 
     private void AutoSeedPosDictionary(McpRegistry registry)
@@ -306,7 +328,7 @@ public class ChatSession : IDisposable
         _sessionLogger?.LogSystem(subtitle);
         _sessionLogger?.LogSystem(exitHint);
 
-        var greeting = GreetingPool.GetRandomGreeting(_knowledgeStore, _botName);
+        var greeting = GreetingPool.GetRandomGreeting(_knowledgeStore, _botName, _persona);
         Console.WriteLine(greeting);
         _sessionLogger?.LogSystem(greeting);
 
@@ -368,6 +390,7 @@ public class ChatSession : IDisposable
             if (ShouldExit(input))
             {
                 _knowledgeStore.RecordSessionMetrics(_sessionId);
+                TryRetrainClassifier();
                 _knowledgeStore.Save();
                 RunHomeworkCheck();
                 var sessionSummary = GenerateSessionEndSummary();
@@ -435,6 +458,22 @@ public class ChatSession : IDisposable
             return HandleNameInput(input);
         }
 
+        var personaResult = TryHandlePersonaSwitch(input);
+        if (personaResult != null)
+            return personaResult;
+
+        var confirmResult = TryHandleConfirmation(input);
+        if (confirmResult != null)
+            return confirmResult;
+
+        if (_persona == "coding")
+        {
+            DetectFileMentions(input);
+            var resolvedFile = _context.ResolveFilePronoun(input);
+            if (resolvedFile != null)
+                _context.SetContext(ContextKeys.CurrentFile, resolvedFile);
+        }
+
         var pendingWord = _context.GetContext(ContextKeys.PendingClarificationWord);
         if (pendingWord != null)
         {
@@ -463,6 +502,7 @@ public class ChatSession : IDisposable
                     if (llmResult != null)
                     {
                         LearnFromLLMResponse(originalInput ?? input, llmResult);
+                        BufferLlmInteraction(originalInput ?? input, llmResult);
                         _knowledgeStore.StoreConversation(_currentUserId!.Value, originalInput ?? input, llmResult, _sessionId, "llm_response");
                         _knowledgeStore.Save();
                         return llmResult;
@@ -530,6 +570,10 @@ public class ChatSession : IDisposable
         if (hangmanActive != null)
             return HandleHangmanTurn(input);
 
+        var quizActive = _context.GetContext(ContextKeys.QuizActive);
+        if (quizActive != null)
+            return HandleQuizTurn(input);
+
         _context.SetContext(ContextKeys.UnknownWords, null);
 
         if (TryHandleResetRequest(input, out var resetResponse))
@@ -556,6 +600,12 @@ public class ChatSession : IDisposable
         if (TryHandleHangmanStart(input, out var hangmanResponse))
             return hangmanResponse;
 
+        if (TryHandleQuizStart(input, out var quizResponse))
+            return quizResponse;
+
+        if (TryHandleErrorKnowledge(input, out var errorResponse))
+            return errorResponse;
+
         if (TryHandleCorrection(input, out var correctionResponse))
             return correctionResponse;
 
@@ -580,6 +630,9 @@ public class ChatSession : IDisposable
         var selfKnowledgeResponse = _responseEngine.HandleSelfKnowledgeRequest(input, _currentUserId);
         if (selfKnowledgeResponse != null) return selfKnowledgeResponse;
 
+        var earlyLlmResult = TryEarlyLlmRouting(input);
+        if (earlyLlmResult != null) return earlyLlmResult;
+
         var sentences = _sentenceSplitter.Split(input);
 
         foreach (var sentence in sentences)
@@ -594,6 +647,14 @@ public class ChatSession : IDisposable
         if (prevCategory != null)
             _context.SetContext(ContextKeys.PreviousResponseCategory, prevCategory);
 
+        if (_persona == "coding" && DestructiveCommandPattern.IsMatch(input) &&
+            _context.GetContext(ContextKeys.PendingConfirmation) == null)
+        {
+            _context.SetContext(ContextKeys.PendingConfirmation, "true");
+            _context.SetContext(ContextKeys.PendingConfirmationCommand, input);
+            return GetLLMResponse("coding_confirmation_prompt");
+        }
+
         var response = _responseEngine.GenerateResponse(input, _currentUserId);
         var responseCategory = _context.GetContext(ContextKeys.CurrentResponseCategory);
 
@@ -606,6 +667,7 @@ public class ChatSession : IDisposable
                 if (llmResult != null)
                 {
                     LearnFromLLMResponse(input, llmResult);
+                    BufferLlmInteraction(input, llmResult);
                     response = llmResult;
                     responseCategory = "llm_response";
                 }
@@ -642,6 +704,70 @@ public class ChatSession : IDisposable
         return response;
     }
 
+    private string? TryHandleConfirmation(string input)
+    {
+        var pendingCmd = _context.GetContext(ContextKeys.PendingConfirmation);
+        if (pendingCmd == null) return null;
+
+        var lower = input.Trim().ToLowerInvariant();
+        if (Affirmations.Contains(lower))
+        {
+            var originalInput = _context.GetContext(ContextKeys.PendingConfirmationCommand);
+            _context.SetContext(ContextKeys.PendingConfirmation, null);
+            _context.SetContext(ContextKeys.PendingConfirmationCommand, null);
+            _context.SetContext(ContextKeys.PendingConfirmationArgs, null);
+
+            if (!string.IsNullOrEmpty(originalInput))
+                return _responseEngine.GenerateResponse(originalInput, _currentUserId);
+            return null;
+        }
+
+        if (Denials.Contains(lower))
+        {
+            _context.SetContext(ContextKeys.PendingConfirmation, null);
+            _context.SetContext(ContextKeys.PendingConfirmationCommand, null);
+            _context.SetContext(ContextKeys.PendingConfirmationArgs, null);
+            return GetLLMResponse("coding_confirmation_denied");
+        }
+
+        return "Please answer yes or no. Are you sure?";
+    }
+
+    private string? TryHandlePersonaSwitch(string input)
+    {
+        var lower = input.Trim().ToLowerInvariant();
+        if (!PersonaTriggers.Contains(lower))
+            return null;
+
+        string newPersona;
+        if (lower.Contains("coding"))
+            newPersona = "coding";
+        else
+            newPersona = "chat";
+
+        SwitchPersona(newPersona);
+        return GetLLMResponse("persona_switch_" + newPersona);
+    }
+
+    private void SwitchPersona(string persona)
+    {
+        _persona = persona;
+        _context.SetContext(ContextKeys.CurrentPersona, persona);
+        _responseEngine.SetPersona(persona);
+
+        if (persona == "coding")
+        {
+            _botName = "PokeCode";
+            TryDetectProjectContext();
+        }
+        else
+        {
+            _botName = "PokeChat";
+        }
+
+        _responseEngine.SetBotName(_botName);
+    }
+
     private void ClearPendingState()
     {
         _context.SetContext(ContextKeys.PendingClarificationWord, null);
@@ -657,6 +783,74 @@ public class ChatSession : IDisposable
         _context.SetContext(ContextKeys.HangmanWrongLetters, null);
         _context.SetContext(ContextKeys.HangmanWrongCount, null);
         _context.SetContext(ContextKeys.UnknownWords, null);
+    }
+
+    internal void DetectFileMentions(string input)
+    {
+        var matches = FileMentionPattern.Matches(input);
+        if (matches.Count == 0) return;
+
+        var recentFilesRaw = _context.GetContext(ContextKeys.RecentFiles);
+        var recentFiles = string.IsNullOrEmpty(recentFilesRaw)
+            ? new List<string>()
+            : JsonSerializer.Deserialize<List<string>>(recentFilesRaw) ?? new();
+
+        foreach (Match match in matches)
+        {
+            var file = match.Value;
+            _context.SetContext(ContextKeys.CurrentFile, file);
+            recentFiles.RemoveAll(f => string.Equals(f, file, StringComparison.OrdinalIgnoreCase));
+            recentFiles.Add(file);
+        }
+
+        if (recentFiles.Count > 5)
+            recentFiles = recentFiles.TakeLast(5).ToList();
+
+        _context.SetContext(ContextKeys.RecentFiles, JsonSerializer.Serialize(recentFiles));
+    }
+
+    private void TryDetectProjectContext()
+    {
+        try
+        {
+            var dir = Directory.GetCurrentDirectory();
+            _context.SetContext(ContextKeys.ProjectRoot, dir);
+
+            var branch = RunGitCommand("branch --show-current");
+            if (!string.IsNullOrEmpty(branch))
+                _context.SetContext(ContextKeys.CurrentBranch, branch.Trim());
+
+            var lastBuild = RunGitCommand("log --oneline -1");
+            if (!string.IsNullOrEmpty(lastBuild))
+                _context.SetContext(ContextKeys.LastBuildOutput, lastBuild.Trim());
+        }
+        catch
+        {
+        }
+    }
+
+    private static string? RunGitCommand(string args)
+    {
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "git",
+                Arguments = args,
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            using var proc = System.Diagnostics.Process.Start(psi);
+            if (proc == null) return null;
+            var output = proc.StandardOutput.ReadToEnd();
+            proc.WaitForExit(2000);
+            return string.IsNullOrWhiteSpace(output) ? null : output;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     internal void LearnGreetingWords(string input)
@@ -761,8 +955,10 @@ public class ChatSession : IDisposable
             var lowerObj = resolvedObject.ToLowerInvariant();
             var objTokens = lowerObj.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             bool allFunctionWords = objTokens.Length > 0 && objTokens.All(t => FunctionWords.Contains(t));
-            bool subjectIsFunctionOnly = !ContentWordIndicators.Contains(resolvedSubject.ToLowerInvariant()) &&
-                resolvedSubject.Split(' ', StringSplitOptions.RemoveEmptyEntries).All(t => FunctionWords.Contains(t));
+
+            var subjectTokens = resolvedSubject.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            bool subjectIsFunctionOnly = subjectTokens.Length > 1 && subjectTokens.All(t =>
+                FunctionWords.Contains(t) || ContentWordIndicators.Contains(t));
             if (allFunctionWords || subjectIsFunctionOnly)
                 continue;
 
@@ -880,6 +1076,7 @@ public class ChatSession : IDisposable
     internal string? LastSubject => _context.LastSubject;
     internal string? LastObject => _context.LastObject;
     internal IReadOnlyList<TopicEntry> TopicStack => _context.TopicStack;
+    internal string? GetContextValue(string key) => _context.GetContext(key);
 
     internal void SetLLMOfferState(string originalInput)
     {
@@ -1703,12 +1900,101 @@ public class ChatSession : IDisposable
             ["llm_declined"] = new() { "No problem, I'll keep learning!" },
             ["llm_unavailable"] = new() { "My AI isn't responding right now." },
             ["llm_thinking"] = new() { "Let me check with my AI..." },
+            ["persona_switch_chat"] = new() { "Switched to chat mode. I'm PokeChat again!" },
+            ["persona_switch_coding"] = new() { "Switched to coding mode. I'm PokeCode — ready to help with code." },
+            ["coding_confirmation_prompt"] = new() { "Are you sure you want to run that command? (yes/no)", "That could be destructive. Are you sure? (yes/no)" },
+            ["coding_confirmation_denied"] = new() { "Cancelled.", "Command cancelled.", "OK, I won't run it." },
         };
 
         if (fallbacks.TryGetValue(category, out var fb) && fb.Count > 0)
             return fb[Random.Shared.Next(fb.Count)];
 
         return string.Empty;
+    }
+
+    private string? TryEarlyLlmRouting(string input)
+    {
+        if (_currentUserId == null) return null;
+        if (_llmOrchestrator == null || !_llmOrchestrator.IsAvailable || _llmOrchestrator.UserDeclined)
+            return null;
+        if (!_intentClassifier.IsReady)
+            return null;
+
+        var probs = _intentClassifier.PredictProbabilities(input);
+        var maxConf = probs.Length > 0 ? probs.Max() : 0f;
+        var intent = _intentClassifier.Classify(input);
+
+        var needsLlm = (intent == "complex_question" || intent == "unknown" || maxConf < 0.5f);
+        if (!needsLlm)
+            return null;
+
+        if (_llmOrchestrator.Config.AlwaysOn || _llmOrchestrator.IsAccepted)
+        {
+            var llmResult = LlmCallWithIndicator(() => _llmOrchestrator.GenerateResponse(input));
+            if (llmResult != null)
+            {
+                LearnFromLLMResponse(input, llmResult);
+                BufferLlmInteraction(input, llmResult);
+                _context.SetContext(ContextKeys.CurrentResponseCategory, "llm_response");
+                _knowledgeStore.StoreConversation(_currentUserId.Value, input, llmResult, _sessionId, "llm_response");
+                _knowledgeStore.Save();
+                return llmResult;
+            }
+            return GetLLMResponse("llm_unavailable");
+        }
+
+        if (_context.GetContext(ContextKeys.PendingLLMOffer) == null)
+        {
+            _context.SetContext(ContextKeys.PendingLLMOffer, "true");
+            _context.SetContext(ContextKeys.LLMOriginalInput, input);
+        }
+
+        return null;
+    }
+
+    private void BufferLlmInteraction(string input, string llmResponse)
+    {
+        _trainingBuffer.Add((input, llmResponse));
+    }
+
+    private void TryRetrainClassifier()
+    {
+        if (_trainingBuffer.Count < RetrainThreshold) return;
+        if (_llmOrchestrator == null || !_llmOrchestrator.IsAvailable) return;
+        if (!_intentClassifier.IsReady) return;
+
+        try
+        {
+            var bufferItems = _trainingBuffer.Select(t => new { input = t.Input, response = t.Response }).ToList();
+            var conversationJson = JsonSerializer.Serialize(bufferItems);
+            var labelsJson = _llmOrchestrator.GenerateTrainingLabels(conversationJson);
+            if (string.IsNullOrEmpty(labelsJson)) return;
+
+            using var doc = JsonDocument.Parse(labelsJson);
+            var labels = doc.RootElement.GetProperty("labels").EnumerateArray()
+                .Select(e => (Input: e.GetProperty("input").GetString()!, Intent: e.GetProperty("intent").GetString()!))
+                .Where(x => !string.IsNullOrEmpty(x.Input) && !string.IsNullOrEmpty(x.Intent))
+                .ToList();
+
+            if (labels.Count < 5) return;
+
+            var knownCategories = new HashSet<string>(ML.IntentCategory.DefaultCategories);
+            var newExamples = labels
+                .Where(l => knownCategories.Contains(l.Intent))
+                .Select(l => (l.Input, l.Intent))
+                .Distinct()
+                .ToList();
+
+            if (newExamples.Count < 5) return;
+
+            var allExamples = ML.SeedTrainingData.Examples.Concat(newExamples).ToList();
+            _intentClassifier.Train(allExamples);
+            _intentClassifier.SaveModel();
+            _trainingBuffer.Clear();
+        }
+        catch
+        {
+        }
     }
 
     private void LearnFromLLMResponse(string input, string llmResponse)
@@ -2414,6 +2700,64 @@ public class ChatSession : IDisposable
         return string.Empty;
     }
 
+    internal bool TryHandleErrorKnowledge(string input, out string response)
+    {
+        response = string.Empty;
+        if (string.IsNullOrWhiteSpace(input) || input.Length < 10)
+            return false;
+
+        var lowerInput = input.ToLowerInvariant().Trim();
+        if (lowerInput.Contains("error") ||
+            lowerInput.Contains("exception") ||
+            lowerInput.Contains("failed") ||
+            lowerInput.Contains("could not") ||
+            Regex.IsMatch(lowerInput, @"\b(CS\d{4})\b") ||
+            Regex.IsMatch(lowerInput, @"\b(NETSDK|MSB|NU)\d{4}\b") ||
+            lowerInput.Contains("does not exist") ||
+            lowerInput.Contains("not found") ||
+            lowerInput.Contains("invalid") ||
+            lowerInput.Contains("unexpected") ||
+            lowerInput.Contains("nullreference") ||
+            lowerInput.Contains("cannot convert") ||
+            lowerInput.Contains("expected semicolon") ||
+            lowerInput.Contains("not all code paths") ||
+            lowerInput.Contains("no overload") ||
+            lowerInput.Contains("does not contain"))
+        {
+            var entry = _knowledgeStore.MatchError(input);
+            if (entry != null)
+            {
+                _knowledgeStore.IncrementErrorUsage(entry.Id);
+                _context.SetContext(ContextKeys.LastErrorEntryId, entry.Id.ToString());
+                response = GetErrorResponse("error_knowledge_found", entry.Language, entry.Suggestion);
+                return true;
+            }
+
+            response = GetRiddleResponse("error_knowledge_not_found");
+            return true;
+        }
+
+        return false;
+    }
+
+    private string GetErrorResponse(string category, params object[] args)
+    {
+        var botResponses = GetCachedBotResponses();
+        if (botResponses.TryGetValue(category, out var responses) && responses.Count > 0)
+        {
+            var template = responses[Random.Shared.Next(responses.Count)];
+            return args.Length > 0 ? string.Format(template, args) : template;
+        }
+        return category switch
+        {
+            "error_knowledge_found" => $"That looks like a {args[0]} error. {args[1]}",
+            "error_knowledge_not_found" => "I don't recognise that error. Can you tell me what fixed it?",
+            "error_knowledge_learned" => "Thanks! I'll remember that fix.",
+            "error_knowledge_followup" => "Did that fix the problem?",
+            _ => string.Join(" ", args)
+        };
+    }
+
     internal bool TryHandleJokeStart(string input, out string response)
     {
         var lowerInput = input.ToLowerInvariant().Trim();
@@ -3005,6 +3349,186 @@ public class ChatSession : IDisposable
     {
         public string Word { get; set; } = "";
         public string Category { get; set; } = "";
+    }
+
+    private static readonly string[] QuizStartPhrases = { "quiz me", "test me", "give me a quiz", "start quiz", "ask me a question" };
+    private static readonly string[] QuizStopPhrases = { "stop quiz", "quit quiz", "give up", "stop", "quit" };
+    private const int MaxQuizQuestions = 5;
+
+    private record QuizFactData(string Subject, string Verb, string Object, string PredicateType);
+
+    internal bool TryHandleQuizStart(string input, out string response)
+    {
+        var lowerInput = input.ToLowerInvariant().Trim();
+        var isQuizStart = lowerInput == "quiz" || QuizStartPhrases.Any(p => lowerInput.Contains(p));
+        if (!isQuizStart)
+        {
+            response = string.Empty;
+            return false;
+        }
+
+        var existing = _context.GetContext(ContextKeys.QuizActive);
+        if (existing != null)
+        {
+            response = GetQuizResponse("quiz_already_active");
+            return true;
+        }
+
+        response = StartQuiz();
+        return true;
+    }
+
+    private string StartQuiz()
+    {
+        if (_currentUserId == null)
+            return GetQuizResponse("quiz_no_facts");
+
+        var facts = _knowledgeStore.GetRandomFactsForQuiz(_currentUserId.Value, MaxQuizQuestions);
+        if (facts.Count == 0)
+            return GetQuizResponse("quiz_no_facts");
+
+        var factData = facts.Select(f => new QuizFactData(f.Subject, f.Verb, f.Object, f.PredicateType)).ToList();
+        var json = JsonSerializer.Serialize(factData);
+        _context.SetContext(ContextKeys.QuizActive, "true");
+        _context.SetContext(ContextKeys.QuizFacts, json);
+        _context.SetContext(ContextKeys.QuizScore, "0/0");
+        _context.SetContext(ContextKeys.QuizQuestionCount, "0");
+
+        return AskNextQuizQuestion(factData, 0);
+    }
+
+    private string AskNextQuizQuestion(List<QuizFactData> factData, int index)
+    {
+        if (index >= factData.Count)
+            return FinishQuiz();
+
+        var data = factData[index];
+        var question = BuildQuizQuestion(data.Subject, data.Verb, data.Object, data.PredicateType);
+
+        _context.SetContext(ContextKeys.QuizCurrentQuestion, question);
+        _context.SetContext(ContextKeys.QuizCurrentAnswer, data.Object);
+        _context.SetContext(ContextKeys.QuizQuestionCount, (index + 1).ToString());
+
+        return GetQuizResponse("quiz_question", question, index + 1, factData.Count);
+    }
+
+    private static string BuildQuizQuestion(string subject, string verb, string obj, string predicateType)
+    {
+        return predicateType switch
+        {
+            nameof(PredicateType.Preference) => $"You said you {verb} {obj}. Do you still {verb} {obj}?",
+            nameof(PredicateType.Dislike) => $"You said you dislike {obj}. Is that still true?",
+            nameof(PredicateType.Possession) => $"You told me you have {obj}. Do you still have {obj}?",
+            nameof(PredicateType.PersonalAttribute) => $"You said you're {obj}. Is that still true?",
+            nameof(PredicateType.Belief) => $"You know about {obj}. Where did you learn about {obj}?",
+            _ => $"You told me {subject} {verb} {obj}. What {verb} {subject}?"
+        };
+    }
+
+    internal string HandleQuizTurn(string input)
+    {
+        var lowerInput = input.Trim().ToLowerInvariant();
+
+        if (lowerInput == "quiz" || QuizStartPhrases.Any(p => lowerInput.Contains(p)))
+            return GetQuizResponse("quiz_already_active");
+
+        foreach (var phrase in QuizStopPhrases)
+        {
+            if (lowerInput.Contains(phrase))
+                return FinishQuiz();
+        }
+
+        var currentAnswer = _context.GetContext(ContextKeys.QuizCurrentAnswer) ?? "";
+        var scoreRaw = _context.GetContext(ContextKeys.QuizScore) ?? "0/0";
+        var countRaw = _context.GetContext(ContextKeys.QuizQuestionCount) ?? "0";
+        var factsJson = _context.GetContext(ContextKeys.QuizFacts) ?? "[]";
+
+        int.TryParse(countRaw, out var count);
+
+        var (correct, total) = ParseScore(scoreRaw);
+
+        var factData = JsonSerializer.Deserialize<List<QuizFactData>>(factsJson);
+        var hasMoreQuestions = factData != null && count < factData.Count;
+
+        if (lowerInput.Contains(currentAnswer.ToLowerInvariant()))
+        {
+            correct++;
+            total++;
+            _context.SetContext(ContextKeys.QuizScore, $"{correct}/{total}");
+
+            if (hasMoreQuestions)
+            {
+                return GetQuizResponse("quiz_correct", currentAnswer) + "\n" + AskNextQuizQuestion(factData!, count);
+            }
+
+            return FinishQuiz();
+        }
+        else
+        {
+            total++;
+            _context.SetContext(ContextKeys.QuizScore, $"{correct}/{total}");
+
+            if (hasMoreQuestions)
+            {
+                return GetQuizResponse("quiz_wrong", currentAnswer) + "\n" + AskNextQuizQuestion(factData!, count);
+            }
+
+            return FinishQuiz();
+        }
+    }
+
+    private string FinishQuiz()
+    {
+        var scoreRaw = _context.GetContext(ContextKeys.QuizScore) ?? "0/0";
+        var (correct, total) = ParseScore(scoreRaw);
+        ClearQuizState();
+        return GetQuizResponse("quiz_score", correct, total);
+    }
+
+    private void ClearQuizState()
+    {
+        _context.SetContext(ContextKeys.QuizActive, null);
+        _context.SetContext(ContextKeys.QuizScore, null);
+        _context.SetContext(ContextKeys.QuizQuestionCount, null);
+        _context.SetContext(ContextKeys.QuizCurrentAnswer, null);
+        _context.SetContext(ContextKeys.QuizCurrentQuestion, null);
+        _context.SetContext(ContextKeys.QuizFacts, null);
+    }
+
+    private static (int Correct, int Total) ParseScore(string score)
+    {
+        var parts = score.Split('/');
+        if (parts.Length == 2 && int.TryParse(parts[0], out var c) && int.TryParse(parts[1], out var t))
+            return (c, t);
+        return (0, 0);
+    }
+
+    private string GetQuizResponse(string category, params object[] args)
+    {
+        var botResponses = GetCachedBotResponses();
+        if (botResponses.TryGetValue(category, out var responses) && responses.Count > 0)
+        {
+            var template = responses[Random.Shared.Next(responses.Count)];
+            return args.Length > 0 ? string.Format(template, args) : template;
+        }
+
+        var fallbacks = new Dictionary<string, List<string>>
+        {
+            ["quiz_question"] = new() { "Question {1}/{2}: {0}" },
+            ["quiz_correct"] = new() { "That's right! The answer was {0}." },
+            ["quiz_wrong"] = new() { "Not quite! The answer was {0}." },
+            ["quiz_score"] = new() { "Quiz complete! You got {0}/{1} correct." },
+            ["quiz_already_active"] = new() { "You're already in a quiz! Answer the question." },
+            ["quiz_no_facts"] = new() { "I don't know enough about you to make a quiz yet." },
+        };
+
+        if (fallbacks.TryGetValue(category, out var fb) && fb.Count > 0)
+        {
+            var template = fb[Random.Shared.Next(fb.Count)];
+            return args.Length > 0 ? string.Format(template, args) : template;
+        }
+
+        return string.Empty;
     }
 
     public void Dispose()

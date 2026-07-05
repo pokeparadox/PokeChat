@@ -107,4 +107,86 @@ public class ToolRegistryTests
         var result = tool.Execute(new[] { "not-a-real-url-12345" });
         result.Success.ShouldBeFalse();
     }
+
+    [Fact]
+    public void ShellCommandTool_EmptyCommand_ReturnsFailure()
+    {
+        var tool = new ShellCommandTool();
+        var result = tool.Execute(Array.Empty<string>());
+        result.Success.ShouldBeFalse();
+        result.ErrorMessage.ShouldNotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public void ShellCommandTool_AllowedCommand_ReturnsSuccess()
+    {
+        var tool = new ShellCommandTool();
+        var result = tool.Execute(new[] { "whoami" });
+        result.Success.ShouldBeTrue();
+        result.Output.ShouldNotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public void ShellCommandTool_BlockedCommand_ReturnsFailure()
+    {
+        var tool = new ShellCommandTool();
+        var result = tool.Execute(new[] { "rm" });
+        result.Success.ShouldBeFalse();
+        result.ErrorMessage.ShouldContain("not in the allowed list");
+    }
+
+    [Fact]
+    public void ShellCommandTool_DangerousChars_ReturnsFailure()
+    {
+        var tool = new ShellCommandTool();
+        var result = tool.Execute(new[] { "ls", "-la; rm -rf /" });
+        result.Success.ShouldBeFalse();
+        result.ErrorMessage.ShouldContain("prohibited characters");
+    }
+
+    [Fact]
+    public void ShellCommandTool_CustomWhitelist_AcceptsOnlyListed()
+    {
+        var tool = new ShellCommandTool(new[] { "hello" });
+        var allowed = tool.Execute(new[] { "echo", "world" });
+        allowed.Success.ShouldBeFalse(); // "echo" not in custom whitelist
+
+        var blocked = tool.Execute(new[] { "hello" });
+        blocked.Success.ShouldBeFalse(); // "hello" is not a real command — will fail execution, not whitelist
+        blocked.ErrorMessage.ShouldNotContain("allowed list");
+    }
+
+    [Fact]
+    public void ShellCommandTool_ArgsWithoutDangerousChars_Succeeds()
+    {
+        var tool = new ShellCommandTool();
+        var result = tool.Execute(new[] { "echo", "hello world" });
+        result.Success.ShouldBeTrue();
+        result.Output.ShouldBe("hello world");
+    }
+
+    [Fact]
+    public void ShellCommandTool_RegisteredAndEnabled_ReturnsResult()
+    {
+        var configs = new Dictionary<string, ToolConfig>
+        {
+            ["shell_command"] = new() { Enabled = true }
+        };
+        var registry = new ToolRegistry(configs);
+        var result = registry.TryExecute("shell_command", new[] { "whoami" });
+        result.ShouldNotBeNull();
+        result.Success.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void ShellCommandTool_DisabledViaConfig_ReturnsNull()
+    {
+        var configs = new Dictionary<string, ToolConfig>
+        {
+            ["shell_command"] = new() { Enabled = false }
+        };
+        var registry = new ToolRegistry(configs);
+        var result = registry.TryExecute("shell_command", new[] { "whoami" });
+        result.ShouldBeNull();
+    }
 }

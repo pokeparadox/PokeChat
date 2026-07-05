@@ -28,7 +28,9 @@ public static class IntentCategory
         "about_me_query",
         "stats_query",
         "yes_no_affirmation",
-        "question_about_bot"
+        "question_about_bot",
+        "complex_question",
+        "unknown"
     };
 
     public static Dictionary<string, int> BuildIndex(string[] categories)

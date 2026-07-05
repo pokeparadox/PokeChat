@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Facet.Extensions;
 using Microsoft.EntityFrameworkCore;
 using PokeChat.Data;
@@ -160,6 +161,59 @@ public class KnowledgeStore(PokeChatDbContext context)
         return facts[Random.Shared.Next(facts.Count)];
     }
 
+    public List<Fact> GetUserPreferences(int userId)
+    {
+        var preferenceVerbs = new[] { "like", "love", "enjoy", "prefer" };
+        return context.Facts
+            .Where(f => f.UserId == userId && preferenceVerbs.Contains(f.Verb))
+            .SelectFacet<Fact>()
+            .ToList();
+    }
+
+    public List<Fact> GetUserDislikes(int userId)
+    {
+        var dislikeVerbs = new[] { "hate", "dislike" };
+        return context.Facts
+            .Where(f => f.UserId == userId && dislikeVerbs.Contains(f.Verb))
+            .SelectFacet<Fact>()
+            .ToList();
+    }
+
+    public (string? LikedItem, string? Suggestion, string? Category) GetRecommendation(int userId)
+    {
+        var likes = GetUserPreferences(userId);
+        if (likes.Count < 2)
+            return (null, null, null);
+
+        var likedObject = likes[Random.Shared.Next(likes.Count)].Object;
+
+        var categories = GetCategoryChain(likedObject);
+        if (categories.Count == 0)
+            return (null, null, null);
+
+        var knownObjects = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var userFacts = context.Facts
+            .Where(f => f.UserId == userId)
+            .SelectFacet<Fact>()
+            .ToList();
+        foreach (var f in userFacts)
+            knownObjects.Add(f.Object.ToLowerInvariant());
+
+        foreach (var category in categories.OrderBy(_ => Random.Shared.Next()))
+        {
+            var members = GetAllOfType(category);
+            var unexplored = members
+                .Where(m => !string.Equals(m, likedObject, StringComparison.OrdinalIgnoreCase))
+                .Where(m => !knownObjects.Contains(m.ToLowerInvariant()))
+                .ToList();
+
+            if (unexplored.Count > 0)
+                return (likedObject, unexplored[Random.Shared.Next(unexplored.Count)], category);
+        }
+
+        return (null, null, null);
+    }
+
     public Fact? GetFact(string subject, string verb, string obj)
     {
         var entity = context.Facts
@@ -228,9 +282,12 @@ public class KnowledgeStore(PokeChatDbContext context)
         context.Conversations.Add(conversation);
     }
 
-    public List<Greeting> GetGreetings()
+    public List<Greeting> GetGreetings(string? persona = null)
     {
-        return context.Greetings.ToList();
+        var query = context.Greetings.AsQueryable();
+        if (persona != null)
+            query = query.Where(g => g.Persona == null || g.Persona == persona);
+        return query.ToList();
     }
 
     public void AddGreeting(string text, bool isSystem = false)
@@ -267,12 +324,14 @@ public class KnowledgeStore(PokeChatDbContext context)
         context.GreetingWords.Add(greetingWord);
     }
 
-    public List<ResponseRule> GetResponseRules()
+    public List<ResponseRule> GetResponseRules(string? persona = null)
     {
-        return context.ResponseRules
+        var query = context.ResponseRules
             .Include(r => r.Responses)
-            .Where(r => r.IsActive)
-            .ToList();
+            .Where(r => r.IsActive);
+        if (persona != null)
+            query = query.Where(r => r.Persona == null || r.Persona == persona);
+        return query.ToList();
     }
 
     public List<string> GetResponsesForRule(int ruleId)
@@ -400,9 +459,12 @@ public class KnowledgeStore(PokeChatDbContext context)
         context.SaveChanges();
     }
 
-    public Dictionary<string, List<string>> GetBotResponses()
+    public Dictionary<string, List<string>> GetBotResponses(string? persona = null)
     {
-        return context.BotResponses
+        var query = context.BotResponses.AsQueryable();
+        if (persona != null)
+            query = query.Where(r => r.Persona == null || r.Persona == persona);
+        return query
             .GroupBy(r => r.Category)
             .ToDictionary(g => g.Key, g => g.Select(r => r.ResponseText).ToList());
     }
@@ -626,6 +688,54 @@ public class KnowledgeStore(PokeChatDbContext context)
             .ToList();
     }
 
+    public List<Fact> GetFactsInDateRange(int userId, DateTime? from, DateTime? to)
+    {
+        var query = context.Facts.Where(f => f.UserId == userId && f.MentionedAt != null);
+
+        if (from.HasValue)
+        {
+            var fromStr = from.Value.ToString("o");
+            query = query.Where(f => string.Compare(f.MentionedAt, fromStr) >= 0);
+        }
+
+        if (to.HasValue)
+        {
+            var toStr = to.Value.ToString("o");
+            query = query.Where(f => string.Compare(f.MentionedAt, toStr) <= 0);
+        }
+
+        return query.OrderBy(f => f.MentionedAt).SelectFacet<Fact>().ToList();
+    }
+
+    public string BuildTimeline(List<Fact> facts)
+    {
+        if (facts.Count == 0) return string.Empty;
+
+        var dayNames = new[] { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
+        var lines = new List<string>();
+
+        foreach (var fact in facts)
+        {
+            if (string.IsNullOrEmpty(fact.MentionedAt)) continue;
+
+            if (DateTime.TryParse(fact.MentionedAt, out var dt))
+            {
+                var day = dayNames[(int)dt.DayOfWeek];
+                var conjVerb = PokeChat.Responses.ResponseEngine.ConjugateVerb(fact.Verb, fact.Subject);
+                var line = fact.PredicateType switch
+                {
+                    nameof(PredicateType.Preference) => $"{day}: {fact.Subject} liked {fact.Object}.",
+                    nameof(PredicateType.Dislike) => $"{day}: {fact.Subject} disliked {fact.Object}.",
+                    nameof(PredicateType.Possession) => $"{day}: {fact.Subject} had {fact.Object}.",
+                    _ => $"{day}: {fact.Subject} {conjVerb} {fact.Object}."
+                };
+                lines.Add(line);
+            }
+        }
+
+        return string.Join("\n", lines);
+    }
+
     public List<string> GetCategoryChain(string word)
     {
         var lower = word.ToLowerInvariant();
@@ -753,6 +863,113 @@ public class KnowledgeStore(PokeChatDbContext context)
         }
 
         return results;
+    }
+
+    public Dictionary<string, List<(string Relation, string Target)>> GetEntityGraph(int userId)
+    {
+        var graph = new Dictionary<string, List<(string, string)>>(StringComparer.OrdinalIgnoreCase);
+
+        var facts = context.Facts
+            .Where(f => f.UserId == userId)
+            .SelectFacet<Fact>()
+            .ToList();
+
+        foreach (var fact in facts)
+        {
+            if (!graph.ContainsKey(fact.Subject))
+                graph[fact.Subject] = new List<(string, string)>();
+            graph[fact.Subject].Add((fact.Verb, fact.Object));
+
+            if (!graph.ContainsKey(fact.Object))
+                graph[fact.Object] = new List<(string, string)>();
+        }
+
+        return graph;
+    }
+
+    public string? FindPath(int userId, string fromEntity, string toEntity, int maxDepth = 3)
+    {
+        var lowerFrom = fromEntity.ToLowerInvariant();
+        var lowerTo = toEntity.ToLowerInvariant();
+        var graph = GetEntityGraph(userId);
+
+        if (!graph.ContainsKey(lowerFrom) || !graph.ContainsKey(lowerTo))
+            return null;
+
+        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var queue = new Queue<(string Node, List<(string Node, string Relation)> Path)>();
+        queue.Enqueue((lowerFrom, new List<(string, string)>()));
+        visited.Add(lowerFrom);
+
+        while (queue.Count > 0)
+        {
+            var (current, path) = queue.Dequeue();
+            if (path.Count >= maxDepth * 2) continue;
+
+            if (!graph.TryGetValue(current, out var edges)) continue;
+
+            foreach (var (relation, target) in edges)
+            {
+                if (string.Equals(target, lowerTo, StringComparison.OrdinalIgnoreCase))
+                {
+                    var fullPath = new List<(string, string)>(path) { (relation, target) };
+                    return FormatPath(fullPath, fromEntity, toEntity);
+                }
+
+                if (visited.Add(target))
+                {
+                    var newPath = new List<(string, string)>(path) { (relation, target) };
+                    queue.Enqueue((target, newPath));
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static string FormatPath(List<(string Relation, string Target)> path, string fromEntity, string toEntity)
+    {
+        var parts = new List<string> { fromEntity };
+        foreach (var (rel, target) in path)
+        {
+            var conjVerb = PokeChat.Responses.ResponseEngine.ConjugateVerb(rel, fromEntity);
+            parts.Add(conjVerb);
+            parts.Add(target);
+        }
+        return string.Join(" ", parts);
+    }
+
+    public bool CheckRelation(int userId, string subject, string verb, string obj)
+    {
+        var lowerSubject = subject.ToLowerInvariant();
+        var lowerVerb = verb.ToLowerInvariant();
+        var lowerObj = obj.ToLowerInvariant();
+        return context.Facts
+            .Where(f => f.UserId == userId)
+            .SelectFacet<Fact>()
+            .ToList()
+            .Any(f => f.Subject.Equals(lowerSubject, StringComparison.OrdinalIgnoreCase) &&
+                      f.Verb.Equals(lowerVerb, StringComparison.OrdinalIgnoreCase) &&
+                      f.Object.Equals(lowerObj, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public List<string> GetConnectedEntities(int userId, string entity)
+    {
+        var facts = context.Facts
+            .Where(f => f.UserId == userId && (f.Subject == entity || f.Object == entity))
+            .SelectFacet<Fact>()
+            .ToList();
+
+        var connected = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var fact in facts)
+        {
+            if (fact.Subject != entity)
+                connected.Add(fact.Subject);
+            if (fact.Object != entity)
+                connected.Add(fact.Object);
+        }
+
+        return connected.ToList();
     }
 
     public void CreateConversationSession(string sessionGuid, int userId)
@@ -1178,6 +1395,19 @@ public class KnowledgeStore(PokeChatDbContext context)
         return (first, second);
     }
 
+    public List<Fact> GetRandomFactsForQuiz(int userId, int count)
+    {
+        var facts = context.Facts
+            .Where(f => f.UserId == userId)
+            .SelectFacet<Fact>()
+            .ToList();
+
+        if (facts.Count == 0) return new List<Fact>();
+
+        var selected = facts.OrderBy(_ => Random.Shared.Next()).Take(count).ToList();
+        return selected;
+    }
+
     public Joke? GetRandomJoke()
     {
         var jokes = context.Jokes.ToList();
@@ -1226,5 +1456,50 @@ public class KnowledgeStore(PokeChatDbContext context)
         return context.PoemTemplates
             .Where(t => t.PoemType == poemType)
             .ToList();
+    }
+
+    public ErrorKnowledgeEntry? MatchError(string input)
+    {
+        var entries = context.ErrorKnowledgeEntries.ToList();
+        foreach (var entry in entries)
+        {
+            try
+            {
+                if (Regex.IsMatch(input, entry.Pattern, RegexOptions.IgnoreCase))
+                    return entry;
+            }
+            catch
+            {
+            }
+        }
+        return null;
+    }
+
+    public void LearnError(string pattern, string suggestion, string language = "general")
+    {
+        context.ErrorKnowledgeEntries.Add(new ErrorKnowledgeEntry
+        {
+            Pattern = pattern,
+            Suggestion = suggestion,
+            Language = language,
+            IsLearned = true,
+            UsedCount = 0,
+            SuccessCount = 0,
+            CreatedAt = DateTime.UtcNow.ToString("o")
+        });
+    }
+
+    public void IncrementErrorUsage(int entryId)
+    {
+        var entry = context.ErrorKnowledgeEntries.Find(entryId);
+        if (entry != null)
+            entry.UsedCount++;
+    }
+
+    public void IncrementErrorSuccess(int entryId)
+    {
+        var entry = context.ErrorKnowledgeEntries.Find(entryId);
+        if (entry != null)
+            entry.SuccessCount++;
     }
 }

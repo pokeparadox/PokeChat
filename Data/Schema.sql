@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS greetings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     text TEXT NOT NULL,
     is_system INTEGER NOT NULL DEFAULT 0,
+    persona TEXT,
     created_at TEXT NOT NULL
 );
 
@@ -51,6 +52,7 @@ CREATE TABLE IF NOT EXISTS response_rules (
     pattern TEXT NOT NULL,
     input_type TEXT NOT NULL,
     is_active INTEGER NOT NULL DEFAULT 1,
+    persona TEXT,
     created_at TEXT NOT NULL
 );
 
@@ -85,6 +87,7 @@ CREATE TABLE IF NOT EXISTS bot_responses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     category TEXT NOT NULL,
     response_text TEXT NOT NULL,
+    persona TEXT,
     created_at TEXT NOT NULL
 );
 
@@ -243,5 +246,16 @@ CREATE TABLE IF NOT EXISTS riddles (
     answer TEXT NOT NULL,
     hint TEXT,
     difficulty INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS error_knowledge_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pattern TEXT NOT NULL,
+    suggestion TEXT NOT NULL,
+    language TEXT NOT NULL DEFAULT 'general',
+    is_learned INTEGER NOT NULL DEFAULT 0,
+    used_count INTEGER NOT NULL DEFAULT 0,
+    success_count INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
 );

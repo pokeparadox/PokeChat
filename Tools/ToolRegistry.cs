@@ -9,6 +9,8 @@ public class ToolConfig
     public int TimeoutMs { get; set; } = 10000;
     public string? ApiKey { get; set; }
     public string? Endpoint { get; set; }
+    public List<string>? AllowedCommands { get; set; }
+    public List<string>? AllowedPaths { get; set; }
 }
 
 public class ToolRegistry
@@ -64,10 +66,20 @@ public class ToolRegistry
 
     private void RegisterBuiltIn()
     {
+        var shellTool = new ShellCommandTool();
+        if (_configs.TryGetValue("shell_command", out var shellConfig) && shellConfig.AllowedCommands is { Count: > 0 })
+            shellTool = new ShellCommandTool(shellConfig.AllowedCommands);
+
+        var fileOpsTool = new FileOpsTool();
+        if (_configs.TryGetValue("file_ops", out var fileConfig) && fileConfig.AllowedPaths is { Count: > 0 })
+            fileOpsTool = new FileOpsTool(fileConfig.AllowedPaths);
+
         var tools = new ITool[]
         {
             new WebSearchTool(),
             new ReadUrlTool(),
+            shellTool,
+            fileOpsTool,
         };
 
         foreach (var tool in tools)

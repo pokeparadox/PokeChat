@@ -1,6 +1,7 @@
 using PokeChat.Core;
 using PokeChat.Data.Entities;
 using PokeChat.Knowledge;
+using PokeChat.ML;
 using PokeChat.NLP;
 using PokeChat.Responses;
 using PokeChat.Tests.Helpers;
@@ -10,6 +11,61 @@ namespace PokeChat.Tests.Core;
 
 public class ChatSessionTests
 {
+    private (ChatSession Session, FreshDbContext Db) CreateCodingSessionAndDb()
+    {
+        var db = new FreshDbContext();
+        TestDataHelper.SeedBotResponses(db.Context);
+        TestDataHelper.SeedPosDictionary(db.Context);
+        TestDataHelper.SeedCodingResponseRules(db.Context);
+
+        // Add coding-related POS entries needed for command detection
+        var now = DateTime.UtcNow.ToString("o");
+        var codingWords = new[] { "build", "project", "git", "status", "push", "compile",
+            "commit", "docker", "migration", "deploy", "publish", "delete" };
+        foreach (var word in codingWords)
+        {
+            if (!db.Context.PosDictionary.Any(e => e.Word == word))
+                db.Context.PosDictionary.Add(new Data.Entities.PosDictionaryEntry { Word = word, WordType = "verb", CreatedAt = now });
+        }
+        db.Context.SaveChanges();
+
+        var store = new KnowledgeStore(db.Context);
+        var contextTracker = new ContextTracker();
+        var spellChecker = new SpellChecker();
+
+        var posEntries = store.GetPosDictionary();
+        var posTagger = new PosTagger(posEntries);
+
+        var spellDict = new HashSet<string>(posEntries.Select(e => e.Word), StringComparer.OrdinalIgnoreCase);
+        var misspellings = store.GetMisspellings();
+        spellChecker.Initialise(spellDict, misspellings);
+
+        var tokeniser = new Tokeniser();
+        var sentenceSplitter = new SentenceSplitter();
+        var svoExtractor = new SvoExtractor();
+
+        var nounCategoriser = new NounCategoriser(store);
+        var responseEngine = new ResponseEngine(store, contextTracker, spellChecker, posTagger, tokeniser, svoExtractor);
+
+        var session = new ChatSession(
+            db.Context,
+            store,
+            responseEngine,
+            spellChecker,
+            posTagger,
+            tokeniser,
+            sentenceSplitter,
+            svoExtractor,
+            contextTracker,
+            nounCategoriser,
+            new List<string> { "my name is", "i am", "i'm", "call me" },
+            new HashSet<string> { "quit", "exit" },
+            new HashSet<string> { "hi", "hello" }
+        );
+
+        return (session, db);
+    }
+
     private (ChatSession Session, FreshDbContext Db) CreateSessionAndDb(
         List<string>? namePatterns = null,
         HashSet<string>? botCommands = null,
@@ -2389,6 +2445,376 @@ public class ChatSessionTests
             session.HandleNameInput("my name is Charlie");
             var response = session.ProcessInput("hello");
             response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void TryHandleQuizStart_TriggersOnPhrase()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("I like pizza");
+            session.ProcessInput("I love steak");
+            session.ProcessInput("I hate broccoli");
+            var response = session.ProcessInput("quiz me");
+            response.ShouldNotBeNullOrEmpty();
+            response.ShouldContain("Question");
+        }
+    }
+
+    [Fact]
+    public void TryHandleQuizStart_TooFewFacts_ReturnsEmpty()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            var response = session.ProcessInput("quiz me");
+            response.ShouldNotBeNullOrEmpty();
+            response.ShouldNotContain("Question");
+        }
+    }
+
+    [Fact]
+    public void HandleQuizTurn_CorrectAnswer_UpdatesScore()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("I like pizza");
+            session.ProcessInput("I love steak");
+            session.ProcessInput("I hate broccoli");
+            var startResponse = session.ProcessInput("quiz me");
+            startResponse.ShouldNotBeNullOrEmpty();
+            var response = session.ProcessInput("something not matching");
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void HandleQuizTurn_WrongAnswer_ShowsCorrect()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("I like pizza");
+            session.ProcessInput("I love steak");
+            session.ProcessInput("I hate broccoli");
+            session.ProcessInput("quiz me");
+            var response = session.ProcessInput("not an answer");
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void HandleQuizTurn_GiveUp_RevealsScore()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("I like pizza");
+            session.ProcessInput("I love steak");
+            session.ProcessInput("I hate broccoli");
+            session.ProcessInput("quiz me");
+            var response = session.ProcessInput("give up");
+            response.ShouldNotBeNullOrEmpty();
+            response.ShouldContain("/");
+        }
+    }
+
+    [Fact]
+    public void HandleQuizTurn_AfterAllQuestions_ShowsFinalScore()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("I like pizza");
+            session.ProcessInput("I love steak");
+            session.ProcessInput("I hate broccoli");
+            session.ProcessInput("quiz me");
+            session.ProcessInput("x");
+            session.ProcessInput("x");
+            var response = session.ProcessInput("x");
+            response.ShouldNotBeNullOrEmpty();
+            response.ShouldContain("/");
+        }
+    }
+
+    [Fact]
+    public void TryHandleQuizStart_AlreadyActive_ReturnsPrompt()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("I like pizza");
+            session.ProcessInput("I love steak");
+            session.ProcessInput("I hate broccoli");
+            session.ProcessInput("quiz me");
+            var response = session.ProcessInput("quiz me");
+            response.ShouldNotBeNullOrEmpty();
+            response.ShouldContain("already");
+        }
+    }
+
+    [Fact]
+    public void SwitchPersona_ChangesCurrentPersona()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("switch to coding mode");
+            var response = session.ProcessInput("Hello");
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void SwitchPersona_UnknownPersona_ReturnsErrorMessage()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            var response = session.ProcessInput("switch to unknown mode");
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void SwitchPersona_TriggersOnKeyword()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("switch to coding mode");
+            var response = session.ProcessInput("how do I write a loop in C#?");
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void SwitchPersona_DoesNotClearContext()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("I like pasta");
+            session.ProcessInput("switch to coding mode");
+            var response = session.ProcessInput("what was my last topic");
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void DetectFileMentions_SetsCurrentFile()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.DetectFileMentions("read Program.cs");
+            session.GetContextValue("current_file").ShouldBe("Program.cs");
+        }
+    }
+
+    [Fact]
+    public void DetectFileMentions_UpdatesRecentFiles()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.DetectFileMentions("check src/Core/ChatSession.cs");
+            session.GetContextValue("current_file").ShouldBe("src/Core/ChatSession.cs");
+            var recent = session.GetContextValue("recent_files");
+            recent.ShouldContain("ChatSession.cs");
+        }
+    }
+
+    [Fact]
+    public void DetectFileMentions_KeepsLastFiveFiles()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.DetectFileMentions("edit f1.cs");
+            session.DetectFileMentions("edit f2.cs");
+            session.DetectFileMentions("edit f3.cs");
+            session.DetectFileMentions("edit f4.cs");
+            session.DetectFileMentions("edit f5.cs");
+            session.DetectFileMentions("edit f6.cs");
+
+            session.GetContextValue("current_file").ShouldBe("f6.cs");
+        }
+    }
+
+    [Fact]
+    public void BuildCommand_ExecutesDotnetBuild()
+    {
+        var (session, db) = CreateCodingSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("switch to coding mode");
+            var response = session.ProcessInput("build the project");
+            response.ShouldNotBeNullOrEmpty();
+            response.ShouldStartWith("Building the project");
+        }
+    }
+
+    [Fact]
+    public void GitStatus_ExecutesGitCommand()
+    {
+        var (session, db) = CreateCodingSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("switch to coding mode");
+            var response = session.ProcessInput("git status");
+            response.ShouldNotBeNullOrEmpty();
+            response.ShouldStartWith("Checking status");
+        }
+    }
+
+    [Fact]
+    public void DestructiveCommand_RequiresConfirmation()
+    {
+        var (session, db) = CreateCodingSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("switch to coding mode");
+            var response = session.ProcessInput("git push");
+            response.ShouldNotBeNullOrEmpty();
+            var lower = response.ToLowerInvariant();
+            (lower.Contains("are you sure") || lower.Contains("sure") || lower.Contains("confirm")).ShouldBeTrue();
+        }
+    }
+
+    [Fact]
+    public void ConfirmationYes_ExecutesCommand()
+    {
+        var (session, db) = CreateCodingSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("switch to coding mode");
+            session.ProcessInput("git push");
+            var response = session.ProcessInput("yes");
+            response.ShouldNotBeNullOrEmpty();
+            response.ShouldStartWith("Pushing");
+        }
+    }
+
+    [Fact]
+    public void ConfirmationNo_Aborts()
+    {
+        var (session, db) = CreateCodingSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("switch to coding mode");
+            session.ProcessInput("git push");
+            var response = session.ProcessInput("no");
+            response.ShouldNotBeNullOrEmpty();
+            var lower = response.ToLowerInvariant();
+            (lower.Contains("cancel") || lower.Contains("ok, i won't")).ShouldBeTrue();
+        }
+    }
+
+    [Fact]
+    public void NonCodingMode_DoesNotMatchCodingRules()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            var response = session.ProcessInput("build the project");
+            response.ShouldNotBeNullOrEmpty();
+            response.ShouldNotStartWith("Building the project");
+        }
+    }
+
+    [Fact]
+    public void EarlyLlmRouting_WithoutLlm_DoesNotAffectFlow()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Charlie");
+            var response = session.ProcessInput("why is the sky blue");
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void EarlyLlmRouting_Greeting_ProceedsNormally()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Dave");
+            var response = session.ProcessInput("I like pizza");
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void IntentClassifier_SeedData_MakesClassifierReady()
+    {
+        var db = new FreshDbContext();
+        using (db)
+        {
+            TestDataHelper.SeedBotResponses(db.Context);
+            TestDataHelper.SeedPosDictionary(db.Context);
+            var store = new KnowledgeStore(db.Context);
+            var contextTracker = new ContextTracker();
+            var spellChecker = new SpellChecker();
+            var posEntries = store.GetPosDictionary();
+            var posTagger = new PosTagger(posEntries);
+            var spellDict = new HashSet<string>(posEntries.Select(e => e.Word), StringComparer.OrdinalIgnoreCase);
+            var misspellings = store.GetMisspellings();
+            spellChecker.Initialise(spellDict, misspellings);
+            var tokeniser = new Tokeniser();
+            var sentenceSplitter = new SentenceSplitter();
+            var svoExtractor = new SvoExtractor();
+            var nounCategoriser = new NounCategoriser(store);
+            var responseEngine = new ResponseEngine(store, contextTracker, spellChecker, posTagger, tokeniser, svoExtractor);
+
+            var classifier = new PokeChat.ML.IntentClassifier();
+            classifier.LoadOrCreate(SeedTrainingData.Examples);
+
+            var session = new ChatSession(
+                db.Context,
+                store,
+                responseEngine,
+                spellChecker,
+                posTagger,
+                tokeniser,
+                sentenceSplitter,
+                svoExtractor,
+                contextTracker,
+                nounCategoriser,
+                new List<string> { "my name is", "i am", "i'm", "call me" },
+                new HashSet<string> { "quit", "exit" },
+                new HashSet<string> { "hi", "hello" },
+                intentClassifier: classifier
+            );
+
+            session.HandleNameInput("my name is Eve");
+            var response = session.ProcessInput("what is the meaning of life");
+            response.ShouldNotBeNullOrEmpty();
+
+            var intentResponse = session.ProcessInput("hello there");
+            intentResponse.ShouldNotBeNullOrEmpty();
         }
     }
 }

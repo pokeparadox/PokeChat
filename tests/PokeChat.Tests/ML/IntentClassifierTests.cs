@@ -123,4 +123,43 @@ public class IntentClassifierTests
         classifier.Train(new List<(string Input, string Category)>());
         classifier.IsReady.ShouldBeFalse();
     }
+
+    [Fact]
+    public void LoadOrCreate_WithSeedData_TrainsClassifier()
+    {
+        var classifier = new IntentClassifier();
+        classifier.LoadOrCreate(SeedTrainingData.Examples);
+        classifier.IsReady.ShouldBeTrue();
+        classifier.GetCategories().Length.ShouldBeGreaterThan(0);
+        classifier.GetCategories().ShouldContain("greeting");
+        classifier.GetCategories().ShouldContain("complex_question");
+        classifier.GetCategories().ShouldContain("unknown");
+    }
+
+    [Fact]
+    public void Classify_WithSeedData_IdentifiesGreeting()
+    {
+        var classifier = new IntentClassifier();
+        classifier.LoadOrCreate(SeedTrainingData.Examples);
+        var intent = classifier.Classify("hey how are you");
+        intent.ShouldBe("greeting");
+    }
+
+    [Fact]
+    public void Classify_WithSeedData_IdentifiesComplexQuestion()
+    {
+        var classifier = new IntentClassifier();
+        classifier.LoadOrCreate(SeedTrainingData.Examples);
+        var intent = classifier.Classify("why is the sky blue");
+        intent.ShouldBe("complex_question");
+    }
+
+    [Fact]
+    public void Classify_WithSeedData_ReturnsNullForLowConfidence()
+    {
+        var classifier = new IntentClassifier();
+        classifier.LoadOrCreate(SeedTrainingData.Examples);
+        var intent = classifier.Classify("xylophone quantum paradigm");
+        intent.ShouldBe("unknown");
+    }
 }

@@ -61,6 +61,7 @@ public sealed class PokeChatDbContext : DbContext
     public DbSet<Riddle> Riddles => Set<Riddle>();
     public DbSet<RhymeGroup> RhymeGroups => Set<RhymeGroup>();
     public DbSet<PoemTemplate> PoemTemplates => Set<PoemTemplate>();
+    public DbSet<ErrorKnowledgeEntry> ErrorKnowledgeEntries => Set<ErrorKnowledgeEntry>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -116,6 +117,7 @@ public sealed class PokeChatDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Text).IsRequired();
             entity.Property(e => e.IsSystem).IsRequired();
+            entity.Property(e => e.Persona);
             entity.Property(e => e.CreatedAt).IsRequired();
         });
 
@@ -136,6 +138,7 @@ public sealed class PokeChatDbContext : DbContext
             entity.Property(e => e.Pattern).IsRequired();
             entity.Property(e => e.InputType).IsRequired();
             entity.Property(e => e.IsActive).IsRequired();
+            entity.Property(e => e.Persona);
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.HasMany(e => e.Responses)
                 .WithOne(e => e.Rule)
@@ -189,6 +192,7 @@ public sealed class PokeChatDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Category).IsRequired();
             entity.Property(e => e.ResponseText).IsRequired();
+            entity.Property(e => e.Persona);
             entity.Property(e => e.CreatedAt).IsRequired();
         });
 
@@ -390,6 +394,18 @@ public sealed class PokeChatDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Template).IsRequired();
             entity.Property(e => e.PoemType).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+        });
+
+        modelBuilder.Entity<ErrorKnowledgeEntry>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Pattern).IsRequired();
+            entity.Property(e => e.Suggestion).IsRequired();
+            entity.Property(e => e.Language).IsRequired();
+            entity.Property(e => e.IsLearned);
+            entity.Property(e => e.UsedCount);
+            entity.Property(e => e.SuccessCount);
             entity.Property(e => e.CreatedAt).IsRequired();
         });
     }

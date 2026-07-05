@@ -23,7 +23,7 @@ public class ResponseEngine
     private readonly PoetryGenerator _poetryGenerator;
     private readonly ToolRegistry? _toolRegistry;
     private readonly List<ResponseRuleRecord>? _toolTriggers;
-    private readonly Dictionary<string, List<string>> _botResponses;
+    private Dictionary<string, List<string>> _botResponses;
     private readonly Func<string, string?>? _llmGenerator;
     private readonly HashSet<string> _enhancedCategories;
     private readonly bool _summariseToolResults;
@@ -31,6 +31,7 @@ public class ResponseEngine
     private string _currentUserName = string.Empty;
     private string _botName = "PokeChat";
     private string? _currentUserInput;
+    private string _persona = "chat";
 
     private static readonly HashSet<string> ObjectPronouns = new(StringComparer.OrdinalIgnoreCase)
         { "you", "me", "him", "her", "them", "it", "us", "this", "that" };
@@ -45,6 +46,14 @@ public class ResponseEngine
         _botName = name;
     }
 
+    public void SetPersona(string persona)
+    {
+        _persona = persona;
+        _botResponses = _knowledgeStore.GetBotResponses(persona);
+    }
+
+    public string GetPersona() => _persona;
+
     public static bool IsDefaultCategory(string category)
     {
         return category == "default_response";
@@ -57,6 +66,9 @@ public class ResponseEngine
             || category == "haiku_response"
             || category == "limerick_response"
             || category == "random_fact_followup"
+            || category == "recommender"
+            || category == "timeline_response"
+            || category == "timeline_offer"
             || (category != null && category.StartsWith("proactive_"));
     }
 
@@ -187,6 +199,8 @@ public class ResponseEngine
             not null when category.StartsWith("temporal_") => "\U0001F550",
             not null when category is "user_fact_list" or "user_fact_none" or "user_stats" => "\U0001F4CA",
             not null when category == "compliment" => "\U0001F49B",
+            not null when category == "recommender" => "\U0001F381",
+            not null when category.StartsWith("timeline_") => "\U0001F4C5",
             _ => null
         };
     }
@@ -302,6 +316,17 @@ public class ResponseEngine
             "limerick_response" =>
                 $"Write a limerick (AABBA rhyme scheme) about {subj} or {obj}. Just the poem, no commentary.",
 
+            "recommender" =>
+                $"The user likes {verb}. Recommend {subj} as a related thing they might also like. " +
+                $"Be natural and curious. 1 sentence.",
+
+            "timeline_response" =>
+                $"The user asked for a timeline recap. Here are the facts: {subj}. " +
+                $"Present them as a natural, conversational weekly summary. 2-3 sentences.",
+
+            "timeline_offer" =>
+                $"Offer to recap what you've discussed this week. Friendly, casual. 1 sentence.",
+
             _ => $"The user said: \"{userInput}\". Respond naturally and conversationally. 1 sentence."
         };
 
@@ -392,8 +417,14 @@ public class ResponseEngine
         var linkResult = HandleLinkCreation(input);
         if (linkResult != null) return linkResult;
 
+        var timelineResult = HandleTimelineRequest(input, userId);
+        if (timelineResult != null) return timelineResult;
+
         var temporalResult = HandleTemporalQuery(input, userId);
         if (temporalResult != null) return temporalResult;
+
+        var entityResult = HandleEntityQuery(input, userId);
+        if (entityResult != null) return entityResult;
 
         var storyResult = HandleStoryRequest(input, userId);
         if (storyResult != null) return storyResult;
@@ -412,7 +443,7 @@ public class ResponseEngine
             if (compliment != null) return compliment;
         }
 
-        var rule = ResponseRules.MatchRule(input, _knowledgeStore, _toolTriggers, _intentClassifier, _context);
+        var rule = ResponseRules.MatchRule(input, _knowledgeStore, _toolTriggers, _intentClassifier, _context, _persona);
 
         if (rule != null && rule.Responses.Count > 0)
         {
@@ -538,6 +569,15 @@ public class ResponseEngine
             }
         }
 
+        var recommenderResult = BuildRecommendation(userId);
+        if (recommenderResult != null) return recommenderResult;
+
+        var timelineOffer = BuildProactiveTimelineOffer(userId);
+        if (timelineOffer != null) return timelineOffer;
+
+        var connectionNotice = BuildEntityConnectionNotice(userId);
+        if (connectionNotice != null) return connectionNotice;
+
         return GenerateProactiveQuestion(userId);
     }
 
@@ -660,6 +700,23 @@ public class ResponseEngine
             nameof(PredicateType.GeneralFact) => ("proactive_general_fact", new object[] { subj, conjVerb, obj }),
             _ => ("proactive_general", new object[] { obj, subj, verb })
         };
+    }
+
+    private string? BuildRecommendation(int? userId)
+    {
+        if (!userId.HasValue || Random.Shared.Next(8) != 0)
+            return null;
+
+        var recommenderGiven = _context.GetContext(ContextKeys.RecommenderGiven);
+        if (!string.IsNullOrEmpty(recommenderGiven))
+            return null;
+
+        var recommendation = _knowledgeStore.GetRecommendation(userId.Value);
+        if (recommendation.LikedItem == null)
+            return null;
+
+        _context.SetContext(ContextKeys.RecommenderGiven, "true");
+        return GetRandomResponse("recommender", recommendation.Suggestion, recommendation.LikedItem, recommendation.Category);
     }
 
     private string? HandleSentiment()
@@ -814,6 +871,122 @@ public class ResponseEngine
         var summaries = facts.Take(3).Select(f => $"{f.Subject} {f.Verb} {f.Object}");
         var joined = string.Join("; ", summaries);
         return GetRandomResponse("temporal_fact_list", timeExpr, joined);
+    }
+
+    private string? HandleTimelineRequest(string input, int? userId)
+    {
+        if (userId == null) return null;
+
+        var lower = input.ToLowerInvariant().Trim();
+        var isTimelineRequest = lower.Contains("what happened this week") ||
+                                lower.Contains("what did i say yesterday") ||
+                                lower.Contains("recap my week") ||
+                                lower.Contains("recap my day") ||
+                                lower == "journal" ||
+                                lower == "timeline" ||
+                                lower.StartsWith("journal ") ||
+                                lower.StartsWith("timeline ");
+
+        if (!isTimelineRequest) return null;
+
+        var facts = _knowledgeStore.GetFactsByUser(userId.Value);
+        if (facts.Count == 0)
+            return GetRandomResponse("timeline_empty");
+
+        var now = DateTime.UtcNow;
+        var weekAgo = now.AddDays(-7);
+        var recentFacts = _knowledgeStore.GetFactsInDateRange(userId.Value, weekAgo, now);
+        if (recentFacts.Count == 0)
+            return GetRandomResponse("timeline_empty");
+
+        var timeline = _knowledgeStore.BuildTimeline(recentFacts);
+        return GetRandomResponse("timeline_response", timeline);
+    }
+
+    private string? BuildProactiveTimelineOffer(int? userId)
+    {
+        if (!userId.HasValue || Random.Shared.Next(10) != 0)
+            return null;
+
+        var timelineOffered = _context.GetContext(ContextKeys.TimelineOffered);
+        if (!string.IsNullOrEmpty(timelineOffered))
+            return null;
+
+        var sessionId = _context.GetContext(ContextKeys.SessionId);
+        if (string.IsNullOrEmpty(sessionId))
+            return null;
+
+        var turnCount = _knowledgeStore.GetSessionConversationCount(sessionId);
+        if (turnCount < 5)
+            return null;
+
+        _context.SetContext(ContextKeys.TimelineOffered, "true");
+        return GetRandomResponse("timeline_offer");
+    }
+
+    private string? HandleEntityQuery(string input, int? userId)
+    {
+        if (userId == null) return null;
+
+        var lower = input.ToLowerInvariant().Trim();
+
+        var relationMatch = Regex.Match(lower, @"^does\s+(.+?)\s+(.+?)\s+(.+?)$");
+        if (relationMatch.Success)
+        {
+            var subject = relationMatch.Groups[1].Value.Trim();
+            var verb = relationMatch.Groups[2].Value.Trim();
+            var obj = relationMatch.Groups[3].Value.Trim();
+
+            var exists = _knowledgeStore.CheckRelation(userId.Value, subject, verb, obj);
+            if (exists)
+                return GetRandomResponse("entity_relation_yes", subject, verb, obj);
+            return GetRandomResponse("entity_relation_no", subject, verb, obj);
+        }
+
+        var connectionMatch = Regex.Match(lower, @"^how\s+is\s+(.+?)\s+connected\s+to\s+(.+?)$");
+        if (connectionMatch.Success)
+        {
+            var fromEntity = connectionMatch.Groups[1].Value.Trim();
+            var toEntity = connectionMatch.Groups[2].Value.Trim();
+
+            var path = _knowledgeStore.FindPath(userId.Value, fromEntity, toEntity);
+            if (path != null)
+                return GetRandomResponse("entity_relation_path", fromEntity, toEntity, path);
+            return GetRandomResponse("entity_relation_unknown", fromEntity, toEntity);
+        }
+
+        var tellMatch = Regex.Match(lower, @"^(?:tell me about|what is|what do you know about)\s+(.+)$");
+        if (tellMatch.Success)
+        {
+            var entity = tellMatch.Groups[1].Value.Trim();
+            var connected = _knowledgeStore.GetConnectedEntities(userId.Value, entity);
+            if (connected.Count == 0)
+                return GetRandomResponse("entity_relation_unknown", entity, "");
+
+            var names = string.Join(", ", connected.Take(5));
+            return GetRandomResponse("entity_relation_connected", entity, names);
+        }
+
+        return null;
+    }
+
+    private string? BuildEntityConnectionNotice(int? userId)
+    {
+        if (!userId.HasValue || Random.Shared.Next(10) != 0)
+            return null;
+
+        var facts = _knowledgeStore.GetFactsByUser(userId.Value);
+        if (facts.Count < 3)
+            return null;
+
+        var fact = facts[Random.Shared.Next(facts.Count)];
+        var connected = _knowledgeStore.GetConnectedEntities(userId.Value, fact.Object);
+        var others = connected.Where(c => !string.Equals(c, fact.Subject, StringComparison.OrdinalIgnoreCase)).ToList();
+        if (others.Count == 0)
+            return null;
+
+        var other = others[Random.Shared.Next(others.Count)];
+        return GetRandomResponse("entity_connection_notice", fact.Object, other);
     }
 
     private string? HandleInferenceResponse()

@@ -12,6 +12,7 @@ public static class DbSeeder
         SeedGreetings(context, now);
         SeedGreetingWords(context, now);
         SeedResponseRules(context, now);
+        SeedCodingResponseRules(context, now);
         SeedPosDictionary(context, now);
         SeedNamePatterns(context, now);
         SeedBotCommands(context, now);
@@ -30,6 +31,7 @@ public static class DbSeeder
         SeedPoemTemplates(context, now);
         SeedBotResponses(context, now);
         SeedHangmanBotResponses(context, now);
+        SeedErrorKnowledgeEntries(context, now);
 
         context.SaveChanges();
     }
@@ -175,6 +177,30 @@ public static class DbSeeder
             {
                 "Let me look that up. {tool:web_search:{$2}}"
             }),
+            (@"^(run|execute|shell)\s+(command|cmd)\s+(.+)", "Statement", new[]
+            {
+                "Running command: {$3}. {tool:shell_command:{$3}}"
+            }),
+            (@"^run\s+(.+)", "Statement", new[]
+            {
+                "Running that now. {tool:shell_command:{$1}}"
+            }),
+            (@"^(read|show|open)\s+(file\s+)?(.+)", "Statement", new[]
+            {
+                "Let me read that file. {tool:file_ops:read:{$3}}"
+            }),
+            (@"^(write|create|save)\s+(file\s+)?(.+)\s*$", "Statement", new[]
+            {
+                "I'll create that file. {tool:file_ops:write:{$3}}"
+            }),
+            (@"^(list|show|ls)\s+(files|directory|dir|folder)\s+(.+)", "Statement", new[]
+            {
+                "Listing directory contents. {tool:file_ops:list:{$3}}"
+            }),
+            (@"^(search|find|grep)\s+(in\s+)?(.+?)\s+(for\s+)?(.+)", "Statement", new[]
+            {
+                "Searching for '{4}' in {3}. {tool:file_ops:search:{$3}:{$4}}"
+            }),
         };
 
         foreach (var (pattern, inputType, responses) in rules)
@@ -189,6 +215,146 @@ public static class DbSeeder
                 {
                     ResponseText = r
                 }).ToList()
+            };
+            context.ResponseRules.Add(rule);
+        }
+    }
+
+    private static void SeedCodingResponseRules(PokeChatDbContext context, string now)
+    {
+        if (context.ResponseRules.Any(r => r.Persona == "coding")) return;
+
+        var rules = new (string Pattern, string InputType, string Response)[]
+        {
+            // Build
+            (@"^(build|compile|make)\s+(the\s+)?project", "Statement", "Building the project. {tool:shell_command:dotnet:build}"),
+            (@"^(build|compile|make)\s+(the\s+)?solution", "Statement", "Building the solution. {tool:shell_command:dotnet:build}"),
+            (@"^rebuild\b", "Statement", "Rebuilding. {tool:shell_command:dotnet:clean} && dotnet build"),
+            (@"^build\s+release", "Statement", "Building release. {tool:shell_command:dotnet:build:-c:Release}"),
+            (@"^build\s+debug", "Statement", "Building debug. {tool:shell_command:dotnet:build:-c:Debug}"),
+            (@"^restore\s+(packages|dependencies|nuget)", "Statement", "Restoring packages. {tool:shell_command:dotnet:restore}"),
+            (@"^clean\s+(the\s+)?project", "Statement", "Cleaning project. {tool:shell_command:dotnet:clean}"),
+            (@"^publish\s+(the\s+)?project", "Statement", "Publishing. {tool:shell_command:dotnet:publish}"),
+
+            // Test
+            (@"^(run\s+)?(the\s+)?tests?\b", "Statement", "Running tests. {tool:shell_command:dotnet:test}"),
+            (@"^test\s+(a\s+)?specific\s+(test|file)\s+(.+)", "Statement", "Running specific test. {tool:shell_command:dotnet:test:--filter:{$3}}"),
+            (@"^(run\s+)?all\s+(the\s+)?tests", "Statement", "Running all tests. {tool:shell_command:dotnet:test}"),
+            (@"^(run\s+)?(unit|integration)\s+tests", "Statement", "Running tests. {tool:shell_command:dotnet:test}"),
+            (@"^test\s+(category|tag)\s+(.+)", "Statement", "Running tests by category. {tool:shell_command:dotnet:test:--filter:Category={$2}}"),
+            (@"^(coverage|code\s+coverage)\b", "Statement", "Running tests with coverage. {tool:shell_command:dotnet:test:--collect:XPlat Code Coverage}"),
+
+            // Git
+            (@"^(git\s+)?status\b", "Statement", "Checking status. {tool:shell_command:git:status}"),
+            (@"^(what|show)\s+(is\s+)?(the\s+)?(current\s+)?branch", "Statement", "Checking branch. {tool:shell_command:git:branch:--show-current}"),
+            (@"^(git\s+)?log\b", "Statement", "Showing log. {tool:shell_command:git:log:--oneline:-10}"),
+            (@"^(git\s+)?diff\b(?!.*--cached)", "Statement", "Showing diff. {tool:shell_command:git:diff}"),
+            (@"^(git\s+)?(staged|staging|index)\s+diff", "Statement", "Showing staged diff. {tool:shell_command:git:diff:--cached}"),
+            (@"^(git\s+)?commit\s+(.+)$", "Statement", "Committing. {tool:shell_command:git:add:-A && git commit -m \"{$2}\"}"),
+            (@"^(git\s+)?push\b", "Statement", "Pushing. {tool:shell_command:git:push}"),
+            (@"^(git\s+)?pull\b", "Statement", "Pulling. {tool:shell_command:git:pull}"),
+            (@"^(git\s+)?(fetch|sync)\b", "Statement", "Fetching. {tool:shell_command:git:fetch}"),
+            (@"^(git\s+)?merge\s+(.+)", "Statement", "Merging. {tool:shell_command:git:merge:{$2}}"),
+            (@"^(git\s+)?checkout\s+(.+)", "Statement", "Checking out. {tool:shell_command:git:checkout:{$2}}"),
+            (@"^(git\s+)?(create|new)\s+branch\s+(.+)", "Statement", "Creating branch. {tool:shell_command:git:checkout:-b {$3}}"),
+            (@"^(git\s+)?(delete|remove)\s+branch\s+(.+)", "Statement", "Deleting branch. {tool:shell_command:git:branch:-d {$3}}"),
+            (@"^(git\s+)?stash\b(?!.*pop)", "Statement", "Stashing. {tool:shell_command:git:stash}"),
+            (@"^(git\s+)?(stash\s+pop|unstash)", "Statement", "Popping stash. {tool:shell_command:git:stash:pop}"),
+            (@"^(git\s+)?add\s+(all|\.|everything)", "Statement", "Adding all. {tool:shell_command:git:add:-A}"),
+            (@"^(git\s+)?add\s+(.+)", "Statement", "Adding files. {tool:shell_command:git:add:{$2}}"),
+            (@"^(git\s+)?reset\b(?!.*--hard)", "Statement", "Resetting. {tool:shell_command:git:reset}"),
+            (@"^(git\s+)?(show|display)\s+(.+)", "Statement", "Showing. {tool:shell_command:git:show:{$3}}"),
+            (@"^(git\s+)?(tag|tags)\b", "Statement", "Listing tags. {tool:shell_command:git:tag}"),
+            (@"^(git\s+)?remote\b", "Statement", "Showing remotes. {tool:shell_command:git:remote:-v}"),
+            (@"^(git\s+)?reflog\b", "Statement", "Showing reflog. {tool:shell_command:git:reflog}"),
+            (@"^(git\s+)?blame\s+(.+)", "Statement", "Showing blame. {tool:shell_command:git:blame:{$2}}"),
+
+            // Run
+            (@"^run\s+(the\s+)?project\b", "Statement", "Running project. {tool:shell_command:dotnet:run}"),
+            (@"^start\s+(.+)", "Statement", "Starting. {tool:shell_command:{$1}}"),
+            (@"^execute\s+(.+)", "Statement", "Executing. {tool:shell_command:{$1}}"),
+
+            // Package
+            (@"^add\s+(nuget\s+)?package\s+(.+)", "Statement", "Adding package. {tool:shell_command:dotnet:add:package:{$2}}"),
+            (@"^remove\s+(nuget\s+)?package\s+(.+)", "Statement", "Removing package. {tool:shell_command:dotnet:remove:package:{$2}}"),
+            (@"^(list|show)\s+(nuget\s+)?packages", "Statement", "Listing packages. {tool:shell_command:dotnet:list:package}"),
+            (@"^(update|upgrade)\s+(nuget\s+)?package\s+(.+)", "Statement", "Updating package. {tool:shell_command:dotnet:add:package:{$3}}"),
+            (@"^(search|find)\s+nuget\s+(.+)", "Statement", "Searching NuGet. {tool:shell_command:dotnet:nuget:search:{$2}}"),
+            (@"^(list|show)\s+outdated\s+packages", "Statement", "Checking outdated packages. {tool:shell_command:dotnet:list:package:--outdated}"),
+            (@"^add\s+(npm|node)\s+package\s+(.+)", "Statement", "Adding npm package. {tool:shell_command:npm:install:{$3}}"),
+            (@"^remove\s+(npm|node)\s+package\s+(.+)", "Statement", "Removing npm package. {tool:shell_command:npm:uninstall:{$3}}"),
+
+            // Lint/format
+            (@"^(format|fmt|beautify)\s+(code|files|project)", "Statement", "Formatting code. {tool:shell_command:dotnet:format}"),
+            (@"^(analyze|analyse)\b", "Statement", "Analyzing. {tool:shell_command:dotnet:analyze}"),
+            (@"^lint\b", "Statement", "Linting. {tool:shell_command:dotnet:format:--verify-no-changes}"),
+            (@"^(check|verify)\s+types\b", "Statement", "Checking types. {tool:shell_command:npx:tsc:--noEmit}"),
+
+            // DB/Migrations
+            (@"^(add|create)\s+migration\s+(.+)", "Statement", "Adding migration. {tool:shell_command:dotnet:ef:migrations:add:{$2}}"),
+            (@"^remove\s+(last\s+)?migration", "Statement", "Removing migration. {tool:shell_command:dotnet:ef:migrations:remove}"),
+            (@"^(apply|run|execute)\s+migrations", "Statement", "Applying migrations. {tool:shell_command:dotnet:ef:database:update}"),
+            (@"^(list|show)\s+migrations", "Statement", "Listing migrations. {tool:shell_command:dotnet:ef:migrations:list}"),
+            (@"^(generate|create)\s+script\b", "Statement", "Generating script. {tool:shell_command:dotnet:ef:migrations:script}"),
+            (@"^update\s+database", "Statement", "Updating database. {tool:shell_command:dotnet:ef:database:update}"),
+
+            // Dotnet generic
+            (@"^(check|verify)\s+(sdk|dotnet)\s+version", "Statement", "Checking version. {tool:shell_command:dotnet:--version}"),
+            (@"^(list|show)\s+(sdk|dotnet)\s+(versions|sdks)", "Statement", "Listing SDKs. {tool:shell_command:dotnet:--list-sdks}"),
+            (@"^(list|show)\s+runtimes", "Statement", "Listing runtimes. {tool:shell_command:dotnet:--list-runtimes}"),
+            (@"^(new|create)\s+(console|app)\s+(.+)", "Statement", "Creating project. {tool:shell_command:dotnet:new:console:-n:{$3}}"),
+            (@"^(new|create)\s+(class\s+)?library\s+(.+)", "Statement", "Creating library. {tool:shell_command:dotnet:new:classlib:-n:{$3}}"),
+            (@"^(new|create)\s+(xunit|test)\s+project\s+(.+)", "Statement", "Creating test project. {tool:shell_command:dotnet:new:xunit:-n:{$3}}"),
+            (@"^(new|create)\s+(web|api)\s+(.+)", "Statement", "Creating web API. {tool:shell_command:dotnet:new:webapi:-n:{$3}}"),
+            (@"^(new|create)\s+(sln|solution)\s+(.+)", "Statement", "Creating solution. {tool:shell_command:dotnet:new:slnx:-n:{$3}}"),
+            (@"^add\s+project\s+reference\s+(.+)", "Statement", "Adding reference. {tool:shell_command:dotnet:add:reference:{$3}}"),
+            (@"^(list|show)\s+references", "Statement", "Listing references. {tool:shell_command:dotnet:list:reference}"),
+
+            // File ops
+            (@"^(list|show)\s+(files|directory|dir)\s+(.+)", "Statement", "Listing directory. {tool:shell_command:ls:-la:{$3}}"),
+            (@"^(list|show)\s+(files|directory|dir)", "Statement", "Listing directory. {tool:shell_command:ls:-la}"),
+            (@"^(find|search)\s+(for\s+)?(.+?)\s+in\s+(.+)", "Statement", "Searching. {tool:shell_command:grep:-r:\"{$3}\":{$5}}"),
+            (@"^(count|wc)\s+(lines|words)\s+(in\s+)?(.+)", "Statement", "Counting. {tool:shell_command:wc:{$4}}"),
+            (@"^show\s+(file\s+)?(tree|structure)", "Statement", "Showing tree. {tool:shell_command:tree}"),
+            (@"^(disk|storage|space)\b", "Statement", "Checking disk. {tool:shell_command:df:-h}"),
+            (@"^(current|working)\s+(directory|path|folder)", "Statement", "Showing path. {tool:shell_command:pwd}"),
+            (@"^(size|usage)\s+(of\s+)?(.+)", "Statement", "Checking size. {tool:shell_command:du:-sh:{$3}}"),
+
+            // Docker
+            (@"^docker\s+(ps|processes|containers)\b", "Statement", "Listing containers. {tool:shell_command:docker:ps}"),
+            (@"^docker\s+all\s+containers", "Statement", "Listing all containers. {tool:shell_command:docker:ps:-a}"),
+            (@"^docker\s+(images|image\s+list)", "Statement", "Listing images. {tool:shell_command:docker:images}"),
+            (@"^docker\s+build\s+(.+)", "Statement", "Building image. {tool:shell_command:docker:build:-t:{$2}:.}"),
+            (@"^docker\s+(compose\s+)?up\b", "Statement", "Starting compose. {tool:shell_command:docker:compose:up:-d}"),
+            (@"^docker\s+(compose\s+)?down", "Statement", "Stopping compose. {tool:shell_command:docker:compose:down}"),
+            (@"^docker\s+logs\s+(.+)", "Statement", "Showing logs. {tool:shell_command:docker:logs:{$2}}"),
+            (@"^docker\s+(stop|kill)\s+(.+)", "Statement", "Stopping container. {tool:shell_command:docker:stop:{$2}}"),
+
+            // Misc
+            (@"^(kill|stop)\s+(port|process)\s+(\d+)", "Statement", "Killing process. {tool:shell_command:kill:$(lsof -ti:{$3})}"),
+            (@"^zip\s+(.+)", "Statement", "Zipping. {tool:shell_command:zip:-r:{$2}.zip:{$2}}"),
+            (@"^unzip\s+(.+)", "Statement", "Unzipping. {tool:shell_command:unzip:{$2}}"),
+            (@"^(whoami|who\s+am\s+i)", "Statement", "Checking user. {tool:shell_command:whoami}"),
+            (@"^(date|time|now|today)", "Statement", "Checking date. {tool:shell_command:date}"),
+            (@"^uptime", "Statement", "Checking uptime. {tool:shell_command:uptime}"),
+            (@"^(system|os)\s+(info|version)", "Statement", "Checking system info. {tool:shell_command:uname:-a}"),
+            (@"^(memory|ram|mem)\b", "Statement", "Checking memory. {tool:shell_command:free:-h}"),
+            (@"^(network|ip|address)\b", "Statement", "Checking network. {tool:shell_command:ip:addr}"),
+        };
+
+        foreach (var (pattern, inputType, response) in rules)
+        {
+            var rule = new ResponseRule
+            {
+                Pattern = pattern,
+                InputType = inputType,
+                IsActive = true,
+                Persona = "coding",
+                CreatedAt = now,
+                Responses = new List<ResponseRuleResponse>
+                {
+                    new() { ResponseText = response }
+                }
             };
             context.ResponseRules.Add(rule);
         }
@@ -744,6 +910,108 @@ public static class DbSeeder
         }));
     }
 
+    private static void SeedErrorKnowledgeEntries(PokeChatDbContext context, string now)
+    {
+        if (context.ErrorKnowledgeEntries.Any()) return;
+
+        var entries = new (string Pattern, string Suggestion)[]
+        {
+            // ── CS compiler errors ──
+            (@"CS1009", "Unrecognised escape sequence. Use a verbatim string literal with @\"...\" or double the backslash."),
+            (@"CS0103.*does not exist", "The name isn't defined in the current context. Check spelling, add a using directive, or declare the variable."),
+            (@"CS0117.*does not contain a definition", "The type doesn't have that member. Check the spelling and that you're using the right type."),
+            (@"CS0120.*object reference", "You need an instance reference to access a non-static member. Create an instance or make the member static."),
+            (@"CS0161.*not all code paths return", "Your method has a code path that doesn't return a value. Add a return statement or throw an exception at the end."),
+            (@"CS0246.*could not be found", "A type or namespace is missing. Add a using directive, install the NuGet package, or fix the type name."),
+            (@"CS0266.*cannot implicitly convert", "Type mismatch — add an explicit cast. Example: `(int)value` or use `.Cast<T>()`."),
+            (@"CS0305.*requires.*type arguments", "You're using a generic type without specifying type arguments. Add `<...>` with the required types."),
+            (@"CS0428.*cannot convert method group", "You're using a method name without parentheses or without converting it to a delegate. Add `()` to call it."),
+            (@"CS0433.*exists in both", "The type is defined in two different assemblies. Use an extern alias or fully qualify the type name."),
+            (@"CS0612|CS0619", "The member is marked as obsolete. Check the error message for the suggested replacement."),
+            (@"CS0650.*bad array declarator", "Use `new int[] { ... }` or `new[] { ... }` syntax, not `int[] array = new[];`."),
+            (@"CS0841.*cannot use local variable.*before it is declared", "Move the variable declaration before its usage. In C#, variables must be declared before use."),
+            (@"CS1002.*; expected", "You're missing a semicolon at the end of a statement. Add `;`."),
+            (@"CS1010.*newline in constant", "A string literal has an unescaped newline. Use `\\n` for line breaks or a verbatim string."),
+            (@"CS1026.*\) expected", "Missing a closing parenthesis. Check that all opening `(` have matching `)`."),
+            (@"CS1501.*no overload.*takes", "You're calling a method with the wrong number of arguments. Check the method signature."),
+            (@"CS1502.*best overloaded match", "The method call doesn't match any overload. Check parameter types and count."),
+            (@"CS1503.*cannot convert from.*to", "You're passing the wrong type to a method parameter. Convert the value or use the correct type."),
+            (@"CS1513.*} expected", "Missing a closing brace. Make sure every opening `{` has a matching `}`."),
+            (@"CS1525.*invalid expression term", "Unexpected token in expression. Check for missing operators or misplaced keywords."),
+            (@"CS1579.*foreach.*cannot operate", "The type doesn't implement `IEnumerable` or `IEnumerable<T>`. Make sure it has a `GetEnumerator` method."),
+            (@"CS1591.*missing XML comment", "Add an XML doc comment (`/// <summary>...</summary>`) to the public member, or disable the warning with `#pragma warning disable 1591`."),
+            (@"CS1955.*non-invocable member", "You're trying to call something that isn't a method or delegate. Use it without `()`."),
+            (@"CS7036.*no argument given", "You're missing a required parameter. Provide all required arguments to the method or constructor."),
+            (@"CS8129.*No suitable *Find* method", "Use `.FirstOrDefault()` or `.SingleOrDefault()` instead of a custom `Find` pattern."),
+            (@"CS8370.*not available in C#", "The feature requires a newer C# version. Update the `<LangVersion>` in your `.csproj` or target a newer framework."),
+            (@"CS8600.*null literal.*non-nullable", "You're assigning null to a non-nullable reference type. Use `T?` for nullable or add a null check."),
+            (@"CS8602.*dereference of a possibly null reference", "The variable could be null. Add a null check with `?.` or an `if (x != null)` guard."),
+            (@"CS8604.*possible null reference argument", "You're passing a potentially null value to a method that expects non-null. Add a null check."),
+            (@"CS8618.*non-nullable.*not initialized", "A non-nullable property/field isn't set by the constructor. Initialize it or make it nullable."),
+            (@"CS8625.*cannot convert null literal", "You're passing null where a non-nullable type is expected. Use `null!` to suppress or fix the type."),
+            (@"CS8981.*naming convention", "The type name doesn't follow C# naming conventions. Use PascalCase for types."),
+
+            // ── Runtime exceptions ──
+            (@"NullReferenceException", "An object reference was null. Check that you've initialised the object before using it with `.` or `[]`."),
+            (@"InvalidOperationException", "The operation isn't valid in the current state. Check preconditions before calling the method."),
+            (@"ArgumentNullException", "A required argument was null. Check that you're passing a valid value to the method."),
+            (@"IndexOutOfRangeException", "You're trying to access an index that's outside the array or list bounds. Check your loop condition and array length."),
+            (@"DivideByZeroException", "You're dividing by zero. Add a check for zero before the division."),
+            (@"FileNotFoundException", "The file wasn't found. Check the file path, working directory, and that the file exists."),
+            (@"DirectoryNotFoundException", "The directory wasn't found. Check the path and create the directory if needed."),
+            (@"UnauthorizedAccessException", "You don't have permission to access that resource. Run with elevated privileges or check file permissions."),
+            (@"PathTooLongException", "The file path exceeds the system maximum length. Use shorter path or file names."),
+            (@"InvalidCastException", "An invalid cast was attempted. Use `as` with a null check or `is` pattern matching instead."),
+            (@"FormatException", "The input string wasn't in the correct format. Use `TryParse` instead of `Parse` to handle bad input gracefully."),
+            (@"OverflowException", "A numeric value overflowed. Use `checked` blocks or `TryParse` to detect overflows."),
+            (@"TimeoutException", "The operation timed out. Increase the timeout duration or check network/server connectivity."),
+            (@"TaskCanceledException", "The task was cancelled. Check for cancellation token usage or timeout settings."),
+            ((@"HttpRequestException|WebException"), "A network request failed. Check your internet connection, the URL, and API endpoint availability."),
+            (@"JsonException.*deserialize", "JSON couldn't be deserialised. Check that the JSON matches your model's structure and property names."),
+            ((@"SqliteException|SqlException"), "A database error occurred. Check your connection string, database file path, and SQL syntax."),
+
+            // ── Build / MSBuild / NuGet ──
+            (@"NU1603.*dependency.*specified", "A NuGet package dependency version is not exactly specified. Add a `<PackageReference Version=\"...\" />` to pin it."),
+            (@"NU1605.*detected package downgrade", "A NuGet package was downgraded. Add a direct `<PackageReference>` with the version you want."),
+            (@"NETSDK1004.*Assets file not found", "NuGet assets are missing. Run `dotnet restore` to restore packages."),
+            (@"NETSDK1045.*not installed", "The target framework isn't installed. Install the required .NET SDK or change the `<TargetFramework>`."),
+            (@"NETSDK1083.*not found", "A file referenced in the project wasn't found. Check that the file exists at the specified path."),
+            (@"MSB3030.*could not be copied", "A referenced file couldn't be copied — it may be locked by another process. Close other programs and rebuild."),
+            (@"MSB4018.*unexpected error", "The MSBuild task failed unexpectedly. Check the error details above in the build output."),
+            (@"MSB4062.*could not be loaded", "An MSBuild task assembly couldn't be loaded. Restore NuGet packages and check for version mismatches."),
+            (@"warning MSB3270", "There's a bitness mismatch between your project and a referenced assembly. Check platform targets."),
+
+            // ── .NET EF / CLI ──
+            (@"No DbContext was found", "Ensure your DbContext class is public and in the startup project. Add `dotnet ef` package references."),
+            (@"provider.*not found.*UseSqlServer", "Make sure you've installed the EF Core provider package for your database (e.g. `Microsoft.EntityFrameworkCore.Sqlite`)."),
+            (@"migration.*already exists", "A migration with that name already exists. Use a different name or run `dotnet ef migrations remove` first."),
+            (@"The binary operator.*not defined", "You can't use that operator with the given types. Check operand types — e.g. can't use `==` on structs without overload."),
+            (@"Anonymous type.*not supported", "Anonymous types can't be used in that context. Create a named type or use a tuple."),
+            (@"The name.*does not exist in.*current context", "A variable or type name isn't recognised. Check spelling, scope, and `using` directives."),
+
+            // ── ASP.NET / Web ──
+            (@"HTTP 404.*not found", "The URL route wasn't found. Check your controller name, action name, and route attributes."),
+            (@"HTTP 500.*internal server", "The server encountered an error. Check your application logs for the full exception details."),
+            (@"HTTP 400.*bad request", "The request was malformed. Check that your JSON body matches the expected model structure."),
+            (@"HTTP 401.*unauthorized", "Authentication is required. Add an `Authorize` attribute or provide credentials."),
+            (@"HTTP 403.*forbidden", "You don't have permission to access this resource. Check your authorisation roles and claims."),
+            (@"HTTP 429.*too many requests", "You're being rate-limited. Add a delay between requests and respect the `Retry-After` header."),
+            (@"Connection refused", "The server isn't running or isn't accepting connections. Make sure the service is started and the port is correct."),
+            (@"SSL.*certificate.*invalid", "The SSL certificate is invalid or self-signed. For development, set `ServicePointManager.ServerCertificateValidationCallback`."),
+        };
+
+        context.ErrorKnowledgeEntries.AddRange(entries.Select(e => new ErrorKnowledgeEntry
+        {
+            Pattern = e.Pattern,
+            Suggestion = e.Suggestion,
+            Language = "general",
+            IsLearned = false,
+            UsedCount = 0,
+            SuccessCount = 0,
+            CreatedAt = now
+        }));
+    }
+
     private static void SeedJokes(PokeChatDbContext context, string now)
     {
         if (context.Jokes.Any()) return;
@@ -1130,6 +1398,16 @@ public static class DbSeeder
             ("tool_timeout", "I couldn't get an answer in time. What else can I help with?"),
             ("tool_error", "I tried looking that up but got an error."),
             ("tool_error", "Something went wrong when I tried that."),
+            ("shell_blocked", "I'm not allowed to run that command."),
+            ("shell_blocked", "That command isn't on my allowed list."),
+            ("shell_blocked", "I can't execute that — it's not in my permitted commands."),
+            ("shell_error", "That command returned an error."),
+            ("shell_error", "The command didn't run successfully."),
+            ("file_blocked", "I'm not allowed to access files outside the project directory."),
+            ("file_blocked", "That file is outside my allowed directories."),
+            ("file_blocked", "I can't operate on files in that location."),
+            ("file_error", "I had trouble with that file operation."),
+            ("file_error", "Something went wrong with the file operation."),
             ("llm_offer", "I don't know how to answer that. Should I use my AI to respond?"),
             ("llm_offer", "I'm not sure what to say. Would you like me to ask my AI?"),
             ("llm_thinking", "Let me check with my AI..."),
@@ -1237,6 +1515,57 @@ public static class DbSeeder
             ("compliment", "I love that you {0}!"),
             ("compliment", "It's awesome that you {0}!"),
             ("compliment", "You have amazing taste — {0}!"),
+            ("recommender", "You like {1}. People who like {1} often also like {0}. What do you think?"),
+            ("recommender", "Since you like {1}, I bet you'd enjoy {0} too. What do you think?"),
+            ("recommender", "I noticed you like {1}. Have you ever tried {0}?"),
+            ("timeline_response", "Here's your week on record:\n{0}"),
+            ("timeline_response", "Here's what I remember from this week:\n{0}"),
+            ("timeline_response", "Your week in a nutshell:\n{0}"),
+            ("timeline_empty", "I don't have many memories from that time yet."),
+            ("timeline_empty", "There isn't much I remember from that period."),
+            ("timeline_offer", "Would you like me to recap what we've discussed this week?"),
+            ("timeline_offer", "I can give you a recap of our conversations. Want to hear it?"),
+            ("quiz_question", "Question {1}/{2}: {0}"),
+            ("quiz_question", "Here's your question ({1}/{2}): {0}"),
+            ("quiz_question", "Quiz time ({1}/{2}): {0}"),
+            ("quiz_correct", "That's right! The answer was {0}."),
+            ("quiz_correct", "Correct! {0} is right."),
+            ("quiz_wrong", "Not quite! The answer was {0}."),
+            ("quiz_wrong", "Sorry, the answer was {0}."),
+            ("quiz_score", "Quiz complete! You got {0}/{1} correct."),
+            ("quiz_score", "All done! Your score: {0}/{1}."),
+            ("quiz_already_active", "You're already in a quiz! Answer the current question."),
+            ("quiz_already_active", "One quiz at a time! Finish this one first."),
+            ("quiz_no_facts", "I don't know enough about you to make a quiz yet."),
+            ("quiz_no_facts", "I need to learn more about you before I can quiz you."),
+            ("entity_relation_yes", "Yes, {0} {1} {2}."),
+            ("entity_relation_yes", "That's right — {0} {1} {2}."),
+            ("entity_relation_no", "No, {0} does not {1} {2}."),
+            ("entity_relation_no", "I don't think {0} {1} {2}."),
+            ("entity_relation_path", "{0} is connected to {1}: {2}"),
+            ("entity_relation_path", "The connection between {0} and {1}: {2}"),
+            ("entity_relation_path", "{0} → {1}: {2}"),
+            ("entity_relation_unknown", "I don't know much about {0} yet."),
+            ("entity_relation_unknown", "I haven't learned about {0} yet."),
+            ("entity_relation_connected", "Here's what I know about {0}: {1}"),
+            ("entity_relation_connected", "I know {0} is connected to {1}."),
+            ("entity_connection_notice", "I noticed you mentioned {0}. That connects to {1}!"),
+            ("entity_connection_notice", "Did you know {0} is related to {1}?"),
+            ("entity_connection_notice", "You told me about {0}. It's linked to {1} in my mind!"),
+            ("persona_switch_chat", "Switched to chat mode. I'm PokeChat again!"),
+            ("persona_switch_chat", "Back to chat mode. What would you like to talk about?"),
+            ("persona_switch_coding", "Switched to coding mode. I'm PokeCode — ready to help with code."),
+            ("persona_switch_coding", "Entering coding mode. How can I help with your project?"),
+            ("error_knowledge_found", "That looks like a {0} error. {1}"),
+            ("error_knowledge_found", "I think I know this one — it's a {0}: {1}"),
+            ("error_knowledge_found", "That's a {0} error. Try this: {1}"),
+            ("error_knowledge_not_found", "I haven't seen that error before. Can you tell me what fixed it?"),
+            ("error_knowledge_not_found", "I don't recognise that error. What's the fix?"),
+            ("error_knowledge_learned", "Thanks! I'll remember that fix for next time."),
+            ("error_knowledge_learned", "Got it! I'll add that to my error knowledge."),
+            ("error_knowledge_unknown", "I don't know that error yet. Can you explain the fix?"),
+            ("error_knowledge_followup", "Did that fix the problem?"),
+            ("error_knowledge_followup", "Did that help resolve the error?"),
         };
 
         context.BotResponses.AddRange(responses.Select(r => new BotResponse
@@ -1244,6 +1573,27 @@ public static class DbSeeder
             Category = r.Category,
             ResponseText = r.ResponseText,
             CreatedAt = now
+        }));
+
+        var codingResponses = new (string Category, string ResponseText)[]
+        {
+            ("coding_file_set", "Got it! I'll remember {0} as the current file."),
+            ("coding_file_set", "Setting current file to {0}."),
+            ("coding_file_unknown", "I don't recognise that file name."),
+            ("coding_file_unknown", "Are you sure that file exists?"),
+            ("coding_current_file", "Current file is {0}."),
+            ("coding_current_file", "You're looking at {0}."),
+            ("coding_branch_info", "Current branch is {0}."),
+            ("coding_branch_info", "You're on branch {0}."),
+            ("coding_project_root", "Project root is {0}."),
+            ("coding_project_root", "Working directory is {0}."),
+        };
+        context.BotResponses.AddRange(codingResponses.Select(r => new BotResponse
+        {
+            Category = r.Category,
+            ResponseText = r.ResponseText,
+            CreatedAt = now,
+            Persona = "coding"
         }));
     }
 }

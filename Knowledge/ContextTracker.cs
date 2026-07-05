@@ -1,3 +1,4 @@
+using System.Text.Json;
 using PokeChat.Core;
 
 namespace PokeChat.Knowledge;
@@ -59,6 +60,50 @@ public class ContextTracker
             "him" or "her" or "them" => _lastObject ?? _lastSubject ?? string.Empty,
             _ => pronoun
         };
+    }
+
+    public string? ResolveFilePronoun(string input)
+    {
+        var currentFile = GetContext(ContextKeys.CurrentFile);
+        var recentFilesRaw = GetContext(ContextKeys.RecentFiles);
+
+        var lower = input.ToLowerInvariant();
+
+        if ((lower.Contains("that file") || lower.Contains("this file")) && !string.IsNullOrEmpty(currentFile))
+            return currentFile;
+
+        if (lower.Contains("that test") || lower.Contains("this test"))
+        {
+            if (!string.IsNullOrEmpty(currentFile) && IsTestFile(currentFile))
+                return currentFile;
+
+            if (!string.IsNullOrEmpty(recentFilesRaw))
+            {
+                var recentFiles = JsonSerializer.Deserialize<List<string>>(recentFilesRaw) ?? new();
+                return recentFiles.FirstOrDefault(IsTestFile);
+            }
+        }
+
+        if ((lower.Contains("that error") || lower.Contains("this error")))
+        {
+            var lastBuildOutput = GetContext(ContextKeys.LastBuildOutput);
+            if (string.IsNullOrEmpty(lastBuildOutput))
+                return null;
+            return "last build output";
+        }
+
+        if ((lower.Contains("that function") || lower.Contains("that method") || lower.Contains("this function") || lower.Contains("this method") ||
+             lower.Contains("that class") || lower.Contains("this class")) && !string.IsNullOrEmpty(currentFile))
+            return currentFile;
+
+        return null;
+    }
+
+    private static bool IsTestFile(string path)
+    {
+        var name = Path.GetFileNameWithoutExtension(path);
+        return name.EndsWith("Tests", StringComparison.OrdinalIgnoreCase) ||
+               name.EndsWith("Test", StringComparison.OrdinalIgnoreCase);
     }
 
     public void PushTopic(string subject, string verb, string obj, string? category, PredicateType predicateType)

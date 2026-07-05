@@ -26,27 +26,36 @@ public static class ResponseRules
 {
     public static ResponseRuleRecord? MatchRule(string input, KnowledgeStore knowledgeStore)
     {
-        return MatchRule(input, knowledgeStore, null, null, null);
+        return MatchRule(input, knowledgeStore, null, null, null, null);
     }
 
     public static ResponseRuleRecord? MatchRule(string input, KnowledgeStore knowledgeStore, List<ResponseRuleRecord>? toolTriggers)
     {
-        return MatchRule(input, knowledgeStore, toolTriggers, null, null);
+        return MatchRule(input, knowledgeStore, toolTriggers, null, null, null);
     }
 
-    public static ResponseRuleRecord? MatchRule(string input, KnowledgeStore knowledgeStore, List<ResponseRuleRecord>? toolTriggers, ML.IntentClassifier? classifier, ContextTracker? context)
+    public static ResponseRuleRecord? MatchRule(string input, KnowledgeStore knowledgeStore, List<ResponseRuleRecord>? toolTriggers, ML.IntentClassifier? classifier, ContextTracker? context, string? persona = null)
     {
         if (classifier != null && classifier.IsReady && context != null)
         {
+            var probs = classifier.PredictProbabilities(input);
+            var maxConf = probs.Length > 0 ? probs.Max() : 0f;
             var intent = classifier.Classify(input);
             if (intent != null)
             {
                 context.SetContext(ContextKeys.CurrentIntent, intent);
+                context.SetContext(ContextKeys.IntentConfidence, maxConf.ToString("F4"));
+            }
+            else
+            {
+                context.SetContext(ContextKeys.CurrentIntent, null);
+                context.SetContext(ContextKeys.IntentConfidence, maxConf.ToString("F4"));
             }
         }
         else if (context != null)
         {
             context.SetContext(ContextKeys.CurrentIntent, null);
+            context.SetContext(ContextKeys.IntentConfidence, null);
         }
         var lowerInput = input.ToLowerInvariant();
 
@@ -88,7 +97,7 @@ public static class ResponseRules
             }
         }
 
-        var seededRules = knowledgeStore.GetResponseRules();
+        var seededRules = knowledgeStore.GetResponseRules(persona);
         ResponseRuleRecord? bestSeededOrTrigger = null;
         var bestSeededOrTriggerLength = 0;
 

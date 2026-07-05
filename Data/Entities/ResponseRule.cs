@@ -6,6 +6,7 @@ public class ResponseRule
     public string Pattern { get; set; } = string.Empty;
     public string InputType { get; set; } = string.Empty;
     public bool IsActive { get; set; }
+    public string? Persona { get; set; }
     public string CreatedAt { get; set; } = string.Empty;
     public List<ResponseRuleResponse> Responses { get; set; } = new();
 }

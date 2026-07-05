@@ -860,4 +860,528 @@ public class KnowledgeStoreTests
         var fact = store.GetRandomPositiveFact(1);
         fact.ShouldBeNull();
     }
+
+    [Fact]
+    public void GetUserPreferences_ReturnsPreferenceFacts()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var user = new User { Name = "Alice", FirstSeen = DateTime.UtcNow.ToString("o"), LastSeen = DateTime.UtcNow.ToString("o") };
+        db.Context.Users.Add(user);
+        db.Context.SaveChanges();
+
+        store.StoreFact(new Fact { UserId = user.Id, Subject = "Alice", Verb = "like", Object = "pizza", PredicateType = "Preference", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.StoreFact(new Fact { UserId = user.Id, Subject = "Alice", Verb = "love", Object = "cats", PredicateType = "Preference", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.StoreFact(new Fact { UserId = user.Id, Subject = "Alice", Verb = "hate", Object = "broccoli", PredicateType = "Dislike", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.StoreFact(new Fact { UserId = user.Id, Subject = "Alice", Verb = "enjoy", Object = "running", PredicateType = "Preference", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.Save();
+
+        var prefs = store.GetUserPreferences(user.Id);
+        prefs.Count.ShouldBe(3);
+        prefs.All(f => f.Verb is "like" or "love" or "enjoy" or "prefer").ShouldBeTrue();
+    }
+
+    [Fact]
+    public void GetRecommendation_ReturnsSuggestion_WhenUnexploredRelatedItemsExist()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var user = new User { Name = "Bob", FirstSeen = DateTime.UtcNow.ToString("o"), LastSeen = DateTime.UtcNow.ToString("o") };
+        db.Context.Users.Add(user);
+        TestDataHelper.SeedInferenceWordLinks(db.Context);
+        db.Context.SaveChanges();
+
+        store.StoreFact(new Fact { UserId = user.Id, Subject = "Bob", Verb = "like", Object = "pizza", PredicateType = "Preference", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.StoreFact(new Fact { UserId = user.Id, Subject = "Bob", Verb = "like", Object = "pasta", PredicateType = "Preference", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.Save();
+
+        var (liked, suggestion, category) = store.GetRecommendation(user.Id);
+        liked.ShouldNotBeNull();
+        suggestion.ShouldNotBeNull();
+        category.ShouldNotBeNull();
+        (suggestion is "burger" or "salad").ShouldBeTrue();
+        category.ShouldBe("food");
+    }
+
+    [Fact]
+    public void GetRecommendation_ReturnsNull_WhenFewerThanTwoPreferences()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var user = new User { Name = "Carol", FirstSeen = DateTime.UtcNow.ToString("o"), LastSeen = DateTime.UtcNow.ToString("o") };
+        db.Context.Users.Add(user);
+        TestDataHelper.SeedInferenceWordLinks(db.Context);
+        db.Context.SaveChanges();
+
+        store.StoreFact(new Fact { UserId = user.Id, Subject = "Carol", Verb = "like", Object = "pizza", PredicateType = "Preference", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.Save();
+
+        var (liked, suggestion, category) = store.GetRecommendation(user.Id);
+        liked.ShouldBeNull();
+        suggestion.ShouldBeNull();
+        category.ShouldBeNull();
+    }
+
+    [Fact]
+    public void GetRecommendation_SkipsAlreadyKnownFacts()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var user = new User { Name = "Dave", FirstSeen = DateTime.UtcNow.ToString("o"), LastSeen = DateTime.UtcNow.ToString("o") };
+        db.Context.Users.Add(user);
+        TestDataHelper.SeedInferenceWordLinks(db.Context);
+        db.Context.SaveChanges();
+
+        store.StoreFact(new Fact { UserId = user.Id, Subject = "Dave", Verb = "like", Object = "pizza", PredicateType = "Preference", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.StoreFact(new Fact { UserId = user.Id, Subject = "Dave", Verb = "like", Object = "pasta", PredicateType = "Preference", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.StoreFact(new Fact { UserId = user.Id, Subject = "Dave", Verb = "like", Object = "burger", PredicateType = "Preference", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.StoreFact(new Fact { UserId = user.Id, Subject = "Dave", Verb = "like", Object = "salad", PredicateType = "Preference", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.Save();
+
+        var (liked, suggestion, category) = store.GetRecommendation(user.Id);
+        liked.ShouldBeNull();
+        suggestion.ShouldBeNull();
+        category.ShouldBeNull();
+    }
+
+    [Fact]
+    public void GetFactsInDateRange_ReturnsCorrectFacts()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var user = new User { Name = "Tim", FirstSeen = DateTime.UtcNow.ToString("o"), LastSeen = DateTime.UtcNow.ToString("o") };
+        db.Context.Users.Add(user);
+        db.Context.SaveChanges();
+
+        var now = DateTime.UtcNow;
+        store.StoreFact(new Fact { UserId = user.Id, Subject = "Tim", Verb = "start", Object = "new job", MentionedAt = now.AddDays(-3).ToString("o"), PredicateType = "GeneralFact", CreatedAt = now.ToString("o") });
+        store.StoreFact(new Fact { UserId = user.Id, Subject = "Tim", Verb = "like", Object = "team", MentionedAt = now.AddDays(-2).ToString("o"), PredicateType = "Preference", CreatedAt = now.ToString("o") });
+        store.StoreFact(new Fact { UserId = user.Id, Subject = "Tim", Verb = "go", Object = "cinema", MentionedAt = now.AddDays(-10).ToString("o"), PredicateType = "GeneralFact", CreatedAt = now.ToString("o") });
+        store.Save();
+
+        var weekAgo = now.AddDays(-7);
+        var facts = store.GetFactsInDateRange(user.Id, weekAgo, now);
+        facts.Count.ShouldBe(2);
+        facts.All(f => f.Object is "new job" or "team").ShouldBeTrue();
+    }
+
+    [Fact]
+    public void BuildTimeline_FormatsFacts_WithDayLabels()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+
+        var now = DateTime.UtcNow;
+        var facts = new List<Fact>
+        {
+            new() { Subject = "Tim", Verb = "start", Object = "new job", MentionedAt = new DateTime(2026, 7, 1, 10, 0, 0, DateTimeKind.Utc).ToString("o"), PredicateType = "GeneralFact", CreatedAt = now.ToString("o") },
+            new() { Subject = "Tim", Verb = "like", Object = "team", MentionedAt = new DateTime(2026, 7, 2, 14, 0, 0, DateTimeKind.Utc).ToString("o"), PredicateType = "Preference", CreatedAt = now.ToString("o") },
+        };
+
+        var timeline = store.BuildTimeline(facts);
+        timeline.ShouldContain("Wednesday");
+        timeline.ShouldContain("Thursday");
+        timeline.ShouldContain("starts");
+        timeline.ShouldContain("liked");
+    }
+
+    [Fact]
+    public void BuildTimeline_ReturnsEmpty_WhenNoFacts()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+
+        var timeline = store.BuildTimeline(new List<Fact>());
+        timeline.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void HandleTimelineRequest_ExplicitTrigger_ReturnsTimeline()
+    {
+        using var db = new FreshDbContext();
+        TestDataHelper.SeedBotResponses(db.Context);
+        var store = new KnowledgeStore(db.Context);
+        var context = new ContextTracker();
+        var engine = CreateEngine(db.Context, context);
+
+        var user = new User { Name = "Jane", FirstSeen = DateTime.UtcNow.ToString("o"), LastSeen = DateTime.UtcNow.ToString("o") };
+        db.Context.Users.Add(user);
+        db.Context.SaveChanges();
+
+        var now = DateTime.UtcNow;
+        store.StoreFact(new Fact { UserId = user.Id, Subject = "Jane", Verb = "start", Object = "new job", MentionedAt = now.AddDays(-2).ToString("o"), PredicateType = "GeneralFact", CreatedAt = now.ToString("o") });
+        store.StoreFact(new Fact { UserId = user.Id, Subject = "Jane", Verb = "like", Object = "team", MentionedAt = now.AddDays(-1).ToString("o"), PredicateType = "Preference", CreatedAt = now.ToString("o") });
+        store.Save();
+
+        var response = engine.GenerateResponse("what happened this week", user.Id);
+        response.ShouldNotBeNullOrEmpty();
+        response.ShouldContain("Jane");
+    }
+
+    [Fact]
+    public void HandleTimelineRequest_EmptyRange_ReturnsEmptyMessage()
+    {
+        using var db = new FreshDbContext();
+        TestDataHelper.SeedBotResponses(db.Context);
+        var store = new KnowledgeStore(db.Context);
+        var context = new ContextTracker();
+        var engine = CreateEngine(db.Context, context);
+
+        var user = new User { Name = "Kate", FirstSeen = DateTime.UtcNow.ToString("o"), LastSeen = DateTime.UtcNow.ToString("o") };
+        db.Context.Users.Add(user);
+        db.Context.SaveChanges();
+
+        var response = engine.GenerateResponse("what happened this week", user.Id);
+        response.ShouldNotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public void GetEntityGraph_BuildsFromFacts()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var userId = store.GetOrCreateUser("Alice");
+
+        store.StoreFact(new Fact { UserId = userId, Subject = "Alice", Verb = "likes", Object = "pizza", PredicateType = "preference", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.StoreFact(new Fact { UserId = userId, Subject = "Alice", Verb = "works at", Object = "library", PredicateType = "GeneralFact", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.Save();
+
+        var graph = store.GetEntityGraph(userId!.Value);
+        graph.ShouldContainKey("alice");
+        graph["alice"].Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public void FindPath_DirectConnection()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var userId = store.GetOrCreateUser("Bob");
+
+        store.StoreFact(new Fact { UserId = userId, Subject = "Bob", Verb = "likes", Object = "cats", PredicateType = "preference", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.Save();
+
+        var path = store.FindPath(userId!.Value, "Bob", "cats");
+        path.ShouldNotBeNull();
+        path.ShouldContain("Bob");
+        path.ShouldContain("likes");
+        path.ShouldContain("cats");
+    }
+
+    [Fact]
+    public void FindPath_MultiHop()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var userId = store.GetOrCreateUser("Charlie");
+
+        store.StoreFact(new Fact { UserId = userId, Subject = "Charlie", Verb = "likes", Object = "Alice", PredicateType = "preference", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.StoreFact(new Fact { UserId = userId, Subject = "Alice", Verb = "works at", Object = "library", PredicateType = "GeneralFact", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.Save();
+
+        var path = store.FindPath(userId!.Value, "Charlie", "library");
+        path.ShouldNotBeNull();
+        path.ShouldContain("Charlie");
+        path.ShouldContain("likes");
+        path.ShouldContain("Alice");
+        path.ShouldContain("works at");
+        path.ShouldContain("library");
+    }
+
+    [Fact]
+    public void FindPath_NoConnection_ReturnsNull()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var userId = store.GetOrCreateUser("Dave");
+
+        store.StoreFact(new Fact { UserId = userId, Subject = "Dave", Verb = "likes", Object = "dogs", PredicateType = "preference", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.Save();
+
+        var path = store.FindPath(userId!.Value, "Dave", "library");
+        path.ShouldBeNull();
+    }
+
+    [Fact]
+    public void CheckRelation_ReturnsTrue_WhenEdgeExists()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var userId = store.GetOrCreateUser("Eve");
+
+        store.StoreFact(new Fact { UserId = userId, Subject = "Eve", Verb = "likes", Object = "chocolate", PredicateType = "preference", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.Save();
+
+        store.CheckRelation(userId!.Value, "Eve", "likes", "chocolate").ShouldBeTrue();
+        store.CheckRelation(userId!.Value, "Eve", "likes", "broccoli").ShouldBeFalse();
+    }
+
+    [Fact]
+    public void HandleEntityQuery_ExplicitRelation_ReturnsYesNo()
+    {
+        using var db = new FreshDbContext();
+        TestDataHelper.SeedBotResponses(db.Context);
+        var store = new KnowledgeStore(db.Context);
+        var context = new ContextTracker();
+        var engine = CreateEngine(db.Context, context);
+        var userId = store.GetOrCreateUser("Frank");
+
+        store.StoreFact(new Fact { UserId = userId, Subject = "frank", Verb = "like", Object = "pizza", PredicateType = "preference", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.Save();
+
+        var response = engine.GenerateResponse("does frank like pizza", userId!.Value);
+        response.ShouldNotBeNullOrEmpty();
+        response.ShouldContain("frank");
+        response.ShouldContain("like");
+        response.ShouldContain("pizza");
+    }
+
+    [Fact]
+    public void BuildEntityConnectionNotice_DetectsNewLink()
+    {
+        using var db = new FreshDbContext();
+        TestDataHelper.SeedBotResponses(db.Context);
+        var store = new KnowledgeStore(db.Context);
+        var context = new ContextTracker();
+        var engine = CreateEngine(db.Context, context);
+        var userId = store.GetOrCreateUser("Grace");
+
+        store.StoreFact(new Fact { UserId = userId, Subject = "grace", Verb = "likes", Object = "music", PredicateType = "preference", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.StoreFact(new Fact { UserId = userId, Subject = "grace", Verb = "plays", Object = "guitar", PredicateType = "skill", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.Save();
+
+        var connected = store.GetConnectedEntities(userId!.Value, "grace");
+        connected.ShouldNotBeEmpty();
+    }
+
+    [Fact]
+    public void GetBotResponse_FiltersByPersona()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+
+        var now = DateTime.UtcNow.ToString("o");
+        db.Context.BotResponses.Add(new BotResponse { Category = "greeting", ResponseText = "Hello chat!", Persona = "chat", CreatedAt = now });
+        db.Context.BotResponses.Add(new BotResponse { Category = "greeting", ResponseText = "Hello coding!", Persona = "coding", CreatedAt = now });
+        db.Context.BotResponses.Add(new BotResponse { Category = "greeting", ResponseText = "Hello everyone!", Persona = null, CreatedAt = now });
+        db.Context.SaveChanges();
+
+        var chatResponses = store.GetBotResponses("chat");
+        chatResponses["greeting"].ShouldContain("Hello chat!");
+        chatResponses["greeting"].ShouldContain("Hello everyone!");
+        chatResponses["greeting"].ShouldNotContain("Hello coding!");
+
+        var codingResponses = store.GetBotResponses("coding");
+        codingResponses["greeting"].ShouldContain("Hello coding!");
+        codingResponses["greeting"].ShouldContain("Hello everyone!");
+        codingResponses["greeting"].ShouldNotContain("Hello chat!");
+    }
+
+    [Fact]
+    public void GetResponseRule_FiltersByPersona()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+
+        var now = DateTime.UtcNow.ToString("o");
+        var chatRule = new ResponseRule { Pattern = "chat pattern", InputType = "Statement", IsActive = true, Persona = "chat", CreatedAt = now };
+        var codingRule = new ResponseRule { Pattern = "coding pattern", InputType = "Statement", IsActive = true, Persona = "coding", CreatedAt = now };
+        var nullRule = new ResponseRule { Pattern = "null pattern", InputType = "Statement", IsActive = true, Persona = null, CreatedAt = now };
+        db.Context.ResponseRules.AddRange(chatRule, codingRule, nullRule);
+        db.Context.SaveChanges();
+
+        var chatRules = store.GetResponseRules("chat");
+        chatRules.ShouldContain(r => r.Pattern == "chat pattern");
+        chatRules.ShouldContain(r => r.Pattern == "null pattern");
+        chatRules.ShouldNotContain(r => r.Pattern == "coding pattern");
+
+        var codingRules = store.GetResponseRules("coding");
+        codingRules.ShouldContain(r => r.Pattern == "coding pattern");
+        codingRules.ShouldContain(r => r.Pattern == "null pattern");
+        codingRules.ShouldNotContain(r => r.Pattern == "chat pattern");
+    }
+
+    [Fact]
+    public void GreetingPool_UsesPersonaGreeting()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+
+        var now = DateTime.UtcNow.ToString("o");
+        db.Context.Greetings.Add(new Greeting { Text = "Chat hello!", Persona = "chat", IsSystem = true, CreatedAt = now });
+        db.Context.Greetings.Add(new Greeting { Text = "Coding hello!", Persona = "coding", IsSystem = true, CreatedAt = now });
+        db.Context.Greetings.Add(new Greeting { Text = "Generic hello!", Persona = null, IsSystem = true, CreatedAt = now });
+        db.Context.SaveChanges();
+
+        var chatGreetings = store.GetGreetings("chat");
+        chatGreetings.ShouldContain(g => g.Text == "Chat hello!");
+        chatGreetings.ShouldContain(g => g.Text == "Generic hello!");
+        chatGreetings.ShouldNotContain(g => g.Text == "Coding hello!");
+
+        var codingGreetings = store.GetGreetings("coding");
+        codingGreetings.ShouldContain(g => g.Text == "Coding hello!");
+        codingGreetings.ShouldContain(g => g.Text == "Generic hello!");
+        codingGreetings.ShouldNotContain(g => g.Text == "Chat hello!");
+    }
+
+    [Fact]
+    public void Fallback_ToNullPersona_WhenPersonaHasNoMatch()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+
+        var now = DateTime.UtcNow.ToString("o");
+        db.Context.BotResponses.Add(new BotResponse { Category = "greeting", ResponseText = "Hello!", Persona = null, CreatedAt = now });
+        db.Context.SaveChanges();
+
+        var responses = store.GetBotResponses("coding");
+        responses["greeting"].ShouldContain("Hello!");
+    }
+
+    [Fact]
+    public void MatchError_FindsMatchingError()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        store.LearnError("CS1009", "Unrecognised escape sequence", "csharp");
+        store.Save();
+
+        var result = store.MatchError("CS1009: unrecognised escape sequence in string literal");
+        result.ShouldNotBeNull();
+        result.Suggestion.ShouldBe("Unrecognised escape sequence");
+        result.Language.ShouldBe("csharp");
+    }
+
+    [Fact]
+    public void MatchError_ReturnsNull_WhenNoMatch()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        store.LearnError("CS1009", "Unrecognised escape sequence", "csharp");
+        store.Save();
+
+        var result = store.MatchError("Everything compiles fine today");
+        result.ShouldBeNull();
+    }
+
+    [Fact]
+    public void MatchError_MultipleEntries_ReturnsFirstMatch()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        store.LearnError("CS0161.*not all code paths", "Add a return statement");
+        store.LearnError("CS0103.*does not exist", "Check spelling and using directives");
+        store.Save();
+
+        var result = store.MatchError("CS0161: not all code paths return a value");
+        result.ShouldNotBeNull();
+        result.Suggestion.ShouldBe("Add a return statement");
+    }
+
+    [Fact]
+    public void MatchError_CaseInsensitiveMatching()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        store.LearnError("NullReferenceException", "Check that you've initialised the object");
+        store.Save();
+
+        var result = store.MatchError("nullreferenceexception: object reference not set");
+        result.ShouldNotBeNull();
+        result.Suggestion.ShouldBe("Check that you've initialised the object");
+    }
+
+    [Fact]
+    public void MatchError_RejectsVeryShortInput()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        store.LearnError("error", "some fix");
+        store.Save();
+
+        var result = store.MatchError("hi");
+        result.ShouldBeNull();
+    }
+
+    [Fact]
+    public void LearnError_PersistsEntry()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        store.LearnError("CS8618", "Non-nullable property not initialised", "csharp");
+        store.Save();
+
+        var entries = db.Context.ErrorKnowledgeEntries.ToList();
+        entries.Count.ShouldBe(1);
+        entries[0].Pattern.ShouldBe("CS8618");
+        entries[0].Suggestion.ShouldBe("Non-nullable property not initialised");
+        entries[0].Language.ShouldBe("csharp");
+        entries[0].IsLearned.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void IncrementErrorUsage_IncrementsCount()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        store.LearnError("CS1009", "fix");
+        store.Save();
+
+        var entry = store.MatchError("CS1009 here");
+        entry.ShouldNotBeNull();
+        store.IncrementErrorUsage(entry.Id);
+        store.Save();
+
+        var reloaded = db.Context.ErrorKnowledgeEntries.Find(entry.Id);
+        reloaded.ShouldNotBeNull();
+        reloaded.UsedCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public void IncrementErrorSuccess_IncrementsCount()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        store.LearnError("CS1009", "fix");
+        store.Save();
+
+        var entry = store.MatchError("CS1009 here");
+        entry.ShouldNotBeNull();
+        store.IncrementErrorSuccess(entry.Id);
+        store.Save();
+
+        var reloaded = db.Context.ErrorKnowledgeEntries.Find(entry.Id);
+        reloaded.ShouldNotBeNull();
+        reloaded.SuccessCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public void MatchError_RegexPattern_MultipleCandidates()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        store.LearnError("CS1501.*no overload", "Check method signature");
+        store.LearnError("CS1502.*best overloaded match", "Check parameter types");
+        store.Save();
+
+        var result1 = store.MatchError("CS1501: no overload for method 'Foo' takes 1 argument");
+        result1.ShouldNotBeNull();
+        result1.Suggestion.ShouldBe("Check method signature");
+
+        var result2 = store.MatchError("CS1502: the best overloaded match has some invalid arguments");
+        result2.ShouldNotBeNull();
+        result2.Suggestion.ShouldBe("Check parameter types");
+    }
+
+    private static PokeChat.Responses.ResponseEngine CreateEngine(PokeChat.Data.PokeChatDbContext db, ContextTracker context)
+    {
+        TestDataHelper.SeedBotResponses(db);
+        var knowledgeStore = new KnowledgeStore(db);
+        var spellChecker = new PokeChat.NLP.SpellChecker();
+        spellChecker.Initialise(new HashSet<string>(StringComparer.OrdinalIgnoreCase), new Dictionary<string, string>());
+        var posTagger = new PokeChat.NLP.PosTagger([]);
+        var tokeniser = new PokeChat.NLP.Tokeniser();
+        var svoExtractor = new PokeChat.NLP.SvoExtractor();
+        return new PokeChat.Responses.ResponseEngine(knowledgeStore, context, spellChecker, posTagger, tokeniser, svoExtractor);
+    }
 }

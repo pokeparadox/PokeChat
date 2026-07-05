@@ -1459,3 +1459,89 @@ Lightweight neural intent classifier (pure C#, no external ML deps) for efficien
 - `IntentClassifierTests.cs` (6): Classify null when not ready, Train and classify, BuildVocab size, Vectorise dimensions, Low confidence returns null, Empty train does not crash
 - `ResponseRulesTests.cs` (2): classifier sets intent in context when confident; not ready does not set
 - `ChatSessionTests.cs` (2): cold start (no model) does not affect flow; explicit classifier does not throw
+
+---
+
+## Phase 48 — Entity Graph Explorer ✅
+- [x] **Entity Graph Explorer** — Follow links between entities using existing facts (edges: Subject→Verb→Object)
+- [x] `KnowledgeStore.cs` — `GetEntityGraph(userId)`, `FindPath(userId, from, to, maxDepth=3)` with BFS, `FormatPath` (verb-conjugated), `CheckRelation(userId, subj, verb, obj)` (case-insensitive), `GetConnectedEntities(userId, entity)`
+- [x] `ResponseEngine.cs` — `HandleEntityQuery(input, userId)` after temporal query (detects "does X verb Y", "how is X connected to Y", "tell me about X"), `BuildEntityConnectionNotice(userId)` (1-in-10 proactive slot)
+- [x] `DbSeeder.cs` + `TestDataHelper.cs` — 14 seed bot responses across 5 categories (`entity_relation_yes`, `entity_relation_no`, `entity_relation_path`, `entity_relation_unknown`, `entity_relation_connected`, `entity_connection_notice`)
+- [x] **No new tables, no EF migration** — uses existing `facts` table only
+- [x] **Case-insensitive:** All queries use `ToLowerInvariant()` + `OrdinalIgnoreCase` matching on materialized facts
+- [x] **No new context keys**
+
+### Tests (7 new, 599/599 pass)
+1. `GetEntityGraph_BuildsFromFacts` — verifies graph contains subject node with 2 edges
+2. `FindPath_DirectConnection` — BFS finds direct subject→object edge
+3. `FindPath_MultiHop` — BFS traverses 2-hop path (Charlie→Alice→library)
+4. `FindPath_NoConnection_ReturnsNull` — returns null for disconnected entity
+5. `CheckRelation_ReturnsTrue_WhenEdgeExists` — exact triple match; also verifies false for nonexistent
+6. `HandleEntityQuery_ExplicitRelation_ReturnsYesNo` — "does frank like pizza" triggers entity relation response
+7. `BuildEntityConnectionNotice_DetectsNewLink` — `GetConnectedEntities` returns related entities from shared subject
+
+---
+
+## Phase 49 — Persona System ✅
+
+Dual-persona architecture (chat/coding) with persona-filtered rules, responses, and greetings. `null` persona = available to all personas.
+
+### Modified files
+- `Data/Entities/ResponseRule.cs`, `BotResponse.cs`, `Greeting.cs` — added `Persona` property (nullable string)
+- `Data/PokeChatDbContext.cs` — fluent config for `persona` columns
+- `Data/Schema.sql` — added `persona TEXT` to `greetings`, `response_rules`, `bot_responses`
+- `Core/ContextKeys.cs` — added `CurrentPersona` constant
+- `Core/ChatSession.cs` — `_persona` field (default `"chat"`), `PersonaTriggers` HashSet, `TryHandlePersonaSwitch()`, `SwitchPersona(persona)` updates persona/context/bot name/response engine; greeting passes `_persona`
+- `Core/GreetingPool.cs` — `GetRandomGreeting` accepts `string? persona`
+- `Knowledge/KnowledgeStore.cs` — `GetGreetings(persona)`, `GetResponseRules(persona)`, `GetBotResponses(persona)` filter `WHERE persona IS NULL OR persona = @p`
+- `Responses/ResponseEngine.cs` — `SetPersona(string)`, mutable `_botResponses`, `_persona` field, passes `_persona` to `MatchRule` and `GetBotResponses`
+- `Responses/ResponseRules.cs` — `MatchRule` overloads accept optional `string? persona`, passed to `knowledgeStore.GetResponseRules(persona)`
+- `Data/DbSeeder.cs` + `TestDataHelper.cs` — seeded `persona_switch_chat` (2) + `persona_switch_coding` (2) in bot_responses
+- `.plans/phase49-persona-system.md` — deleted (no longer needed as plan, history entry suffices)
+
+### Key details
+- **Switch triggers:** "switch to coding mode", "enter coding mode", "go to coding", "activate coding", "enter chat mode", "switch to chat mode", "go back to chat", "switch to chat"
+- **Name change:** Chat → "PokeChat", Coding → "PokeCode"
+- **Fallback:** persona-filtered query returns entries where `persona IS NULL OR persona = @p`
+- **Context persistence:** persona switch does NOT clear context tracker
+- **No EF migration needed:** New feature, clean DB. Future devs add `AddPersonaColumns` migration.
+
+### Tests (8 new, 607/607 pass)
+1. `SwitchPersona_ChangesCurrentPersona` — coding mode → subsequent responses work
+2. `SwitchPersona_UnknownPersona_ReturnsErrorMessage` — unknown mode returns non-empty
+3. `SwitchPersona_TriggersOnKeyword` — coding mode + coding question → response
+4. `SwitchPersona_DoesNotClearContext` — context survives switch
+5. `GetBotResponse_FiltersByPersona` — returns matching + null, excludes other
+6. `GetResponseRule_FiltersByPersona` — returns matching + null, excludes other
+7. `GreetingPool_UsesPersonaGreeting` — returns matching + null, excludes other
+8. `Fallback_ToNullPersona_WhenPersonaHasNoMatch` — null entries always available
+
+---
+
+## Phase 50 — Shell Command Tool ✅
+- [x] New `Tools/BuiltIn/ShellCommandTool.cs` — `ITool` implementation with whitelist-based security
+- [x] Default whitelist: `ls`, `pwd`, `whoami`, `date`, `uptime`, `uname`, `echo`, `cat`, `wc`, `du`, `df`, `which`, `env`
+- [x] Security: rejects shell metacharacters (`;`, `&`, `|`, `` ` ``, `$`, `()`, `<>`)
+- [x] Uses `Process.Start` with executable + args (no shell invocation)
+- [x] `ToolConfig.AllowedCommands` — configurable per `tools.json`
+- [x] Registered in `ToolRegistry.RegisterBuiltIn()` with config-based whitelist injection
+- [x] Seeded response rules: `run/execute/shell command <cmd>`, `run <cmd>`
+- [x] Seeded bot responses: `shell_blocked` (3), `shell_error` (2)
+- [x] `tools.json` + `tools.json.example` updated with `shell_command` section
+
+### Tests (7 new, 615/615 pass)
+1. `ShellCommandTool_EmptyCommand_ReturnsFailure` — no args → error
+2. `ShellCommandTool_AllowedCommand_ReturnsSuccess` — `whoami` succeeds
+3. `ShellCommandTool_BlockedCommand_ReturnsFailure` — `rm` blocked
+4. `ShellCommandTool_DangerousChars_ReturnsFailure` — `-la; rm -rf /` rejected
+5. `ShellCommandTool_CustomWhitelist_AcceptsOnlyListed` — custom whitelist enforced
+6. `ShellCommandTool_ArgsWithoutDangerousChars_Succeeds` — `echo "hello world"` works
+7. `ShellCommandTool_RegisteredAndEnabled_ReturnsResult` — registry integration
+8. `ShellCommandTool_DisabledViaConfig_ReturnsNull` — disabled config respected
+
+---
+
+## Log Review Bug Fix (2026-07-04)
+- [x] Added `"using"` (verb) to `pos_dictionary.json` — spell checker no longer flags it as unknown
+- [x] Added `"sure"`, `"do"`, `"does"`, `"did"` to `FunctionWords` in `ChatSession.cs` — catches function-word-heavy subjects/objects
+- [x] Fixed subject filter: multi-word subjects where ALL tokens are either function words or content word indicators are now filtered out (e.g. "you sure" → caught). Changed from `ContentWordIndicators.Contains(subject)` (exact match) to per-token check with `subjectTokens.Length > 1` guard to preserve single-word pronoun subjects like "I", "you"

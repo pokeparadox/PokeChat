@@ -163,12 +163,71 @@ internal static class TestDataHelper
             ("user_fact_none", "I don't know much about you yet!"),
             ("user_stats", "Here's what I know:\n{0}"),
             ("compliment", "You're great at {0}!"),
+            ("recommender", "You like {1}. People who like {1} often also like {0}. What do you think?"),
+            ("recommender", "Since you like {1}, I bet you'd enjoy {0} too. What do you think?"),
+            ("recommender", "I noticed you like {1}. Have you ever tried {0}?"),
+            ("timeline_response", "Here's your week on record:\n{0}"),
+            ("timeline_response", "Here's what I remember from this week:\n{0}"),
+            ("timeline_response", "Your week in a nutshell:\n{0}"),
+            ("timeline_empty", "I don't have many memories from that time yet."),
+            ("timeline_empty", "There isn't much I remember from that period."),
+            ("timeline_offer", "Would you like me to recap what we've discussed this week?"),
+            ("timeline_offer", "I can give you a recap of our conversations. Want to hear it?"),
+            ("quiz_question", "Question {1}/{2}: {0}"),
+            ("quiz_question", "Here's your question ({1}/{2}): {0}"),
+            ("quiz_correct", "That's right! The answer was {0}."),
+            ("quiz_correct", "Correct! {0} is right."),
+            ("quiz_wrong", "Not quite! The answer was {0}."),
+            ("quiz_wrong", "Sorry, the answer was {0}."),
+            ("quiz_score", "Quiz complete! You got {0}/{1} correct."),
+            ("quiz_score", "All done! Your score: {0}/{1}."),
+            ("quiz_already_active", "You're already in a quiz! Answer the current question."),
+            ("quiz_no_facts", "I don't know enough about you to make a quiz yet."),
+            ("entity_relation_yes", "Yes, {0} {1} {2}."),
+            ("entity_relation_yes", "That's right — {0} {1} {2}."),
+            ("entity_relation_no", "No, {0} does not {1} {2}."),
+            ("entity_relation_no", "I don't think {0} {1} {2}."),
+            ("entity_relation_path", "{0} is connected to {1}: {2}"),
+            ("entity_relation_path", "The connection between {0} and {1}: {2}"),
+            ("entity_relation_path", "{0} → {1}: {2}"),
+            ("entity_relation_unknown", "I don't know much about {0} yet."),
+            ("entity_relation_unknown", "I haven't learned about {0} yet."),
+            ("entity_relation_connected", "Here's what I know about {0}: {1}"),
+            ("entity_relation_connected", "I know {0} is connected to {1}."),
+            ("entity_connection_notice", "I noticed you mentioned {0}. That connects to {1}!"),
+            ("entity_connection_notice", "Did you know {0} is related to {1}?"),
+            ("entity_connection_notice", "You told me about {0}. It's linked to {1} in my mind!"),
+            ("persona_switch_chat", "Switched to chat mode. I'm PokeChat again!"),
+            ("persona_switch_chat", "Back to chat mode. What would you like to talk about?"),
+            ("persona_switch_coding", "Switched to coding mode. I'm PokeCode — ready to help with code."),
+            ("persona_switch_coding", "Entering coding mode. How can I help with your project?"),
         };
         db.BotResponses.AddRange(responses.Select(r => new BotResponse
         {
             Category = r.Category,
             ResponseText = r.Text,
             CreatedAt = now
+        }));
+
+        var codingResponses = new (string Category, string Text)[]
+        {
+            ("coding_file_set", "Got it! I'll remember {0} as the current file."),
+            ("coding_file_set", "Setting current file to {0}."),
+            ("coding_file_unknown", "I don't recognise that file name."),
+            ("coding_file_unknown", "Are you sure that file exists?"),
+            ("coding_current_file", "Current file is {0}."),
+            ("coding_current_file", "You're looking at {0}."),
+            ("coding_branch_info", "Current branch is {0}."),
+            ("coding_branch_info", "You're on branch {0}."),
+            ("coding_project_root", "Project root is {0}."),
+            ("coding_project_root", "Working directory is {0}."),
+        };
+        db.BotResponses.AddRange(codingResponses.Select(r => new BotResponse
+        {
+            Category = r.Category,
+            ResponseText = r.Text,
+            CreatedAt = now,
+            Persona = "coding"
         }));
         db.SaveChanges();
     }
@@ -412,6 +471,8 @@ internal static class TestDataHelper
             new BotResponse { Category = "tool_unavailable", ResponseText = "I can't look that up at the moment.", CreatedAt = now },
             new BotResponse { Category = "tool_timeout", ResponseText = "That search took too long.", CreatedAt = now },
             new BotResponse { Category = "tool_error", ResponseText = "I tried that but got an error.", CreatedAt = now },
+            new BotResponse { Category = "shell_blocked", ResponseText = "That command isn't allowed.", CreatedAt = now },
+            new BotResponse { Category = "shell_error", ResponseText = "That command returned an error.", CreatedAt = now },
             new BotResponse { Category = "wyr_question", ResponseText = "Would you rather {0} or {1}?", CreatedAt = now },
             new BotResponse { Category = "wyr_acknowledgement", ResponseText = "{0}! That's an interesting choice!", CreatedAt = now },
             new BotResponse { Category = "wyr_acknowledgement", ResponseText = "Good answer!", CreatedAt = now }
@@ -512,6 +573,46 @@ internal static class TestDataHelper
                 CreatedAt = now
             }
         );
+        db.SaveChanges();
+    }
+
+    public static void SeedCodingResponseRules(PokeChatDbContext db)
+    {
+        var now = DateTime.UtcNow.ToString("o");
+        var rules = new (string Pattern, string InputType, string Response)[]
+        {
+            (@"^(build|compile|make)\s+(the\s+)?project", "Statement",
+                "Building the project. {tool:shell_command:dotnet:build}"),
+            (@"^(run\s+)?(the\s+)?tests?\b", "Statement",
+                "Running tests. {tool:shell_command:dotnet:test}"),
+            (@"^(git\s+)?status\b", "Statement",
+                "Checking status. {tool:shell_command:git:status}"),
+            (@"^(git\s+)?push\b", "Statement",
+                "Pushing. {tool:shell_command:git:push}"),
+            (@"^(git\s+)?commit\s+(.+)$", "Statement",
+                "Committing. {tool:shell_command:git:add:-A && git commit -m \"{$2}\"}"),
+            (@"^(list|show)\s+(files|directory|dir)\s+(.+)", "Statement",
+                "Listing directory. {tool:shell_command:ls:-la:{$3}}"),
+            (@"^docker\s+(ps|processes|containers)\b", "Statement",
+                "Listing containers. {tool:shell_command:docker:ps}"),
+            (@"^(add|create)\s+migration\s+(.+)", "Statement",
+                "Adding migration. {tool:shell_command:dotnet:ef:migrations:add:{$2}}"),
+        };
+        foreach (var (pattern, inputType, response) in rules)
+        {
+            db.ResponseRules.Add(new Data.Entities.ResponseRule
+            {
+                Pattern = pattern,
+                InputType = inputType,
+                IsActive = true,
+                Persona = "coding",
+                CreatedAt = now,
+                Responses = new List<Data.Entities.ResponseRuleResponse>
+                {
+                    new() { ResponseText = response }
+                }
+            });
+        }
         db.SaveChanges();
     }
 

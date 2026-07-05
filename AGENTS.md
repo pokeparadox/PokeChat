@@ -150,6 +150,21 @@ A completed improvement history is maintained in `.agents/history.md`. Active pl
 - **Phase 41:** Universal LLM Thinking Indicator ✅ (`LlmCallWithIndicator(Func<string?>)` wrapper in ChatSession, wraps all 6 LLM call sites)
 - **Phase 42:** Non-LLM Interview Mode ✅ (`IInterviewEngine` interface, `NonLlmInterviewEngine` with 30-question bank, 8 new tests, 545/545 pass)
 - **Phase 43:** Hang-Man Game ✅ (POS-dictionary-based word guessing, multi-turn letter/word guesses, 6 attempts, 9 tests, 554/554 pass)
+- **Phase 48:** Entity Graph Explorer ✅ — BFS path finding, relation checking, entity queries in ResponseEngine, 7 tests, 599/599 pass
+- **Phase 49:** Persona System ✅ — persona switching, persona-filtered rules/responses/greetings, coding persona prerequisite
+- **Phase 50:** Shell Command Tool ✅ — execute shell commands via ITool, whitelist-based security, 7 tests, 615/615 pass
+- **Phase 51:** File Operations Tool ✅ — read/write/list/search files via ITool, path traversal protection, configurable allowed paths, write extension whitelist, 23 tests, 638/638 pass
+- **Phase 52:** Error Knowledge Base ✅ — seed ~60 common compiler errors, regex matching, self-learning from corrections, 9 tests, 647/647 pass
+- **Phase 50b:** Coding Project Context ✅ — file mention detection via regex, ResolveFilePronoun in ContextTracker (that file/that test/that function), git branch detection on persona switch, 5 coding bot response categories, 9 new tests, 656/656 pass
+- **Phase 51b:** Coding CLI Command DB ✅ — ~90 NL→shell command mappings via coding-persona response rules (10 categories: build, test, git, run, package, lint/format, DB/migrations, dotnet generic, file ops, docker/misc), destructive command confirmation via DestructiveCommandPattern regex, affirmation/denial flow via TryHandleConfirmation, expanded ShellCommandTool whitelist in tools.json, 6 new tests, 662/662 pass
+- **Phase NN:** Neural Net Integration ✅ — SeedTrainingData with ~250 labeled examples across 27 categories, IntentClassifier bootstrapped from seeds on first run (persists via intent_model.bin), IntentConfidence now tracked in context, TryEarlyLlmRouting for pre-classification LLM gate (skips SVO pipeline for complex_question/unknown in AlwaysOn mode, preemptively flags for LLM offer in Offer mode), self-training pipeline with buffer + LLM-generated labels at session exit (retrains at 25+ entries), 8 new tests, 670/670 pass
+
+### Planned (in order)
+- **Phase 53:** Reminders — in-chat reminder creation/list/done/cancel with temporal expression parsing, duplicate prevention, session-start due check
+- **Phase 53:** REST API Layer — LM Studio-compatible HTTP endpoint, smart routing (PokeChat handles what it can, LLM fallback for the rest), session management
+- **Phase 54:** Engine/UI Separation — extract ChatEngine from ChatSession, share between ConsoleUI and REST API
+- **Phase 55:** Alternative UI — Godot desktop and/or web frontend consuming the REST API
+
 ## Known Fixes
 - **ContractionExpander:** Loaded from `contractions` table via `KnowledgeStore.GetContractions()`. Expands contracted forms before tokenisation using regex replace with `IgnoreCase` and `\b` word boundaries. The expander uses lowercase expansion text (`"i am"`, not `"I am"`) since the tokeniser lowercases afterward. Seeded via `DbSeeder.SeedContractions()` and `TestDataHelper.SeedContractions()`.
 - **Math operators in tokeniser:** `+`, `-`, `*`, `/`, `^` are extracted as standalone tokens by Tokeniser regex. `GetUnknownWords` in `SpellChecker` must skip math operators to prevent false unknown-word prompts before math evaluation. Fixed via `SpellChecker.MathOperators` HashSet.
@@ -208,6 +223,11 @@ A completed improvement history is maintained in `.agents/history.md`. Active pl
   - **Empty/nonsense responses** — bot says nothing useful, single-word dead-ends
   - If any new abnormality category emerges (not already in `.plans/` or `.agents/history.md`), create a plan file in `.plans/phaseN-name.md` documenting the symptoms, affected logs, root cause hypothesis, and proposed fix. File the plan to MemPalace (`wing: pokechat, room: plans`).
   - After all abnormalities are documented (plans created or fixes applied), delete the log files from `logs/`.
+
+## Known Fixes (cont.)
+- **FileOpsTool path resolution:** `ResolvePath` uses `Path.GetFullPath` to canonicalise paths, then checks if the resolved path starts with any allowed base directory. Directory listing and search also check traversal — any path outside the allowed set returns "Access denied". Write operations are further restricted by a whitelist of ~20 allowed file extensions (.txt, .md, .cs, .json, etc.). Reads are capped at 100KB. Search results capped at 20 matches.
+- **Coding CLI commands test setup:** Coding-related POS entries (build, project, git, status, push, compile, commit, docker, migration, deploy, publish, delete) must be added to the test POS dictionary before constructing ChatSession, otherwise the unknown-word prompt fires before the response rule engine gets to match. Seeded via `CreateCodingSessionAndDb` helper which calls `TestDataHelper.SeedCodingResponseRules` and adds extra POS entries. `SeedCodingResponseRules` must be called **after** `SeedPosDictionary` and db.SaveChanges, since the response engine loads rules from the DB at construction time.
+
 
 ## Known Fixes (cont.)
 - **ToolRegistry config loading:** Two bugs fixed. (1) Default config path was `"tools/tools.json"` (lowercase `t`), but the directory is `Tools/` (uppercase) — path is now `"Tools/tools.json"`. (2) `System.Text.Json` is case-sensitive by default; `"enabled"` in JSON didn't bind to `Enabled` property. Fixed with `PropertyNameCaseInsensitive = true` in `JsonSerializerOptions`.
