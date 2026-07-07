@@ -81,7 +81,7 @@ public class ChatSession : IDisposable
           "so", "but", "yet", "for", "with", "without", "just",
           "to", "about", "how", "what", "why", "when", "where", "who",
           "of", "in", "on", "at", "by", "from", "as", "into", "onto",
-          "sure", "do", "does", "did" };
+          "sure", "do", "does", "did", "same" };
 
     private static readonly HashSet<string> NegationWords = new(StringComparer.OrdinalIgnoreCase)
         { "not", "never", "no" };
@@ -655,6 +655,12 @@ public class ChatSession : IDisposable
             ProcessSentence(sentence, sentiment, intensity);
         }
 
+        var currentCount = _context.GetContext(ContextKeys.ContextFollowUpCount);
+        if (currentCount != null && int.TryParse(currentCount, out var cc) && cc > 0 && cc < 3)
+        {
+            _context.SetContext(ContextKeys.ContextFollowUpCount, "3");
+        }
+
         _context.SetContext(ContextKeys.SessionId, _sessionId);
         _context.SetContext(ContextKeys.LastUserInput, input);
 
@@ -669,6 +675,8 @@ public class ChatSession : IDisposable
             _context.SetContext(ContextKeys.PendingConfirmationCommand, input);
             return GetLLMResponse("coding_confirmation_prompt");
         }
+
+        var hadTriples = _context.GetContext(ContextKeys.ContextFollowUpCount) == "0";
 
         var response = _responseEngine.GenerateResponse(input, _currentUserId);
         var responseCategory = _context.GetContext(ContextKeys.CurrentResponseCategory);
@@ -702,7 +710,6 @@ public class ChatSession : IDisposable
         _knowledgeStore.StoreConversation(_currentUserId!.Value, input, response, _sessionId, responseCategory);
         _knowledgeStore.Save();
 
-        var hadTriples = _context.GetContext(ContextKeys.ContextFollowUpCount) == "0";
         _context.SetContext(ContextKeys.LastResponseHadSvo, hadTriples ? "true" : "false");
 
         if (prevCategory != null)
@@ -910,6 +917,7 @@ public class ChatSession : IDisposable
 
         var tags = _posTagger.Tag(correctedTokens);
         var triples = _svoExtractor.Extract(correctedTokens, tags);
+        var anyTripleProcessed = false;
 
         if (unknownWords.Count > 0 && triples.Count > 0)
         {
@@ -962,6 +970,13 @@ public class ChatSession : IDisposable
             var resolvedSubject = ResolveSubject(triple.Subject);
             var resolvedObject = ResolveObject(triple.Object);
 
+            if (string.IsNullOrEmpty(resolvedSubject) || string.IsNullOrEmpty(resolvedObject))
+                continue;
+
+            var resolvedSubjectLower = resolvedSubject.ToLowerInvariant();
+            if (resolvedSubjectLower is "not" or "never" or "no")
+                continue;
+
             var predicateType = ClassifyPredicate(resolvedSubject, triple.Verb, resolvedObject);
             var timeContext = _knowledgeStore.ExtractTimeContext(sentence) ?? _context.GetContext(ContextKeys.CurrentTimeContext);
             if (timeContext != null)
@@ -974,7 +989,19 @@ public class ChatSession : IDisposable
             var subjectTokens = resolvedSubject.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             bool subjectIsFunctionOnly = subjectTokens.Length > 1 && subjectTokens.All(t =>
                 FunctionWords.Contains(t) || ContentWordIndicators.Contains(t));
-            if (allFunctionWords || subjectIsFunctionOnly)
+
+            bool subjectLeadsWithGarbage = subjectTokens.Length > 0 &&
+                new[] { "yes", "no", "yeah", "nope", "oh", "ah", "well", "so" }
+                .Contains(subjectTokens[0].ToLowerInvariant());
+
+            bool subjectIsPronounAndShort = subjectTokens.Length <= 2 &&
+                subjectTokens.All(t => ContentWordIndicators.Contains(t.ToLowerInvariant()));
+
+            bool subjectIsInterrogative = subjectTokens.Length > 0 &&
+                new[] { "what", "when", "where", "why", "who", "whom", "whose", "which", "how" }
+                .Contains(subjectTokens[0].ToLowerInvariant());
+
+            if (allFunctionWords || subjectIsFunctionOnly || subjectLeadsWithGarbage || subjectIsPronounAndShort || subjectIsInterrogative)
                 continue;
 
             if (NegationWords.Any(w => lowerObj.StartsWith(w + " ") || lowerObj.Equals(w)))
@@ -1017,6 +1044,7 @@ public class ChatSession : IDisposable
             if (existingFact == null)
             {
                 _knowledgeStore.StoreFact(fact);
+                anyTripleProcessed = true;
             }
 
             if (predicateType is PredicateType.GeneralFact or PredicateType.PersonalAttribute)
@@ -1039,7 +1067,7 @@ public class ChatSession : IDisposable
             _context.PushTopic(resolvedSubject, triple.Verb, resolvedObject, topicCategory, predicateType);
         }
 
-        if (triples.Count > 0)
+        if (anyTripleProcessed)
         {
             _context.SetContext(ContextKeys.ContextFollowUpCount, "0");
             _context.SetContext(ContextKeys.TopicReferenceCount, "0");
@@ -1511,6 +1539,8 @@ public class ChatSession : IDisposable
         _currentUserNameLower = _currentUserName.ToLowerInvariant();
         _currentUserId = _knowledgeStore.GetOrCreateUser(_currentUserName);
         _responseEngine.SetCurrentUserName(_currentUserName);
+
+        _sessionLogger?.LogNameCaptured(_currentUserName, input);
 
         var storedName = _knowledgeStore.GetUserBotName(_currentUserId!.Value);
         if (storedName != null)

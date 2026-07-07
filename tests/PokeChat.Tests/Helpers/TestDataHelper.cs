@@ -371,7 +371,10 @@ internal static class TestDataHelper
             new PosDictionaryEntry { Word = "bell", WordType = "noun", CreatedAt = now },
             new PosDictionaryEntry { Word = "bright", WordType = "adjective", CreatedAt = now },
             new PosDictionaryEntry { Word = "in", WordType = "preposition", CreatedAt = now },
-            new PosDictionaryEntry { Word = "spring", WordType = "noun", CreatedAt = now }
+            new PosDictionaryEntry { Word = "spring", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "pea", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "peas", WordType = "noun", CreatedAt = now },
+            new PosDictionaryEntry { Word = "same", WordType = "adjective", CreatedAt = now }
         );
         db.SaveChanges();
     }

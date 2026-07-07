@@ -70,6 +70,27 @@ public class SessionLogger : IDisposable
         _writer.WriteLine();
     }
 
+    public void LogNameCaptured(string userName, string input)
+    {
+        if (!_enabled || _writer == null) return;
+
+        _turnCount++;
+        var timestamp = DateTime.UtcNow.ToString("O");
+
+        _writer.WriteLine($"## Turn {_turnCount}");
+        _writer.WriteLine($"- Timestamp: {timestamp}");
+        _writer.WriteLine($"- Session: {_sessionId}");
+        _writer.WriteLine();
+        _writer.WriteLine("### User");
+        _writer.WriteLine(input);
+        _writer.WriteLine();
+        _writer.WriteLine("### Bot");
+        _writer.WriteLine($"Hello {userName}! Lovely to meet you.");
+        _writer.WriteLine();
+        _writer.WriteLine("---");
+        _writer.WriteLine();
+    }
+
     public void LogSystem(string message)
     {
         if (!_enabled || _writer == null || string.IsNullOrEmpty(message)) return;

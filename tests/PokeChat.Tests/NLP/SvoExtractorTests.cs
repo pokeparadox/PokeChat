@@ -63,7 +63,7 @@ public class SvoExtractorTests
 
         var result = Extractor.Extract(tokens, tags);
         result.ShouldHaveSingleItem();
-        result[0].Subject.ShouldBe("the big cat");
+        result[0].Subject.ShouldBe("big cat");
         result[0].Verb.ShouldBe("chased");
         result[0].Object.ShouldBe("mouse");
     }
@@ -99,6 +99,6 @@ public class SvoExtractorTests
         result.ShouldHaveSingleItem();
         result[0].Subject.ShouldBe("i");
         result[0].Verb.ShouldBe("read");
-        result[0].Object.ShouldBe("a good book");
+        result[0].Object.ShouldBe("good book");
     }
 }

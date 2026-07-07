@@ -516,12 +516,23 @@ public class ResponseEngine
 
         if (!string.IsNullOrEmpty(_context.LastSubject))
         {
-            var countRaw = _context.GetContext(ContextKeys.ContextFollowUpCount);
-            int.TryParse(countRaw, out var followUpCount);
-            followUpCount++;
-            _context.SetContext(ContextKeys.ContextFollowUpCount, followUpCount.ToString());
+            var lastHadSvo = _context.GetContext(ContextKeys.LastResponseHadSvo);
+            if (lastHadSvo == "false")
+            {
+                _context.SetContext(ContextKeys.ContextFollowUpCount, "3");
+            }
+            else
+            {
+                var countRaw = _context.GetContext(ContextKeys.ContextFollowUpCount);
+                int.TryParse(countRaw, out var followUpCount);
+                followUpCount++;
+                _context.SetContext(ContextKeys.ContextFollowUpCount, followUpCount.ToString());
+            }
 
-            if (followUpCount < 3)
+            var currentCountRaw = _context.GetContext(ContextKeys.ContextFollowUpCount);
+            int.TryParse(currentCountRaw, out var currentFollowUpCount);
+
+            if (currentFollowUpCount < 3)
             {
                 var subject = SanitiseFollowUpPhrase(_context.LastSubject);
                 if (subject == null)
