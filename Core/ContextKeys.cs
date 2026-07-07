@@ -89,4 +89,8 @@ public static class ContextKeys
     public const string PendingConfirmation = "pending_confirmation";
     public const string PendingConfirmationCommand = "pending_confirmation_command";
     public const string PendingConfirmationArgs = "pending_confirmation_args";
+    public const string LastComplaint = "last_complaint";
+    public const string PendingReminderTask = "pending_reminder_task";
+    public const string PendingReminderTime = "pending_reminder_time";
+    public const string ReminderShownCount = "reminder_shown_count";
 }

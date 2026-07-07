@@ -1013,41 +1013,29 @@ public class KnowledgeStore(PokeChatDbContext context)
             .SelectFacet<Fact>()
             .ToList();
 
-        var sessionFactSignatures = new HashSet<string>();
-        foreach (var conv in conversations)
+        if (DateTime.TryParse(conversations.First().Timestamp, out var sessionStart) &&
+            DateTime.TryParse(conversations.Last().Timestamp, out var sessionEnd))
         {
-            var lowerInput = conv.UserInput.ToLowerInvariant();
-            var matchingFacts = facts.Where(f =>
-                !SummaryFilters.IsGarbageFact(f) &&
-                lowerInput.Contains(f.Object.ToLowerInvariant()) &&
-                (lowerInput.Contains(f.Subject.ToLowerInvariant()) ||
-                 lowerInput.Contains(f.Verb.ToLowerInvariant())));
-            foreach (var f in matchingFacts)
-                sessionFactSignatures.Add(FormatFact(f));
+            facts = facts
+                .Where(f => DateTime.TryParse(f.CreatedAt, out var created) &&
+                            created >= sessionStart.AddMinutes(-1) &&
+                            created <= sessionEnd.AddMinutes(1))
+                .ToList();
         }
 
-        if (sessionFactSignatures.Count == 0)
-        {
-            foreach (var conv in conversations)
-            {
-                var lowerInput = conv.UserInput.ToLowerInvariant();
-                var objectMatches = facts.Where(f =>
-                    !SummaryFilters.IsGarbageFact(f) &&
-                    lowerInput.Contains(f.Object.ToLowerInvariant()));
-                foreach (var f in objectMatches)
-                    sessionFactSignatures.Add(FormatFact(f));
-            }
-        }
+        var signatures = facts
+            .Where(f => !SummaryFilters.IsGarbageFact(f))
+            .Select(FormatFact)
+            .Distinct()
+            .ToList();
 
-        var factList = sessionFactSignatures.ToList();
-
-        if (factList.Count == 0)
+        if (signatures.Count == 0)
             return string.Empty;
 
-        if (factList.Count <= 2)
-            return string.Join("; ", factList);
+        if (signatures.Count <= 2)
+            return string.Join("; ", signatures);
 
-        var numbered = factList.Select((f, i) => $"{i + 1}) {f}");
+        var numbered = signatures.Select((f, i) => $"{i + 1}) {f}");
         return string.Join(". ", numbered);
     }
 
@@ -1501,5 +1489,136 @@ public class KnowledgeStore(PokeChatDbContext context)
         var entry = context.ErrorKnowledgeEntries.Find(entryId);
         if (entry != null)
             entry.SuccessCount++;
+    }
+
+    public Reminder? CreateReminder(int userId, string task, DateTime dueAt)
+    {
+        var reminder = new Reminder
+        {
+            UserId = userId,
+            Task = task,
+            DueAt = dueAt.ToString("o"),
+            Status = "pending",
+            CreatedAt = DateTime.UtcNow.ToString("o")
+        };
+        context.Reminders.Add(reminder);
+        return reminder;
+    }
+
+    public List<Reminder> GetPendingReminders(int userId)
+    {
+        return context.Reminders
+            .Where(r => r.UserId == userId && r.Status == "pending")
+            .OrderBy(r => r.DueAt)
+            .ToList();
+    }
+
+    public List<Reminder> GetDueReminders(int userId)
+    {
+        var now = DateTime.UtcNow.ToString("o");
+        return context.Reminders
+            .Where(r => r.UserId == userId && r.Status == "pending" && r.DueAt.CompareTo(now) <= 0)
+            .OrderBy(r => r.DueAt)
+            .ToList();
+    }
+
+    public Reminder? MarkReminderDone(int userId, string task)
+    {
+        var reminder = context.Reminders
+            .FirstOrDefault(r => r.UserId == userId && r.Task == task && r.Status == "pending");
+        if (reminder != null)
+            reminder.Status = "done";
+        return reminder;
+    }
+
+    public Reminder? CancelReminder(int userId, string task)
+    {
+        var reminder = context.Reminders
+            .FirstOrDefault(r => r.UserId == userId && r.Task == task && r.Status == "pending");
+        if (reminder != null)
+            reminder.Status = "cancelled";
+        return reminder;
+    }
+
+    public bool HasReminderForTask(int userId, string task)
+    {
+        return context.Reminders.Any(r => r.UserId == userId && r.Task == task && r.Status == "pending");
+    }
+
+    public DateTime? ParseReminderTime(string input, DateTime? defaultTime = null)
+    {
+        var lowerInput = input.Trim().ToLowerInvariant();
+        var now = defaultTime ?? DateTime.UtcNow;
+        int hour = 0, minute = 0;
+        var hasTime = false;
+        var daysOffset = 0;
+        var hasDate = false;
+
+        // Check for "at {time}" — "at 5pm", "at 3:30", "at 14:00"
+        var atTimeMatch = Regex.Match(lowerInput, @"at\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?");
+        if (atTimeMatch.Success)
+        {
+            hour = int.Parse(atTimeMatch.Groups[1].Value);
+            if (atTimeMatch.Groups[3].Value is "pm" && hour != 12)
+                hour += 12;
+            if (atTimeMatch.Groups[3].Value is "am" && hour == 12)
+                hour = 0;
+            if (atTimeMatch.Groups[2].Success)
+                minute = int.Parse(atTimeMatch.Groups[2].Value);
+            hasTime = true;
+        }
+
+        // Check for "today", "tomorrow"
+        if (lowerInput.Contains("tomorrow"))
+        {
+            daysOffset = 1;
+            hasDate = true;
+        }
+        else if (lowerInput.Contains("today"))
+        {
+            hasDate = true;
+        }
+
+        // Check for temporal expressions (monday, next week, etc.)
+        var temporalExpressions = context.TemporalExpressions.ToList();
+        foreach (var expr in temporalExpressions)
+        {
+            if (lowerInput.Contains(expr.Expression))
+            {
+                daysOffset = expr.DaysOffset;
+                hasDate = true;
+                break;
+            }
+        }
+
+        // Check for "in X days" / "in X hours"
+        var inDaysMatch = Regex.Match(lowerInput, @"in (\d+)\s+days?");
+        if (inDaysMatch.Success)
+        {
+            daysOffset = int.Parse(inDaysMatch.Groups[1].Value);
+            hasDate = true;
+        }
+
+        var inHoursMatch = Regex.Match(lowerInput, @"in (\d+)\s+hours?");
+        if (inHoursMatch.Success && !hasDate)
+        {
+            var baseTime = defaultTime ?? DateTime.UtcNow;
+            var result = baseTime.AddHours(int.Parse(inHoursMatch.Groups[1].Value));
+            if (hasTime)
+                result = new DateTime(result.Year, result.Month, result.Day, hour, minute, 0);
+            return result;
+        }
+
+        var fallbackTime = defaultTime ?? DateTime.UtcNow;
+        if (hasDate || hasTime)
+        {
+            var date = hasDate ? fallbackTime.AddDays(daysOffset) : fallbackTime;
+            return hasTime
+                ? new DateTime(date.Year, date.Month, date.Day, hour, minute, 0)
+                : new DateTime(date.Year, date.Month, date.Day, 23, 59, 0);
+        }
+
+        // No time and no date — default to 1 hour from now
+        return fallbackTime.AddHours(1);
     }
 }

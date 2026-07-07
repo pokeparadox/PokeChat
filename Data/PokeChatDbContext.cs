@@ -62,6 +62,7 @@ public sealed class PokeChatDbContext : DbContext
     public DbSet<RhymeGroup> RhymeGroups => Set<RhymeGroup>();
     public DbSet<PoemTemplate> PoemTemplates => Set<PoemTemplate>();
     public DbSet<ErrorKnowledgeEntry> ErrorKnowledgeEntries => Set<ErrorKnowledgeEntry>();
+    public DbSet<Reminder> Reminders => Set<Reminder>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -407,6 +408,19 @@ public sealed class PokeChatDbContext : DbContext
             entity.Property(e => e.UsedCount);
             entity.Property(e => e.SuccessCount);
             entity.Property(e => e.CreatedAt).IsRequired();
+        });
+
+        modelBuilder.Entity<Reminder>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.UserId).IsRequired();
+            entity.Property(e => e.Task).IsRequired();
+            entity.Property(e => e.DueAt).IsRequired();
+            entity.Property(e => e.Status).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => e.UserId);
         });
     }
 }

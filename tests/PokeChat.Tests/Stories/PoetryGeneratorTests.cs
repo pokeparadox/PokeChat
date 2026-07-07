@@ -7,9 +7,8 @@ namespace PokeChat.Tests.Stories;
 
 public class PoetryGeneratorTests
 {
-    private static PoetryGenerator CreateGenerator()
+    private static PoetryGenerator CreateGenerator(FreshDbContext db)
     {
-        var db = new FreshDbContext();
         TestDataHelper.SeedPosDictionary(db.Context);
         TestDataHelper.SeedRhymeGroups(db.Context);
         TestDataHelper.SeedPoemTemplates(db.Context);
@@ -20,7 +19,8 @@ public class PoetryGeneratorTests
     [Fact]
     public void GenerateHaiku_ReturnsThreeLines()
     {
-        var generator = CreateGenerator();
+        using var db = new FreshDbContext();
+        var generator = CreateGenerator(db);
         var haiku = generator.GenerateHaiku();
         haiku.ShouldNotBeNull();
         haiku.Split('\n').Length.ShouldBe(3);
@@ -29,7 +29,8 @@ public class PoetryGeneratorTests
     [Fact]
     public void GenerateHaiku_NoEmptyLines()
     {
-        var generator = CreateGenerator();
+        using var db = new FreshDbContext();
+        var generator = CreateGenerator(db);
         var haiku = generator.GenerateHaiku();
         haiku.ShouldNotBeNull();
         foreach (var line in haiku.Split('\n'))
@@ -39,7 +40,8 @@ public class PoetryGeneratorTests
     [Fact]
     public void GenerateHaiku_AllSlotsResolved()
     {
-        var generator = CreateGenerator();
+        using var db = new FreshDbContext();
+        var generator = CreateGenerator(db);
         var haiku = generator.GenerateHaiku();
         haiku.ShouldNotBeNull();
         haiku.ShouldNotContain("{");
@@ -48,7 +50,8 @@ public class PoetryGeneratorTests
     [Fact]
     public void GenerateLimerick_ReturnsFiveLines()
     {
-        var generator = CreateGenerator();
+        using var db = new FreshDbContext();
+        var generator = CreateGenerator(db);
         var limerick = generator.GenerateLimerick();
         limerick.ShouldNotBeNull();
         limerick.Split('\n').Length.ShouldBe(5);
@@ -57,7 +60,8 @@ public class PoetryGeneratorTests
     [Fact]
     public void GenerateLimerick_NoEmptyLines()
     {
-        var generator = CreateGenerator();
+        using var db = new FreshDbContext();
+        var generator = CreateGenerator(db);
         var limerick = generator.GenerateLimerick();
         limerick.ShouldNotBeNull();
         foreach (var line in limerick.Split('\n'))
@@ -67,7 +71,8 @@ public class PoetryGeneratorTests
     [Fact]
     public void GenerateLimerick_AllSlotsResolved()
     {
-        var generator = CreateGenerator();
+        using var db = new FreshDbContext();
+        var generator = CreateGenerator(db);
         var limerick = generator.GenerateLimerick();
         limerick.ShouldNotBeNull();
         limerick.ShouldNotContain("{");
@@ -76,12 +81,8 @@ public class PoetryGeneratorTests
     [Fact]
     public void GenerateLimerick_RhymeSlotsResolved()
     {
-        var db = new FreshDbContext();
-        TestDataHelper.SeedPosDictionary(db.Context);
-        TestDataHelper.SeedRhymeGroups(db.Context);
-        TestDataHelper.SeedPoemTemplates(db.Context);
-        var store = new KnowledgeStore(db.Context);
-        var generator = new PoetryGenerator(store);
+        using var db = new FreshDbContext();
+        var generator = CreateGenerator(db);
 
         var limerick = generator.GenerateLimerick();
         limerick.ShouldNotBeNull();
@@ -96,12 +97,8 @@ public class PoetryGeneratorTests
     [Fact]
     public void GenerateHaiku_IncludesUserName()
     {
-        var db = new FreshDbContext();
-        TestDataHelper.SeedPosDictionary(db.Context);
-        TestDataHelper.SeedRhymeGroups(db.Context);
-        TestDataHelper.SeedPoemTemplates(db.Context);
-        var store = new KnowledgeStore(db.Context);
-        var generator = new PoetryGenerator(store);
+        using var db = new FreshDbContext();
+        var generator = CreateGenerator(db);
 
         var haiku = generator.GenerateHaiku(userName: "Alice");
 
@@ -111,7 +108,7 @@ public class PoetryGeneratorTests
     [Fact]
     public void GenerateHaiku_NoTemplates_ReturnsNull()
     {
-        var db = new FreshDbContext();
+        using var db = new FreshDbContext();
         TestDataHelper.SeedPosDictionary(db.Context);
         var store = new KnowledgeStore(db.Context);
         var generator = new PoetryGenerator(store);

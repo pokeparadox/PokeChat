@@ -11698,5 +11698,37 @@
   {
     "Word": "learning",
     "Type": "noun"
+  },
+  {
+    "Word": "mock",
+    "Type": "verb"
+  },
+  {
+    "Word": "mocked",
+    "Type": "verb"
+  },
+  {
+    "Word": "mocking",
+    "Type": "verb"
+  },
+  {
+    "Word": "mocks",
+    "Type": "verb"
+  },
+  {
+    "Word": "programming",
+    "Type": "noun"
+  },
+  {
+    "Word": "programmer",
+    "Type": "noun"
+  },
+  {
+    "Word": "programmers",
+    "Type": "noun"
+  },
+  {
+    "Word": "programs",
+    "Type": "noun"
   }
 ]

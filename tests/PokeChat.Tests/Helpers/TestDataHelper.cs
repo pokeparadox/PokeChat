@@ -201,6 +201,23 @@ internal static class TestDataHelper
             ("persona_switch_chat", "Back to chat mode. What would you like to talk about?"),
             ("persona_switch_coding", "Switched to coding mode. I'm PokeCode — ready to help with code."),
             ("persona_switch_coding", "Entering coding mode. How can I help with your project?"),
+            ("complaint_acknowledged", "You're right, that didn't come out well. Let me try again — what were you saying?"),
+            ("complaint_acknowledged", "I see what you mean, that wasn't helpful. Could you rephrase what you were talking about?"),
+            ("complaint_acknowledged", "Sorry about that — I'm still learning how to follow conversations. What were we discussing?"),
+            ("reminder_created", "I'll remind you to {0} at {1}."),
+            ("reminder_created", "Got it! Reminder set: {0} at {1}."),
+            ("reminder_due", "By the way, you wanted me to remind you: {0}"),
+            ("reminder_due", "Just a reminder — you asked me to tell you: {0}"),
+            ("reminder_list", "Here are your reminders:\n{0}"),
+            ("reminder_list", "Your reminders:\n{0}"),
+            ("reminder_empty", "You don't have any reminders set."),
+            ("reminder_empty", "There are no reminders on your list."),
+            ("reminder_done", "Marked '{0}' as done!"),
+            ("reminder_done", "Done! I've marked '{0}' as completed."),
+            ("reminder_cancelled", "Cancelled the reminder for '{0}'."),
+            ("reminder_cancelled", "OK, I've removed the reminder for '{0}'."),
+            ("reminder_duplicate", "You already have a reminder for that."),
+            ("reminder_duplicate", "That's already on your reminder list."),
         };
         db.BotResponses.AddRange(responses.Select(r => new BotResponse
         {

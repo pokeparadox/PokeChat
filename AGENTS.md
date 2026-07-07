@@ -161,6 +161,9 @@ A completed improvement history is maintained in `.agents/history.md`. Active pl
 
 ### Planned (in order)
 - **Phase 53:** Reminders — in-chat reminder creation/list/done/cancel with temporal expression parsing, duplicate prevention, session-start due check
+- **Phase NN (Chat Logs):** Fix SVO Garbage Extraction — reject triples with clause markers, function-word objects, or >8 word objects; sanitise LastSubject too; see `.plans/fix-question-parsing.md`
+- **Phase NN (Chat Logs):** Fix Name Confusion — validate name input against POS dictionary, verify identity on session restore; see `.plans/fix-name-confusion.md`
+- **Phase NN (Chat Logs):** User Meta-commentary Detection — detect frustration/confusion signals, apologise/acknowledge; see `.plans/self-awareness-capability.md`
 - **Phase 53:** REST API Layer — LM Studio-compatible HTTP endpoint, smart routing (PokeChat handles what it can, LLM fallback for the rest), session management
 - **Phase 54:** Engine/UI Separation — extract ChatEngine from ChatSession, share between ConsoleUI and REST API
 - **Phase 55:** Alternative UI — Godot desktop and/or web frontend consuming the REST API
@@ -227,6 +230,10 @@ A completed improvement history is maintained in `.agents/history.md`. Active pl
 ## Known Fixes (cont.)
 - **FileOpsTool path resolution:** `ResolvePath` uses `Path.GetFullPath` to canonicalise paths, then checks if the resolved path starts with any allowed base directory. Directory listing and search also check traversal — any path outside the allowed set returns "Access denied". Write operations are further restricted by a whitelist of ~20 allowed file extensions (.txt, .md, .cs, .json, etc.). Reads are capped at 100KB. Search results capped at 20 matches.
 - **Coding CLI commands test setup:** Coding-related POS entries (build, project, git, status, push, compile, commit, docker, migration, deploy, publish, delete) must be added to the test POS dictionary before constructing ChatSession, otherwise the unknown-word prompt fires before the response rule engine gets to match. Seeded via `CreateCodingSessionAndDb` helper which calls `TestDataHelper.SeedCodingResponseRules` and adds extra POS entries. `SeedCodingResponseRules` must be called **after** `SeedPosDictionary` and db.SaveChanges, since the response engine loads rules from the DB at construction time.
+- **Session summary fabrication fix:** `BuildSessionSummary` now uses time-based fact matching (filters facts by session time window) instead of loose text matching. Prevents cross-session contamination and garbage fragments in exit summaries.
+- **SanitiseFollowUpPhrase:** `ResponseEngine.SanitiseFollowUpPhrase()` strips leading/trailing stop words from context follow-up phrases. Returns null if nothing meaningful remains — caller skips follow-up entirely instead of generating broken questions.
+- **JokeStartPhrases:** Removed `"funny"` from trigger phrases — too broad, caused false positives on non-joke inputs like "why is that funny".
+- **BuildSessionSummary time-based matching:** Correlates facts to session by parsing `CreatedAt` timestamps against conversation `Timestamp` range (±1 minute window). Falls back to returning all user facts if timestamps can't be parsed.
 
 
 ## Known Fixes (cont.)

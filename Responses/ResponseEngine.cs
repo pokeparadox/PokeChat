@@ -36,6 +36,38 @@ public class ResponseEngine
     private static readonly HashSet<string> ObjectPronouns = new(StringComparer.OrdinalIgnoreCase)
         { "you", "me", "him", "her", "them", "it", "us", "this", "that" };
 
+    private static readonly HashSet<string> FollowUpStopWords = new(StringComparer.OrdinalIgnoreCase)
+        { "not", "never", "no", "and", "or", "but", "the", "a", "an", "of", "in", "on",
+          "at", "by", "from", "as", "into", "onto", "for", "with", "without", "just",
+          "to", "is", "are", "was", "were", "do", "does", "did", "i", "you", "he", "she",
+          "it", "we", "they", "that", "this", "these", "those", "so", "also", "too",
+          "there", "here", "then", "than", "yet", "now", "sure", "well", "ok",
+          "very", "also", "too", "just", "really", "quite" };
+
+    internal static string? SanitiseFollowUpPhrase(string phrase)
+    {
+        if (string.IsNullOrWhiteSpace(phrase))
+            return null;
+
+        var tokens = phrase.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
+
+        while (tokens.Count > 0 && FollowUpStopWords.Contains(tokens[0]))
+            tokens.RemoveAt(0);
+
+        while (tokens.Count > 0 && FollowUpStopWords.Contains(tokens[^1]))
+            tokens.RemoveAt(tokens.Count - 1);
+
+        if (tokens.Count == 0)
+            return null;
+
+        return string.Join(" ", tokens);
+    }
+
+    public string GetResponse(string category, params object[] args)
+    {
+        return GetRandomResponse(category, args);
+    }
+
     public void SetCurrentUserName(string name)
     {
         _currentUserName = name;
@@ -106,9 +138,12 @@ public class ResponseEngine
         if (ModalVerbs.Contains(lowerVerb))
             return verb;
 
-        if (lowerVerb is "is" or "am" or "are") return "is";
-        if (lowerVerb is "was") return "was";
-        if (lowerVerb is "were") return "were";
+        if (lowerVerb is "is" or "am" or "are")
+            return lowerSubject is "i" ? "am" : lowerSubject is "you" or "we" or "they" ? "are" : "is";
+
+        if (lowerVerb is "was" or "were")
+            return lowerSubject is "i" ? "was" : lowerSubject is "you" or "we" or "they" ? "were" : "was";
+
         if (lowerVerb is "have") return "has";
         if (lowerVerb is "do") return "does";
         if (lowerVerb is "go") return "goes";
@@ -488,21 +523,30 @@ public class ResponseEngine
 
             if (followUpCount < 3)
             {
-                var subject = _context.LastSubject;
+                var subject = SanitiseFollowUpPhrase(_context.LastSubject);
+                if (subject == null)
+                {
+                    _context.SetContext(ContextKeys.ContextFollowUpCount, "3");
+                    return GetRandomResponse("default_response");
+                }
+
                 var subjCat = _context.GetContext(ContextKeys.SubjectCategory);
                 var isSelf = !string.IsNullOrEmpty(_currentUserName) &&
                     string.Equals(subject, _currentUserName, StringComparison.OrdinalIgnoreCase);
 
                 if (!string.IsNullOrEmpty(_context.LastObject) && !ObjectPronouns.Contains(_context.LastObject))
                 {
-                    var obj = _context.LastObject;
-                    if (isSelf)
+                    var obj = SanitiseFollowUpPhrase(_context.LastObject);
+                    if (obj != null)
                     {
-                        var selfResponse = GetRandomResponse("context_followup_with_object_self", subject, obj);
-                        if (!string.IsNullOrEmpty(selfResponse))
-                            return selfResponse;
+                        if (isSelf)
+                        {
+                            var selfResponse = GetRandomResponse("context_followup_with_object_self", subject, obj);
+                            if (!string.IsNullOrEmpty(selfResponse))
+                                return selfResponse;
+                        }
+                        return GetRandomResponse("context_followup_with_object", subject, obj);
                     }
-                    return GetRandomResponse("context_followup_with_object", subject, obj);
                 }
 
                 if (!string.IsNullOrEmpty(subjCat))

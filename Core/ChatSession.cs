@@ -141,7 +141,7 @@ public class ChatSession : IDisposable
     {
         "tell me a joke", "make me laugh", "got any jokes", "say something funny",
         "crack a joke", "tell a joke", "tell us a joke", "tell me a funny joke",
-        "do a joke", "tell me something funny", "funny"
+        "do a joke", "tell me something funny"
     };
 
     private static readonly HashSet<string> RiddleStartPhrases = new(StringComparer.OrdinalIgnoreCase)
@@ -546,6 +546,18 @@ public class ChatSession : IDisposable
             return HandleDictionaryDefinition(input, dictWord);
         }
 
+        var pendingReminderTask = _context.GetContext(ContextKeys.PendingReminderTask);
+        if (pendingReminderTask != null)
+        {
+            var pendingTime = _context.GetContext(ContextKeys.PendingReminderTime);
+            if (pendingTime == null)
+            {
+                var parsedTime = _knowledgeStore.ParseReminderTime(input);
+                _context.SetContext(ContextKeys.PendingReminderTime, parsedTime?.ToString("o"));
+            }
+            return HandleReminderCreation(pendingReminderTask);
+        }
+
         var gameActive = _context.GetContext(ContextKeys.GameModeActive);
         if (gameActive != null)
             return HandleGameTurn(input);
@@ -608,6 +620,9 @@ public class ChatSession : IDisposable
 
         if (TryHandleCorrection(input, out var correctionResponse))
             return correctionResponse;
+
+        if (TryHandleReminderRequest(input, out var reminderResponse))
+            return reminderResponse;
 
         LearnGreetingWords(input);
 
@@ -3529,6 +3544,189 @@ public class ChatSession : IDisposable
         }
 
         return string.Empty;
+    }
+
+    private bool TryHandleReminderRequest(string input, out string response)
+    {
+        response = string.Empty;
+        if (_currentUserId == null) return false;
+
+        var lower = input.Trim().ToLowerInvariant();
+
+        var remindMatch = Regex.Match(lower, @"^remind me (.+?) to (.+)$");
+        if (remindMatch.Success)
+        {
+            var timePart = remindMatch.Groups[1].Value.Trim();
+            var task = remindMatch.Groups[2].Value.Trim();
+
+            if (HasReminderKeywordsOnly(task))
+                return false;
+
+            if (_knowledgeStore.HasReminderForTask(_currentUserId.Value, task))
+            {
+                response = _responseEngine.GetResponse("reminder_duplicate");
+                return true;
+            }
+
+            var parsedTime = _knowledgeStore.ParseReminderTime($"{timePart} {task}");
+            if (parsedTime == null)
+            {
+                _context.SetContext(ContextKeys.PendingReminderTask, task);
+                response = "When should I remind you? You can say something like 'in 2 hours' or 'at 5pm'.";
+                return true;
+            }
+
+            return HandleReminderCreation(task, parsedTime.Value, out response);
+        }
+
+        var remindNoTime = Regex.Match(lower, @"^remind me to (.+)$");
+        if (remindNoTime.Success)
+        {
+            var task = remindNoTime.Groups[1].Value.Trim();
+
+            if (HasReminderKeywordsOnly(task))
+                return false;
+
+            if (_knowledgeStore.HasReminderForTask(_currentUserId.Value, task))
+            {
+                response = _responseEngine.GetResponse("reminder_duplicate");
+                return true;
+            }
+
+            var parsedTime = _knowledgeStore.ParseReminderTime(input, null);
+            var defaultHour = DateTime.UtcNow.AddHours(1);
+            var diff = parsedTime.HasValue ? (parsedTime.Value - defaultHour).Duration() : TimeSpan.MaxValue;
+            if (parsedTime == null || diff.TotalSeconds < 5)
+            {
+                _context.SetContext(ContextKeys.PendingReminderTask, task);
+                response = "When should I remind you? You can say something like 'in 2 hours' or 'at 5pm'.";
+                return true;
+            }
+
+            return HandleReminderCreation(task, parsedTime.Value, out response);
+        }
+
+        if (lower.Contains("what reminders") || lower.Contains("what's coming up") ||
+            lower.Contains("what do i need to do") || lower == "reminders" || lower == "show reminders" ||
+            lower.Contains("list reminders") || lower.Contains("my reminders"))
+        {
+            var reminders = _knowledgeStore.GetPendingReminders(_currentUserId.Value);
+            if (reminders.Count == 0)
+            {
+                response = _responseEngine.GetResponse("reminder_empty");
+                return true;
+            }
+
+            var reminderLines = reminders.Select((r, i) =>
+                $"{i + 1}. {r.Task} (due: {FormatReminderTime(r.DueAt)})");
+            var reminderText = string.Join("\n", reminderLines);
+            response = _responseEngine.GetResponse("reminder_list", reminderText);
+            return true;
+        }
+
+        var doneMatch = Regex.Match(lower, @"(?:mark|set)\s+(?:reminder\s+)?(.+?)\s+(?:as\s+)?done");
+        if (doneMatch.Success)
+        {
+            var task = doneMatch.Groups[1].Value.Trim();
+            var reminder = _knowledgeStore.MarkReminderDone(_currentUserId.Value, task);
+            if (reminder != null)
+            {
+                response = _responseEngine.GetResponse("reminder_done", reminder.Task);
+                return true;
+            }
+            response = "I couldn't find a reminder matching that.";
+            return true;
+        }
+
+        var iDidMatch = Regex.Match(lower, @"i (?:did|finished|completed)\s+(.+?)\s+reminder$");
+        if (iDidMatch.Success)
+        {
+            var task = iDidMatch.Groups[1].Value.Trim();
+            var reminder = _knowledgeStore.MarkReminderDone(_currentUserId.Value, task);
+            if (reminder != null)
+            {
+                response = _responseEngine.GetResponse("reminder_done", reminder.Task);
+                return true;
+            }
+            return false;
+        }
+
+        var cancelMatch = Regex.Match(lower, @"(?:cancel|forget|delete|remove)\s+reminder\s+(?:for|about\s+)?(.+?)$");
+        if (cancelMatch.Success)
+        {
+            var task = cancelMatch.Groups[1].Value.Trim();
+            var reminder = _knowledgeStore.CancelReminder(_currentUserId.Value, task);
+            if (reminder != null)
+            {
+                response = _responseEngine.GetResponse("reminder_cancelled", reminder.Task);
+                return true;
+            }
+            response = "I couldn't find a reminder matching that.";
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool HandleReminderCreation(string task, DateTime dueAt, out string response)
+    {
+        response = string.Empty;
+        if (_currentUserId == null) return false;
+
+        var reminder = _knowledgeStore.CreateReminder(_currentUserId.Value, task, dueAt);
+        _knowledgeStore.Save();
+        _context.SetContext(ContextKeys.PendingReminderTask, null);
+        _context.SetContext(ContextKeys.PendingReminderTime, null);
+        response = _responseEngine.GetResponse("reminder_created", reminder.Task, FormatReminderTime(reminder.DueAt));
+        return true;
+    }
+
+    private string HandleReminderCreation(string task)
+    {
+        var timeStr = _context.GetContext(ContextKeys.PendingReminderTime);
+        if (timeStr == null || !DateTime.TryParse(timeStr, out var dueAt))
+            dueAt = DateTime.UtcNow.AddHours(1);
+
+        if (_currentUserId == null)
+        {
+            _context.SetContext(ContextKeys.PendingReminderTask, null);
+            _context.SetContext(ContextKeys.PendingReminderTime, null);
+            return string.Empty;
+        }
+
+        var reminder = _knowledgeStore.CreateReminder(_currentUserId.Value, task, dueAt);
+        _knowledgeStore.Save();
+        _context.SetContext(ContextKeys.PendingReminderTask, null);
+        _context.SetContext(ContextKeys.PendingReminderTime, null);
+        return _responseEngine.GetResponse("reminder_created", reminder.Task, FormatReminderTime(reminder.DueAt));
+    }
+
+    private static string FormatReminderTime(string dueAtStr)
+    {
+        if (DateTime.TryParse(dueAtStr, out var dt))
+        {
+            var now = DateTime.UtcNow;
+            var localDt = dt.Kind == DateTimeKind.Utc ? dt.ToLocalTime() : dt;
+
+            if (dt.Date == now.Date)
+                return $"today at {localDt:h:mm tt}";
+            if (dt.Date == now.Date.AddDays(1))
+                return $"tomorrow at {localDt:h:mm tt}";
+
+            return localDt.ToString("MMM dd 'at' h:mm tt");
+        }
+        return dueAtStr;
+    }
+
+    private static bool HasReminderKeywordsOnly(string text)
+    {
+        var reminderKeywords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "remind", "reminder", "reminders", "me", "to", "at", "in", "on",
+            "the", "a", "an", "today", "tomorrow", "now", "later"
+        };
+        var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return words.Length > 0 && words.All(w => reminderKeywords.Contains(w));
     }
 
     public void Dispose()

@@ -223,7 +223,7 @@ public class ResponseEngineTests
         ResponseEngine.ConjugateVerb("is", "sky").ShouldBe("is");
         ResponseEngine.ConjugateVerb("are", "sky").ShouldBe("is");
         ResponseEngine.ConjugateVerb("was", "Alice").ShouldBe("was");
-        ResponseEngine.ConjugateVerb("were", "Alice").ShouldBe("were");
+        ResponseEngine.ConjugateVerb("were", "Alice").ShouldBe("was");
     }
 
     [Fact]
@@ -751,5 +751,72 @@ public class ResponseEngineTests
         var engine = CreateEngine(db.Context, context);
         var response = engine.GenerateResponse("hello", null);
         response.ShouldStartWith("\U0001F60A");
+    }
+
+    [Fact]
+    public void SanitiseFollowUpPhrase_StripsLeadingFunctionWords()
+    {
+        ResponseEngine.SanitiseFollowUpPhrase("and the trains").ShouldBe("trains");
+    }
+
+    [Fact]
+    public void SanitiseFollowUpPhrase_StripsTrailingFunctionWords()
+    {
+        ResponseEngine.SanitiseFollowUpPhrase("trains and the").ShouldBe("trains");
+    }
+
+    [Fact]
+    public void SanitiseFollowUpPhrase_ReturnsNull_WhenAllFunctionWords()
+    {
+        ResponseEngine.SanitiseFollowUpPhrase("and the of for").ShouldBeNull();
+    }
+
+    [Fact]
+    public void SanitiseFollowUpPhrase_SingleMeaningfulWord_ReturnsIt()
+    {
+        ResponseEngine.SanitiseFollowUpPhrase("trains").ShouldBe("trains");
+    }
+
+    [Fact]
+    public void SanitiseFollowUpPhrase_NormalPhrase_Unchanged()
+    {
+        ResponseEngine.SanitiseFollowUpPhrase("efficient trains").ShouldBe("efficient trains");
+    }
+
+    [Fact]
+    public void SanitiseFollowUpPhrase_NullInput_ReturnsNull()
+    {
+        ResponseEngine.SanitiseFollowUpPhrase(null!).ShouldBeNull();
+    }
+
+    [Fact]
+    public void SanitiseFollowUpPhrase_EmptyInput_ReturnsNull()
+    {
+        ResponseEngine.SanitiseFollowUpPhrase("").ShouldBeNull();
+    }
+
+    [Fact]
+    public void SanitiseFollowUpPhrase_StripsTrailingNow()
+    {
+        ResponseEngine.SanitiseFollowUpPhrase("bored of that now").ShouldBe("bored");
+    }
+
+    [Fact]
+    public void SanitiseFollowUpPhrase_AllStopWords_ReturnsNull()
+    {
+        ResponseEngine.SanitiseFollowUpPhrase("of the and for now").ShouldBeNull();
+    }
+
+    [Fact]
+    public void GenerateResponse_NoLiteralPlaceholder_WhenSubjectIsNull()
+    {
+        using var db = new FreshDbContext();
+        var context = new ContextTracker();
+        context.UpdateLastSubject("of the and for");
+        context.UpdateLastObject("also too just");
+        var engine = CreateEngine(db.Context, context);
+        var response = engine.GenerateResponse("hello", null);
+        response.ShouldNotContain("{0}");
+        response.ShouldNotBeNullOrEmpty();
     }
 }

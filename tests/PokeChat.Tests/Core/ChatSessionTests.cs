@@ -2182,7 +2182,7 @@ public class ChatSessionTests
         {
             session.HandleNameInput("my name is Bob");
             var response = session.ProcessInput("what do you know");
-            Assert.True(response.Contains("don't know much") || response.Contains("haven't learned"));
+            (response.Contains("don't know much") || response.Contains("haven't learned")).ShouldBeTrue();
         }
     }
 
@@ -2195,7 +2195,7 @@ public class ChatSessionTests
             session.HandleNameInput("my name is Bob");
             session.ProcessInput("I like pizza");
             var response = session.ProcessInput("conversation stats");
-            Assert.True(response.Contains("Facts") || response.Contains("Total facts") || response.Contains("Stats"));
+            (response.Contains("Facts") || response.Contains("Total facts") || response.Contains("Stats")).ShouldBeTrue();
         }
     }
 
@@ -2209,7 +2209,7 @@ public class ChatSessionTests
             session.ProcessInput("I like pizza");
             var response = session.ProcessInput("compliment me");
             response.ShouldNotBeNullOrEmpty();
-            Assert.True(response.Contains("pizza") || response.Contains("great") || response.Contains("love") || response.Contains("awesome"));
+            (response.Contains("pizza") || response.Contains("great") || response.Contains("love") || response.Contains("awesome")).ShouldBeTrue();
         }
     }
 
@@ -2249,7 +2249,7 @@ public class ChatSessionTests
             session.ProcessInput("I like pizza");
             session.ProcessInput("I like cats");
             var response = session.ProcessInput("how many facts do you know");
-            Assert.True(response.Contains("2") || response.Contains("facts") || response.Contains("Facts"));
+            (response.Contains("2") || response.Contains("facts") || response.Contains("Facts")).ShouldBeTrue();
         }
     }
 
@@ -2261,8 +2261,8 @@ public class ChatSessionTests
         {
             session.HandleNameInput("my name is Bob");
             var response = session.ProcessInput("play hangman");
-            Assert.Contains("Let's play", response);
-            Assert.Contains("letters", response);
+            response.ShouldContain("Let's play");
+            response.ShouldContain("letters");
         }
     }
 
@@ -2275,7 +2275,7 @@ public class ChatSessionTests
             session.HandleNameInput("my name is Bob");
             session.ProcessInput("play hangman");
             var response = session.ProcessInput("play hangman");
-            Assert.Contains("already playing", response);
+            response.ShouldContain("already playing");
         }
     }
 
@@ -2288,7 +2288,7 @@ public class ChatSessionTests
             session.HandleNameInput("my name is Bob");
             session.ProcessInput("play hangman");
             var response = session.ProcessInput("I give up");
-            Assert.Contains("The word was", response);
+            response.ShouldContain("The word was");
         }
     }
 
@@ -2301,7 +2301,7 @@ public class ChatSessionTests
             session.HandleNameInput("my name is Bob");
             session.ProcessInput("play hangman");
             var response = session.ProcessInput("hello world");
-            Assert.Contains("single letter", response);
+            response.ShouldContain("single letter");
         }
     }
 
@@ -2315,7 +2315,7 @@ public class ChatSessionTests
             session.ProcessInput("play hangman");
             session.ProcessInput("z");
             var response = session.ProcessInput("z");
-            Assert.Contains("already guessed", response);
+            response.ShouldContain("already guessed");
         }
     }
 
@@ -2328,8 +2328,8 @@ public class ChatSessionTests
             session.HandleNameInput("my name is Bob");
             session.ProcessInput("play hangman");
             var response = session.ProcessInput("z");
-            Assert.Contains("not in the word", response);
-            Assert.Contains("5 wrong guesses left", response);
+            response.ShouldContain("not in the word");
+            response.ShouldContain("5 wrong guesses left");
         }
     }
 
@@ -2342,8 +2342,8 @@ public class ChatSessionTests
             session.HandleNameInput("my name is Bob");
             session.ProcessInput("play hangman");
             var response = session.ProcessInput("e");
-            Assert.False(string.IsNullOrEmpty(response));
-            Assert.DoesNotContain("single letter", response);
+            response.ShouldNotBeNullOrEmpty();
+            response.ShouldNotContain("single letter");
         }
     }
 
@@ -2361,7 +2361,7 @@ public class ChatSessionTests
             session.ProcessInput("jjjjj");
             session.ProcessInput("vvvvv");
             var response = session.ProcessInput("wwwww");
-            Assert.Contains("Game over", response);
+            response.ShouldContain("Game over");
         }
     }
 
@@ -2380,7 +2380,7 @@ public class ChatSessionTests
             session.ProcessInput("vvvvv");
             session.ProcessInput("wwwww");
             var response = session.ProcessInput("play hangman");
-            Assert.Contains("Let's play", response);
+            response.ShouldContain("Let's play");
         }
     }
 
@@ -2815,6 +2815,171 @@ public class ChatSessionTests
 
             var intentResponse = session.ProcessInput("hello there");
             intentResponse.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void RemindMeTo_WithTime_CreatesReminder()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            var response = session.ProcessInput("remind me in 2 hours to water the plants");
+            response.ShouldContain("remind");
+            var reminders = db.Context.Reminders.Where(r => r.UserId == 1 && r.Status == "pending").ToList();
+            reminders.Count.ShouldBe(1);
+            reminders[0].Task.ShouldBe("water the plants");
+        }
+    }
+
+    [Fact]
+    public void RemindMeTo_WithoutTime_AsksForTime()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            var response = session.ProcessInput("remind me to buy milk");
+            response.ShouldContain("When should");
+        }
+    }
+
+    [Fact]
+    public void RemindMeTo_DuplicateTask_ReturnsDuplicateMessage()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("remind me in 1 hour to call mom");
+            var response = session.ProcessInput("remind me in 2 hours to call mom");
+            response.ShouldContain("already");
+        }
+    }
+
+    [Fact]
+    public void WhatReminders_WithNoReminders_ReturnsEmptyMessage()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            var response = session.ProcessInput("what reminders");
+            (response.Contains("don't have") || response.Contains("no reminders")).ShouldBeTrue();
+        }
+    }
+
+    [Fact]
+    public void WhatReminders_WithReminders_ListsThem()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("remind me in 1 hour to do laundry");
+            var response = session.ProcessInput("what reminders");
+            response.ShouldContain("laundry");
+        }
+    }
+
+    [Fact]
+    public void MarkReminderDone_CompletesReminder()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("remind me in 1 hour to clean desk");
+            var response = session.ProcessInput("mark reminder clean desk as done");
+            response.ShouldContain("done");
+            var reminder = db.Context.Reminders.FirstOrDefault(r => r.Task == "clean desk");
+            reminder.ShouldNotBeNull();
+            reminder.Status.ShouldBe("done");
+        }
+    }
+
+    [Fact]
+    public void CancelReminder_CancelsIt()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            session.ProcessInput("remind me in 1 hour to return library books");
+            var response = session.ProcessInput("cancel reminder for return library books");
+            (response.Contains("Cancelled") || response.Contains("removed")).ShouldBeTrue();
+            var reminder = db.Context.Reminders.FirstOrDefault(r => r.Task == "return library books");
+            reminder.ShouldNotBeNull();
+            reminder.Status.ShouldBe("cancelled");
+        }
+    }
+
+    [Fact]
+    public void CancelReminder_Nonexistent_ReturnsNotFound()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            var response = session.ProcessInput("cancel reminder for nonexistent task");
+            response.ShouldContain("couldn't find");
+        }
+    }
+
+    [Fact]
+    public void Reminder_PendingTimeThenTime_CompletesCreation()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            var first = session.ProcessInput("remind me to feed the cat");
+            first.ShouldContain("When");
+            var second = session.ProcessInput("in 3 hours");
+            second.ShouldContain("remind");
+            var reminders = db.Context.Reminders.Where(r => r.Task == "feed the cat").ToList();
+            reminders.Count.ShouldBe(1);
+            reminders[0].Status.ShouldBe("pending");
+        }
+    }
+
+    [Fact]
+    public void RemindMe_KeywordsOnly_DoesNotMatch()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            var response = session.ProcessInput("remind me to remind");
+            response.ShouldNotContain("When should");
+        }
+    }
+
+    [Fact]
+    public void WhatReminders_EquivalentPhrases_AllWork()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            var r1 = session.ProcessInput("what's coming up");
+            (r1.Contains("don't have") || r1.Contains("no reminders")).ShouldBeTrue();
+            var r2 = session.ProcessInput("list reminders");
+            (r2.Contains("don't have") || r2.Contains("no reminders")).ShouldBeTrue();
+            var r3 = session.ProcessInput("show reminders");
+            (r3.Contains("don't have") || r3.Contains("no reminders")).ShouldBeTrue();
+        }
+    }
+
+    [Fact]
+    public void Reminder_NoUser_DoesNotMatch()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            var response = session.ProcessInput("remind me in 1 hour to test");
+            response.ShouldNotContain("remind");
         }
     }
 }
