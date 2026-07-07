@@ -2982,4 +2982,292 @@ public class ChatSessionTests
             response.ShouldNotContain("remind");
         }
     }
+
+    [Fact]
+    public void SessionStart_WithNoReminders_ReturnsNull()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            var result = session.GetSessionStartReminderMessage();
+            result.ShouldBeNull();
+        }
+    }
+
+    [Fact]
+    public void SessionStart_WithDueReminder_ReturnsMessage()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            var now = DateTime.UtcNow.ToString("o");
+            db.Context.Reminders.Add(new Reminder
+            {
+                UserId = 1,
+                Task = "water the plants",
+                DueAt = DateTime.UtcNow.AddMinutes(-5).ToString("o"),
+                Status = "pending",
+                CreatedAt = now
+            });
+            db.Context.SaveChanges();
+
+            var result = session.GetSessionStartReminderMessage();
+            result.ShouldNotBeNull();
+            result.ShouldContain("water the plants");
+        }
+    }
+
+    [Fact]
+    public void SessionStart_WithMultipleDueReminders_ShowsAll()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            var now = DateTime.UtcNow.ToString("o");
+            db.Context.Reminders.Add(new Reminder { UserId = 1, Task = "buy milk", DueAt = DateTime.UtcNow.AddMinutes(-10).ToString("o"), Status = "pending", CreatedAt = now });
+            db.Context.Reminders.Add(new Reminder { UserId = 1, Task = "call mom", DueAt = DateTime.UtcNow.AddMinutes(-5).ToString("o"), Status = "pending", CreatedAt = now });
+            db.Context.SaveChanges();
+
+            var result = session.GetSessionStartReminderMessage();
+            result.ShouldNotBeNull();
+            result.ShouldContain("buy milk");
+            result.ShouldContain("call mom");
+        }
+    }
+
+    [Fact]
+    public void SessionStart_NoUser_ReturnsNull()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            var result = session.GetSessionStartReminderMessage();
+            result.ShouldBeNull();
+        }
+    }
+
+    [Fact]
+    public void SessionStart_OnlyRunsOnce()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Bob");
+            var now = DateTime.UtcNow.ToString("o");
+            db.Context.Reminders.Add(new Reminder { UserId = 1, Task = "water plants", DueAt = DateTime.UtcNow.AddMinutes(-5).ToString("o"), Status = "pending", CreatedAt = now });
+            db.Context.SaveChanges();
+
+            var first = session.GetSessionStartReminderMessage();
+            first.ShouldNotBeNull();
+
+            var second = session.GetSessionStartReminderMessage();
+            second.ShouldBeNull();
+        }
+    }
+
+    [Fact]
+    public void HandleNameInput_KnownWordPromptsConfirmation()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            var response = session.ProcessInput("pizza");
+            response.ShouldContain("Did you mean");
+        }
+    }
+
+    [Fact]
+    public void HandleNameInput_ConfirmationAffirmed_AcceptsName()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.ProcessInput("pizza");
+            var response = session.ProcessInput("yes");
+            response.ShouldContain("pizza");
+        }
+    }
+
+    [Fact]
+    public void HandleNameInput_ConfirmationDenied_AsksForName()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.ProcessInput("pizza");
+            var response = session.ProcessInput("no");
+            response.ShouldContain("what's your name");
+        }
+    }
+
+    [Fact]
+    public void HandleNameInput_KnownWordPluralPromptsConfirmation()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            var response = session.ProcessInput("peas");
+            response.ShouldContain("Did you mean");
+        }
+    }
+
+    [Fact]
+    public void HandleNameInput_NonDictionaryWord_AcceptedDirectly()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            var response = session.ProcessInput("Zym");
+            response.ShouldContain("Zym");
+        }
+    }
+
+    [Fact]
+    public void HandleNameInput_TooShort_Rejected()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            var response = session.ProcessInput("z");
+            response.ShouldContain("unusual");
+        }
+    }
+
+    [Fact]
+    public void HandleNameInput_TooLong_Rejected()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            var response = session.ProcessInput(new string('x', 31));
+            response.ShouldContain("unusual");
+        }
+    }
+
+    [Fact]
+    public void HandleNameInput_ReturningUser_PromptsIdentityVerification()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            var now = DateTime.UtcNow.ToString("o");
+            db.Context.Users.Add(new User
+            {
+                Name = "Alice",
+                FirstSeen = DateTime.UtcNow.AddDays(-1).ToString("o"),
+                LastSeen = now
+            });
+            db.Context.SaveChanges();
+            session.ProcessInput("my name is Alice");
+            var response = session.ProcessInput("yes");
+            response.ShouldContain("Alice");
+        }
+    }
+
+    [Fact]
+    public void HandleNameInput_ReturningUserDenied_AsksForNewName()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            var now = DateTime.UtcNow.ToString("o");
+            db.Context.Users.Add(new User
+            {
+                Name = "Alice",
+                FirstSeen = DateTime.UtcNow.AddDays(-1).ToString("o"),
+                LastSeen = now
+            });
+            db.Context.SaveChanges();
+            session.ProcessInput("my name is Alice");
+            var response = session.ProcessInput("no");
+            response.ShouldContain("What should I call");
+        }
+    }
+
+    [Fact]
+    public void TryHandleMetaCommentary_Confusion_ReturnsAcknowledgment()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            var result = session.TryHandleMetaCommentary("that doesn't make sense", out var response);
+            result.ShouldBeTrue();
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void TryHandleMetaCommentary_NotHelpful_ReturnsAcknowledgment()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            var result = session.TryHandleMetaCommentary("that's not helpful", out var response);
+            result.ShouldBeTrue();
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void TryHandleMetaCommentary_Mocking_ReturnsAcknowledgment()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            var result = session.TryHandleMetaCommentary("are you mocking me", out var response);
+            result.ShouldBeTrue();
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void TryHandleMetaCommentary_RepeatedComplaint_UsesMetaRepeated()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.TryHandleMetaCommentary("that doesn't make sense", out _);
+            session.TryHandleMetaCommentary("you're not helping", out _);
+            var result =             session.TryHandleMetaCommentary("i'm confused", out var response);
+            result.ShouldBeTrue();
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void TryHandleMetaCommentary_ShortInput_DoesNotTrigger()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            var result = session.TryHandleMetaCommentary("no", out _);
+            result.ShouldBeFalse();
+        }
+    }
+
+    [Fact]
+    public void TryHandleMetaCommentary_NonMatching_ReturnsFalse()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            var result = session.TryHandleMetaCommentary("I like pizza", out _);
+            result.ShouldBeFalse();
+        }
+    }
+
+    [Fact]
+    public void TryHandleMetaCommentary_ViaProcessInput_ReturnsAcknowledgment()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.ProcessInput("my name is Alice");
+            var response = session.ProcessInput("that doesn't make sense");
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
 }

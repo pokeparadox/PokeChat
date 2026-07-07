@@ -10,6 +10,8 @@
   <ItemGroup>
     <Compile Remove="tests/**/*.cs" />
     <None Include="tests/**/*.cs" />
+    <Compile Remove="Api/**/*.cs" />
+    <None Include="Api/**/*.cs" />
   </ItemGroup>
 
   <ItemGroup>

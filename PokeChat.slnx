@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="PokeChat.csproj" />
   <Project Path="tests/PokeChat.Tests/PokeChat.Tests.csproj" />
+  <Project Path="Api/PokeChat.Api.csproj" />
 </Solution>

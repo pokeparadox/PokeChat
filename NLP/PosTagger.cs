@@ -42,6 +42,15 @@ public class PosTagger : IPosTagger
         }
     }
 
+    public bool IsKnownWord(string word)
+    {
+        if (_wordTagMap.ContainsKey(word))
+            return true;
+
+        var singular = Pluraliser.ToSingular(word);
+        return singular != null && _wordTagMap.ContainsKey(singular);
+    }
+
     public List<PosTag> Tag(List<string> tokens)
     {
         var tags = new List<PosTag>(tokens.Count);

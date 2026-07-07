@@ -48,7 +48,14 @@ public static class DbSeeder
             "Greetings! I'm PokeChat. May I know your name?",
             "Hi! I'm PokeChat, a chat bot that learns from our conversations. What's your name?",
             "Hello! Nice to meet you. I'm PokeChat. Who are you?",
-            "Hey there! I'm PokeChat. Tell me your name and let's chat!"
+            "Hey there! I'm PokeChat. Tell me your name and let's chat!",
+            "Howdy! I'm PokeChat. What's your name?",
+            "Well hello! I'm PokeChat. Who do I have the pleasure of chatting with?",
+            "Good to see you! I'm PokeChat. What should I call you?",
+            "Hiya! I'm PokeChat. Let's get to know each other — what's your name?",
+            "Welcome! I'm PokeChat, a learning chat bot. Who might you be?",
+            "Hey hey! I'm PokeChat. What's your name, friend?",
+            "Oh hi! I'm PokeChat. I've been waiting for someone to chat with. What's your name?",
         };
 
         context.Greetings.AddRange(greetings.Select(g => new Greeting
@@ -1028,6 +1035,14 @@ public static class DbSeeder
             ("What do you call a sleeping bull", "A bulldozer!", "animal"),
             ("Why did the math book look so sad", "Because it had too many problems!", "education"),
             ("What do you call a can opener that doesn't work", "A can't opener!", "food"),
+            ("What do you call a factory that sells products that are just okay", "A satis-factory!", "business"),
+            ("How does a penguin build its house", "Igloos it together!", "animal"),
+            ("What do you call a pile of cats", "A meow-ntain!", "animal"),
+            ("What's the best thing about Switzerland", "I don't know, but the flag is a big plus!", "education"),
+            ("Did you hear about the restaurant on the moon", "Great food, no atmosphere!", "food"),
+            ("How do you make holy water", "You boil the hell out of it!", "religion"),
+            ("Why did the coffee file a police report", "It got mugged!", "food"),
+            ("What's brown and sticky", "A stick!", "nature"),
         };
 
         context.Jokes.AddRange(jokes.Select(j => new Joke
@@ -1053,6 +1068,11 @@ public static class DbSeeder
             ("What gets wetter the more it dries?", "a towel", "Think about what you use after a shower.", 1),
             ("What has a head and a tail but no body?", "a coin", "You might find it in your pocket.", 2),
             ("I'm tall when I'm young and short when I'm old. What am I?", "a candle", "Think about something that burns.", 1),
+            ("What can you break even if you never pick it up or touch it?", "a promise", "Think about something you make with another person...", 3),
+            ("What invention lets you look right through a wall?", "a window", "You might find one in every room.", 1),
+            ("What has a ring but no finger?", "a telephone", "Think about something that used to have a cord.", 2),
+            ("What belongs to you but others use it more than you?", "your name", "It's what people call you.", 1),
+            ("What can you catch but not throw?", "a cold", "Think about something you might get in winter.", 1),
         };
 
         context.Riddles.AddRange(riddles.Select(r => new Riddle
@@ -1515,6 +1535,12 @@ public static class DbSeeder
             ("compliment", "I love that you {0}!"),
             ("compliment", "It's awesome that you {0}!"),
             ("compliment", "You have amazing taste — {0}!"),
+            ("compliment", "That's so cool that you {0}!"),
+            ("compliment", "I'm impressed that you {0}!"),
+            ("compliment", "You're really good at {0}!"),
+            ("compliment", "It's wonderful that you {0}!"),
+            ("compliment", "I think it's fantastic that you {0}!"),
+            ("compliment", "You clearly know your stuff when it comes to {0}!"),
             ("recommender", "You like {1}. People who like {1} often also like {0}. What do you think?"),
             ("recommender", "Since you like {1}, I bet you'd enjoy {0} too. What do you think?"),
             ("recommender", "I noticed you like {1}. Have you ever tried {0}?"),
@@ -1584,6 +1610,9 @@ public static class DbSeeder
             ("reminder_cancelled", "OK, I've removed the reminder for '{0}'."),
             ("reminder_duplicate", "You already have a reminder for that."),
             ("reminder_duplicate", "That's already on your reminder list."),
+            ("meta_repeated_complaint", "I'm sorry I keep getting things wrong. Is there something specific I can help with?"),
+            ("meta_repeated_complaint", "I know I'm not doing great today. Let's start fresh — what would you like to talk about?"),
+            ("meta_repeated_complaint", "I'm really dropping the ball today. How about we try a different topic?"),
         };
 
         context.BotResponses.AddRange(responses.Select(r => new BotResponse

@@ -1,10 +1,13 @@
 # PokeChat
 
 A terminal chat bot with custom NLP — learns from conversations and stores knowledge in SQLite. No LLMs.
+The eventual goal is to make a useful bot that prioritises efficient methods and then falls back to more complicated mthods only when needed.
+I feel LLMs do this the wrong way around around.
 
 ## AI Tools Disclosure
 
 This project is an experiment with [opencode](https://opencode.ai) and various AI models to explore autonomous software engineering capabilities.
+I want to use LLMs in order to not use LLMs.
 
 ## Quick Start
 
@@ -21,7 +24,7 @@ Type `quit` or `exit` to leave.
 | If you say… | The bot will… |
 |---|---|
 | `hi` / `hello` / `hey` | Greet you and ask your name |
-| `my name is X` / `I'm X` / `call me X` | Remember your name |
+| `my name is X` / `I'm X` / `call me X` | Remember your name (validates against dictionary, verifies returning users) |
 | `quit` / `exit` | Show a session summary and goodbye |
 | `start fresh` / `reset everything` / `forget everything` | Warn then wipe your data |
 
@@ -29,7 +32,7 @@ Type `quit` or `exit` to leave.
 | If you say… | The bot will… |
 |---|---|
 | *(any word it doesn't know)* | Ask what it means, or suggest a correction |
-| `typo` / `never mind` / `forget it` | Cancel and move on |
+| `typo` / `never mind` / `forget it` | Cancel learning and move on |
 | *(after teaching a word)* `person` / `place` / `thing` / `verb` | Classify the word |
 | `what is the definition of X` / `define X` | Look up or ask you for a definition |
 | `what is another word for X` / `synonym for X` | Show related words |
@@ -66,6 +69,14 @@ Type `quit` or `exit` to leave.
 |---|---|
 | `quiz me` / `test me` / `give me a quiz` | Quiz you on facts it's learned |
 
+### Reminders
+| If you say… | The bot will… |
+|---|---|
+| `remind me to X at Y` / `set a reminder` | Create an in-chat reminder |
+| `show reminders` / `list reminders` | Show pending reminders |
+| `mark X as done` / `reminder done` | Complete a reminder |
+| `cancel reminder X` / `remove reminder` | Cancel a reminder |
+
 ### Temporal & Timeline
 | If you say… | The bot will… |
 |---|---|
@@ -83,7 +94,7 @@ Type `quit` or `exit` to leave.
 | If you say… | The bot will… |
 |---|---|
 | `can I call you X` / `I'll call you X` / `rename yourself X` | Rename the bot (per-user) |
-| `switch to coding mode` / `enter coding mode` | Switch to coding persona |
+| `switch to coding mode` / `enter coding mode` | Switch to coding persona (build, test, git, etc.) |
 | `switch to chat mode` / `enter chat mode` | Switch back to chat persona |
 | `interview mode` / `train the bot` | Start interactive bot training |
 
@@ -106,13 +117,17 @@ Type `quit` or `exit` to leave.
 | If you say… | The bot will… |
 |---|---|
 | `search X` / `look up X` / `find X` | Perform a web search |
-| `run command X` / `shell command X` | Execute a shell command |
+| `run command X` / `shell command X` | Execute a shell command (whitelisted) |
+| *(in coding mode)* file ops, git, build, test commands | CLI command DB with destructive-command confirmation |
+| *(mention a filename like `Program.cs`)* | Detect and track current file context |
+| *(switch persona)* | Detect git branch automatically |
 
 ### Emotion & Sentiment
 | If you express strong emotion… | The bot will… |
 |---|---|
-| *(sad / angry / happy / afraid / surprised phrasing)* | Respond with empathy |
+| *(sad / angry / happy / afraid / surprised phrasing)* | Respond with empathy (sentiment-aware) |
 | *(you're an idiot / shut up)* | Respond with a calm deflection |
+| `that doesn't make sense` / `i'm confused` / `not helpful` | Acknowledge and apologise; tracks repeated complaints |
 
 ## Tests
 
@@ -177,9 +192,20 @@ All conversational data is persisted:
 - **Emotion keywords** — sentiment analysis with ~95 keywords across 5 sentiments
 - **Contractions** — 54 common English contractions mapped to expanded forms
 - **User bot names** — per-user custom bot name assignment
-- **Story templates** — 10 slot-based templates for short story generation
+- **Story templates** — 10+ slot-based templates for short story generation
 - **Learned response rules** — user-taught response patterns with confidence tracking
 - **Error knowledge base** — ~60 seeded compiler/runtime errors with regex patterns and fixes
+- **Emotion keywords** — ~95 keywords across 5 sentiments for sentiment analysis
+- **Contractions** — 54 common contractions expanded before tokenisation
+- **Temporal expressions** — 15 seeded time expressions (yesterday, last week, etc.)
+- **Inference word links** — `is_a` category chains for reasoning
+- **Jokes & Riddles** — 20 dad jokes, 13 riddles with hints and difficulty levels
+- **Rhyme groups** — 30+ entries for poetry generation
+- **Poem templates** — haiku + limerick templates
+- **Mad Libs templates** — slot-based Mad Libs stories
+- **Intent model** — ~250 seeded training examples for intent classification
+- **Conversation metrics** — per-session quality and response effectiveness tracking
+- **Joke/Riddle/MadLibs/Quiz entities** — game state persistence
 
 ## Improvements (Phases)
 
@@ -217,8 +243,28 @@ All conversational data is persisted:
 | 29b | Data-Driven MCP Tool Triggers (zero-code tool rules) | ✅ |
 | 30 | Enhanced LLM Integration (AlwaysOn, summarisation, inference) | ✅ |
 | 31 | Clarification/Classification Cancel | ✅ |
-| 32 | Word Game (Story Chain — turn-based POS-cycling) | ✅ |
-| 51 | File Operations Tool (read/write/list/search via ITool, path traversal protection) | ✅ |
-| 52 | Error Knowledge Base (~60 common compiler errors, regex matching, self-learning) | ✅ |
+| 32 | End-of-Session LLM Homework Check | ✅ |
+| 33 | Word Game UX Improvements (thinking indicator, grammar filter) | ✅ |
+| 34 | Dad Jokes + Riddles (20 jokes, 8 riddles, multi-turn) | ✅ |
+| 35 | Poetry Generation (haiku + limerick, syllable counting) | ✅ |
+| 36 | Mad Libs + Would You Rather + Magic 8 Ball | ✅ |
+| 37 | Cross-Session Recall (~30% chance at session start) | ✅ |
+| 38 | Emoji Personality (117 category-appropriate emoji) | ✅ |
+| — | Interview Mode (LLM-driven / non-LLM, bot-asks questions) | ✅ |
+| 40 | Word List Consolidation (shared GenerationUtils) | ✅ |
+| 41 | Universal LLM Thinking Indicator | ✅ |
+| 42 | Non-LLM Interview Mode (30-question bank) | ✅ |
+| 43 | Hang-Man Game (POS-dictionary word guessing) | ✅ |
+| 48 | Entity Graph Explorer (BFS path finding, relation queries) | ✅ |
+| 49 | Persona System (coding/chat, persona-filtered rules) | ✅ |
+| 50 | Shell Command Tool (whitelist-based security) | ✅ |
+| 51 | File Operations Tool (read/write/list/search, path traversal protection) | ✅ |
+| 50b | Coding Project Context (file mention detection, git branch) | ✅ |
+| 51b | Coding CLI Command DB (~90 NL→shell mappings, destructive confirmation) | ✅ |
+| 52 | Error Knowledge Base (~60 compiler errors, regex matching) | ✅ |
+| — | Neural Net Integration (~250 seeds, IntentClassifier, self-training) | ✅ |
+| 53 | In-Chat Reminders (create/list/done/cancel, session-start due check) | ✅ |
+| — | Name Confusion Fix (POS validation, cross-session identity) | ✅ |
+| — | Meta-commentary Detection (confusion/not-helpful/mocking, repeated complaint tracking) | ✅ |
 
 See `.agents/history.md` for completed improvements. 

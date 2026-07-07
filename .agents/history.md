@@ -1545,3 +1545,52 @@ Dual-persona architecture (chat/coding) with persona-filtered rules, responses, 
 - [x] Added `"using"` (verb) to `pos_dictionary.json` — spell checker no longer flags it as unknown
 - [x] Added `"sure"`, `"do"`, `"does"`, `"did"` to `FunctionWords` in `ChatSession.cs` — catches function-word-heavy subjects/objects
 - [x] Fixed subject filter: multi-word subjects where ALL tokens are either function words or content word indicators are now filtered out (e.g. "you sure" → caught). Changed from `ContentWordIndicators.Contains(subject)` (exact match) to per-token check with `subjectTokens.Length > 1` guard to preserve single-word pronoun subjects like "I", "you"
+
+---
+
+## Phase 53: In-Chat Reminders (2026-07-07)
+- [x] `Reminder` entity, schema, DbSet, fluent config
+- [x] `DbSeeder` — 7 reminder bot response categories (16 seed rows)
+- [x] `KnowledgeStore` — `CreateReminder`, `GetPendingReminders`, `GetDueReminders`, `MarkReminderDone`, `CancelReminder`, `HasReminderForTask`, `ParseReminderTime`
+- [x] `ChatSession` — `TryHandleReminderRequest`, `HandleReminderCreation` (2 overloads), `FormatReminderTime`, `HasReminderKeywordsOnly`, pending reminder handler in `ProcessInput`
+- [x] Session-start due check — `GetSessionStartReminderMessage` + hook in `Start()`, `ReminderShownCount` context key
+- [x] 11 existing + 5 new tests (session-start: no user, no reminders, single due, multiple due, once-per-session), 697/697 pass
+
+---
+
+## Name Confusion Fix (2026-07-07)
+- [x] `IPosTagger` — added `IsKnownWord(string word)` method
+- [x] `PosTagger` — `IsKnownWord` checks dictionary exact match + plural resolution via `Pluraliser.ToSingular()`
+- [x] `ContextKeys` — added `PendingNameConfirmation`, `PendingIdentityVerification`
+- [x] Name validation: length 2-30 range check before name assignment
+- [x] Single-word names checked against POS dictionary — known words prompt confirmation instead of being accepted
+- [x] Cross-session identity: returning users (FirstSeen != LastSeen) get "Welcome back, are you still using that name?" verification
+- [x] `HandleNameConfirmation` — affirmation calls `FinalizeNameSetup`, denial re-asks, anything else treated as new name input
+- [x] `HandleIdentityVerification` — same affirmation/denial/else flow for returning user confirmation
+- [x] 11 new tests (POS-known word accepted/denied, plural POS check, non-dictionary word, too short, too long, returning user affirmed/denied), 706/706 pass
+
+---
+
+## Phase NN: Meta-commentary Detection (2026-07-07)
+- [x] Detect confusion ("doesn't make sense", "i'm confused"), not-helpful ("not helpful", "bad answer"), and mocking ("mocking me") patterns
+- [x] `TryHandleMetaCommentary` handler — pattern matching, repeated complaint tracking via `LastComplaint` context key
+- [x] Hooked into `ProcessInput` after `TryHandleReminderRequest`, before sentiment analysis
+- [x] Single complaints use existing `complaint_acknowledged` bot response category (3 seed templates)
+- [x] 3+ complaints escalate to new `meta_repeated_complaint` category (3 seed templates)
+- [x] Short inputs (< 8 chars) and non-matching inputs pass through to normal processing
+- [x] Test seed data + 7 new tests, 713/713 pass
+
+---
+
+## Sub-plan 1: Minimal HTTP API (2026-07-07)
+- [x] `Api/PokeChat.Api.csproj` — new Web SDK project, targets net10.0, references PokeChat
+- [x] `Api/Program.cs` — `GET /health` + `POST /chat` Minimal API endpoints
+- [x] `Api/ChatSessionWrapper.cs` — per-session wrapper, greeting on first call
+- [x] In-memory `ConcurrentDictionary<string, ChatSessionWrapper>` session management
+- [x] 713/713 tests pass, 0 build errors
+
+## AGENTS.md cleanup (2026-07-07)
+- [x] Improvement Plan: completed phases moved to MemPalace (`wing: pokechat, room: phase-summaries`), keep only planned
+- [x] Known Fixes: full history moved to MemPalace (`wing: pokechat, room: known-fixes`), keep only 11 essentials
+- [x] Routines: updated post-phase workflow to file to MemPalace instead of AGENTS.md edits
+- [x] 250 lines → 151 lines

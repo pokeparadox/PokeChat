@@ -74,6 +74,29 @@ public class ChatSession : IDisposable
     private static readonly HashSet<string> Denials = new(StringComparer.OrdinalIgnoreCase)
         { "no", "nope", "nah", "no thanks", "no thank you" };
 
+    private static readonly HashSet<string> MetaConfusionTriggers = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "doesn't make sense", "does not make sense", "makes no sense",
+        "don't understand", "do not understand",
+        "i'm confused", "i am confused",
+        "you're confusing", "you're not making sense",
+        "that was confusing", "that is confusing",
+        "confusing me",
+    };
+
+    private static readonly HashSet<string> MetaNotHelpfulTriggers = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "not helpful", "not helping",
+        "bad answer", "wrong answer",
+        "that doesn't help", "that does not help",
+    };
+
+    private static readonly HashSet<string> MetaMockingTriggers = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "mocking me", "making fun of me", "laughing at me",
+        "stop mocking",
+    };
+
     private static readonly HashSet<string> FunctionWords = new(StringComparer.OrdinalIgnoreCase)
         { "not", "never", "no", "and", "or", "any", "all", "some", "the",
           "a", "an", "this", "that", "these", "those", "it", "its",
@@ -420,6 +443,13 @@ public class ChatSession : IDisposable
             _context.SetContext(ContextKeys.LastResponse, response);
             Console.WriteLine($"{_botName}: {response}");
 
+            var reminderMsg = GetSessionStartReminderMessage();
+            if (reminderMsg != null)
+            {
+                Console.WriteLine($"{_botName}: {reminderMsg}");
+                _sessionLogger?.LogSystem(reminderMsg);
+            }
+
             if (_interviewModeActive && _interviewEngine != null)
             {
                 if (_interviewEngine is InterviewEngine && _pendingFollowUp == null && _followUpCount < 2 && IsInterviewFollowUp(response))
@@ -451,8 +481,23 @@ public class ChatSession : IDisposable
         }
     }
 
+    public string GetInitialGreeting() =>
+        GreetingPool.GetRandomGreeting(_knowledgeStore, _botName, _persona);
+
     internal string ProcessInput(string input)
     {
+        var pendingName = _context.GetContext(ContextKeys.PendingNameConfirmation);
+        if (pendingName != null)
+        {
+            return HandleNameConfirmation(input, pendingName);
+        }
+
+        var pendingIdentity = _context.GetContext(ContextKeys.PendingIdentityVerification);
+        if (pendingIdentity != null)
+        {
+            return HandleIdentityVerification(input, pendingIdentity);
+        }
+
         if (_currentUserId == null)
         {
             return HandleNameInput(input);
@@ -623,6 +668,9 @@ public class ChatSession : IDisposable
 
         if (TryHandleReminderRequest(input, out var reminderResponse))
             return reminderResponse;
+
+        if (TryHandleMetaCommentary(input, out var metaResponse))
+            return metaResponse;
 
         LearnGreetingWords(input);
 
@@ -1535,12 +1583,35 @@ public class ChatSession : IDisposable
             }
         }
 
+        if (name.Length < 2 || name.Length > 30)
+            return "That name seems a bit unusual. Could you tell me your name again?";
+
+        var nameLower = name.ToLowerInvariant();
+        if (_posTagger.IsKnownWord(nameLower))
+        {
+            _context.SetContext(ContextKeys.PendingNameConfirmation, name);
+            return $"Did you mean your name is {name}, or are you talking about something else?";
+        }
+
+        var normalizedName = char.ToUpper(name[0]) + name.Substring(1).ToLowerInvariant();
+        var existingUser = _dbContext.Users.FirstOrDefault(u => u.Name == normalizedName);
+        if (existingUser != null && existingUser.FirstSeen != existingUser.LastSeen)
+        {
+            _context.SetContext(ContextKeys.PendingIdentityVerification, name);
+            return $"Welcome back, {name}! Are you still using that name?";
+        }
+
+        return FinalizeNameSetup(name);
+    }
+
+    private string FinalizeNameSetup(string name)
+    {
         _currentUserName = char.ToUpper(name[0]) + name.Substring(1).ToLowerInvariant();
         _currentUserNameLower = _currentUserName.ToLowerInvariant();
         _currentUserId = _knowledgeStore.GetOrCreateUser(_currentUserName);
         _responseEngine.SetCurrentUserName(_currentUserName);
 
-        _sessionLogger?.LogNameCaptured(_currentUserName, input);
+        _sessionLogger?.LogNameCaptured(_currentUserName, "");
 
         var storedName = _knowledgeStore.GetUserBotName(_currentUserId!.Value);
         if (storedName != null)
@@ -1558,6 +1629,46 @@ public class ChatSession : IDisposable
         if (recall != null)
             response += "\n" + recall;
         return response;
+    }
+
+    private string HandleNameConfirmation(string input, string pendingName)
+    {
+        var lower = input.Trim().ToLowerInvariant();
+
+        if (Affirmations.Contains(lower))
+        {
+            _context.SetContext(ContextKeys.PendingNameConfirmation, null);
+            return FinalizeNameSetup(pendingName);
+        }
+
+        if (Denials.Contains(lower))
+        {
+            _context.SetContext(ContextKeys.PendingNameConfirmation, null);
+            return "Oh, what's your name then?";
+        }
+
+        _context.SetContext(ContextKeys.PendingNameConfirmation, null);
+        return HandleNameInput(input);
+    }
+
+    private string HandleIdentityVerification(string input, string pendingName)
+    {
+        var lower = input.Trim().ToLowerInvariant();
+
+        if (Affirmations.Contains(lower))
+        {
+            _context.SetContext(ContextKeys.PendingIdentityVerification, null);
+            return FinalizeNameSetup(pendingName);
+        }
+
+        if (Denials.Contains(lower))
+        {
+            _context.SetContext(ContextKeys.PendingIdentityVerification, null);
+            return "What should I call you then?";
+        }
+
+        _context.SetContext(ContextKeys.PendingIdentityVerification, null);
+        return HandleNameInput(input);
     }
 
     internal string? TryBuildCrossSessionRecall()
@@ -2217,6 +2328,48 @@ public class ChatSession : IDisposable
             "pattern_already_known" => "I already know that one! But thanks for the reminder.",
             _ => string.Empty
         };
+        return true;
+    }
+
+    internal bool TryHandleMetaCommentary(string input, out string response)
+    {
+        response = null;
+        var lower = input.Trim().ToLowerInvariant();
+
+        if (lower.Length < 8)
+            return false;
+
+        string category = null;
+
+        if (MetaConfusionTriggers.Any(t => lower.Contains(t)))
+            category = "complaint_acknowledged";
+        else if (MetaNotHelpfulTriggers.Any(t => lower.Contains(t)))
+            category = "complaint_acknowledged";
+        else if (MetaMockingTriggers.Any(t => lower.Contains(t)))
+            category = "complaint_acknowledged";
+        else
+            return false;
+
+        var complaintCountStr = _context.GetContext(ContextKeys.LastComplaint);
+        var complaintCount = 0;
+        if (complaintCountStr != null && int.TryParse(complaintCountStr, out var cc))
+            complaintCount = cc;
+        complaintCount++;
+        _context.SetContext(ContextKeys.LastComplaint, complaintCount.ToString());
+
+        if (complaintCount >= 3)
+            category = "meta_repeated_complaint";
+
+        var botResponses = GetCachedBotResponses();
+        if (botResponses.TryGetValue(category, out var responses) && responses.Count > 0)
+        {
+            response = responses[Random.Shared.Next(responses.Count)];
+            return true;
+        }
+
+        response = category == "meta_repeated_complaint"
+            ? "I'm sorry I keep getting things wrong. Let's start fresh — what would you like to discuss?"
+            : "I'm sorry, that wasn't helpful. Let me try again.";
         return true;
     }
 
@@ -3757,6 +3910,30 @@ public class ChatSession : IDisposable
         };
         var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         return words.Length > 0 && words.All(w => reminderKeywords.Contains(w));
+    }
+
+    public string? GetSessionStartReminderMessage()
+    {
+        if (_currentUserId == null) return null;
+
+        var shownCount = _context.GetContext(ContextKeys.ReminderShownCount);
+        if (shownCount != null) return null;
+
+        var dueReminders = _knowledgeStore.GetDueReminders(_currentUserId.Value);
+        if (dueReminders.Count == 0)
+        {
+            _context.SetContext(ContextKeys.ReminderShownCount, "0");
+            return null;
+        }
+
+        _context.SetContext(ContextKeys.ReminderShownCount, dueReminders.Count.ToString());
+
+        if (dueReminders.Count == 1)
+            return _responseEngine.GetResponse("reminder_due", dueReminders[0].Task);
+
+        var lines = dueReminders.Select((r, i) =>
+            $"{i + 1}. {r.Task} (due: {FormatReminderTime(r.DueAt)})");
+        return _responseEngine.GetResponse("reminder_list", string.Join("\n", lines));
     }
 
     public void Dispose()

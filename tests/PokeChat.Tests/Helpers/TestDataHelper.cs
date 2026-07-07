@@ -163,6 +163,15 @@ internal static class TestDataHelper
             ("user_fact_none", "I don't know much about you yet!"),
             ("user_stats", "Here's what I know:\n{0}"),
             ("compliment", "You're great at {0}!"),
+            ("compliment", "I love that you {0}!"),
+            ("compliment", "It's awesome that you {0}!"),
+            ("compliment", "You have amazing taste — {0}!"),
+            ("compliment", "That's so cool that you {0}!"),
+            ("compliment", "I'm impressed that you {0}!"),
+            ("compliment", "You're really good at {0}!"),
+            ("compliment", "It's wonderful that you {0}!"),
+            ("compliment", "I think it's fantastic that you {0}!"),
+            ("compliment", "You clearly know your stuff when it comes to {0}!"),
             ("recommender", "You like {1}. People who like {1} often also like {0}. What do you think?"),
             ("recommender", "Since you like {1}, I bet you'd enjoy {0} too. What do you think?"),
             ("recommender", "I noticed you like {1}. Have you ever tried {0}?"),
@@ -204,6 +213,8 @@ internal static class TestDataHelper
             ("complaint_acknowledged", "You're right, that didn't come out well. Let me try again — what were you saying?"),
             ("complaint_acknowledged", "I see what you mean, that wasn't helpful. Could you rephrase what you were talking about?"),
             ("complaint_acknowledged", "Sorry about that — I'm still learning how to follow conversations. What were we discussing?"),
+            ("meta_repeated_complaint", "I'm sorry I keep getting things wrong. Is there something specific I can help with?"),
+            ("meta_repeated_complaint", "I know I'm not doing great today. Let's start fresh — what would you like to talk about?"),
             ("reminder_created", "I'll remind you to {0} at {1}."),
             ("reminder_created", "Got it! Reminder set: {0} at {1}."),
             ("reminder_due", "By the way, you wanted me to remind you: {0}"),
@@ -641,7 +652,10 @@ internal static class TestDataHelper
         var now = DateTime.UtcNow.ToString("o");
         db.Jokes.AddRange(
             new Joke { Setup = "Why did the chicken cross the road", Punchline = "To get to the other side!", Category = "animal", CreatedAt = now },
-            new Joke { Setup = "What do you call a bear with no teeth", Punchline = "A gummy bear!", Category = "animal", CreatedAt = now }
+            new Joke { Setup = "What do you call a bear with no teeth", Punchline = "A gummy bear!", Category = "animal", CreatedAt = now },
+            new Joke { Setup = "What do you call a factory that sells products that are just okay", Punchline = "A satis-factory!", Category = "business", CreatedAt = now },
+            new Joke { Setup = "How does a penguin build its house", Punchline = "Igloos it together!", Category = "animal", CreatedAt = now },
+            new Joke { Setup = "Why did the coffee file a police report", Punchline = "It got mugged!", Category = "food", CreatedAt = now }
         );
         db.SaveChanges();
     }
@@ -651,7 +665,10 @@ internal static class TestDataHelper
         var now = DateTime.UtcNow.ToString("o");
         db.Riddles.AddRange(
             new Riddle { Question = "I speak without a mouth and hear without ears. What am I?", Answer = "an echo", Hint = "Think about sound", Difficulty = 2, CreatedAt = now },
-            new Riddle { Question = "What has keys but can't open locks?", Answer = "a piano", Hint = "Think about music", Difficulty = 1, CreatedAt = now }
+            new Riddle { Question = "What has keys but can't open locks?", Answer = "a piano", Hint = "Think about music", Difficulty = 1, CreatedAt = now },
+            new Riddle { Question = "What can you break even if you never pick it up or touch it?", Answer = "a promise", Hint = "Think about something you make with another person...", Difficulty = 3, CreatedAt = now },
+            new Riddle { Question = "What belongs to you but others use it more than you?", Answer = "your name", Hint = "It's what people call you.", Difficulty = 1, CreatedAt = now },
+            new Riddle { Question = "What can you catch but not throw?", Answer = "a cold", Hint = "Think about something you might get in winter.", Difficulty = 1, CreatedAt = now }
         );
         db.SaveChanges();
     }
