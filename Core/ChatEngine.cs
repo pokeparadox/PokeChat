@@ -353,6 +353,8 @@ public class ChatEngine : IDisposable
 
     internal string ProcessInput(string input)
     {
+        LastResponseCategory = "state_handled";
+
         var pendingName = _context.GetContext(ContextKeys.PendingNameConfirmation);
         if (pendingName != null)
         {
@@ -622,6 +624,7 @@ public class ChatEngine : IDisposable
             }
         }
 
+        LastResponseCategory = responseCategory;
         _knowledgeStore.StoreConversation(_currentUserId!.Value, input, response, _sessionId, responseCategory);
         _knowledgeStore.Save();
 
@@ -1030,6 +1033,9 @@ public class ChatEngine : IDisposable
             _ => obj
         };
     }
+
+    public string? LastResponseCategory { get; set; }
+    public bool LastResponseIsDeadEnd => LastResponseCategory != null && ResponseEngine.IsDeadEndCategory(LastResponseCategory);
 
     internal string? LastSubject => _context.LastSubject;
     internal string? LastObject => _context.LastObject;
@@ -2038,6 +2044,7 @@ public class ChatEngine : IDisposable
                 LearnFromLLMResponse(input, llmResult);
                 BufferLlmInteraction(input, llmResult);
                 _context.SetContext(ContextKeys.CurrentResponseCategory, "llm_response");
+                LastResponseCategory = "llm_response";
                 _knowledgeStore.StoreConversation(_currentUserId.Value, input, llmResult, _sessionId, "llm_response");
                 _knowledgeStore.Save();
                 return llmResult;

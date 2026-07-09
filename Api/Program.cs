@@ -1,42 +1,27 @@
-using System.Collections.Concurrent;
-using PokeChat.Api;
+using PokeChat.Api.Models;
+using PokeChat.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddSingleton<ChatEngineFactory>();
+
+var upstreamOptions = new UpstreamOptions();
+builder.Configuration.GetSection("Upstream").Bind(upstreamOptions);
+builder.Services.AddSingleton(upstreamOptions);
+
+builder.Services.AddHttpClient<UpstreamLLMClient>();
 builder.Services.AddSingleton<SessionManager>();
+builder.Services.AddSingleton<OpenAIAdapter>();
+
 var app = builder.Build();
 
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 
-app.MapPost("/chat", (ChatRequest request, SessionManager manager) =>
+app.MapPost("/v1/chat/completions", async (ChatCompletionRequest request, OpenAIAdapter adapter, SessionManager sessions) =>
 {
-    if (string.IsNullOrWhiteSpace(request.Message))
-        return Results.BadRequest(new { error = "Message is required" });
-
-    var response = manager.ProcessMessage(request.SessionId, request.Message);
+    var sessionId = request.SessionId ?? Guid.NewGuid().ToString();
+    var response = await adapter.ProcessAsync(request, sessionId);
     return Results.Ok(response);
 });
 
 app.Run();
-
-public record ChatRequest(string Message, string? SessionId);
-public record ChatResponse(string Response, string SessionId, string? Greeting);
-
-public sealed class SessionManager : IDisposable
-{
-    private readonly ConcurrentDictionary<string, ChatSessionWrapper> _sessions = new();
-
-    public ChatResponse ProcessMessage(string? sessionId, string message)
-    {
-        var id = sessionId ?? Guid.NewGuid().ToString();
-        var wrapper = _sessions.GetOrAdd(id, _ => new ChatSessionWrapper());
-        var (response, greeting) = wrapper.ProcessMessage(message);
-        return new ChatResponse(response, id, greeting);
-    }
-
-    public void Dispose()
-    {
-        foreach (var kvp in _sessions)
-            kvp.Value.Dispose();
-        _sessions.Clear();
-    }
-}

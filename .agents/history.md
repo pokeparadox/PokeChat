@@ -1634,3 +1634,4 @@ Dual-persona architecture (chat/coding) with persona-filtered rules, responses, 
 - [x] All 714 tests pass (0 changes needed — same constructor signatures, ChatSession delegates)
 - [x] `Program.cs` unchanged (`new ChatSession()` still creates engine internally)
 - [x] `KnowledgeStore.cs` updated: `ChatSession.StemVerb` → `ChatEngine.StemVerb`
+- [x] **Verified:** `Api/` wraps the same `ChatEngine` (`OpenAIAdapter` → `engine.ProcessInput`); LLM is only a dead-end fallback, not the primary path. Console UI and REST API share one engine — separation confirmed complete.

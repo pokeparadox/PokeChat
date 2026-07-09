@@ -105,9 +105,9 @@ Responses/
 
 ## Improvement Plan
 Completed phases in `.agents/history.md` and MemPalace (`wing: pokechat, room: phase-summaries`). Plans in MemPalace (`wing: pokechat, room: plans`); no files.
-
 ### Planned (in order)
-- **Phase 54:** Engine/UI Separation
+
+- **Phase 54:** Engine/UI Separation ✅
 - **Sub-plan 2:** Session Persistence
 - **Sub-plan 3:** Smart Routing & LLM Fallback
 - **Phase 55:** Alternative UI
