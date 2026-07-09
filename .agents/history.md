@@ -1635,3 +1635,27 @@ Dual-persona architecture (chat/coding) with persona-filtered rules, responses, 
 - [x] `Program.cs` unchanged (`new ChatSession()` still creates engine internally)
 - [x] `KnowledgeStore.cs` updated: `ChatSession.StemVerb` → `ChatEngine.StemVerb`
 - [x] **Verified:** `Api/` wraps the same `ChatEngine` (`OpenAIAdapter` → `engine.ProcessInput`); LLM is only a dead-end fallback, not the primary path. Console UI and REST API share one engine — separation confirmed complete.
+
+---
+
+## Sub-plan 2: Session Persistence ✅
+- [x] `ConversationSession` entity extended with `LastActiveAt`, `BotName`, `Persona`
+- [x] `SessionManager` rewritten: DB-backed LRU cache (default 50), TTL eviction (default 1h), session CRUD
+- [x] New endpoints: `POST /sessions`, `GET /sessions`, `GET /sessions/{id}`, `DELETE /sessions/{id}`, `POST /sessions/{id}/chat`
+- [x] `ChatEngine.SessionId` made writable, parameterized constructor made public for API project
+- [x] `ChatEngineFactory.Create()` accepts optional `sessionId`
+- [x] `KnowledgeStore` extended with `GetSessionByGuid()` and `UpdateSessionActivity()`
+- [x] 13 new integration tests for session CRUD, cache lifecycle, multiple sessions, LRU eviction
+- [x] All 730 tests pass
+
+---
+
+## Sub-plan 3: Smart Routing & Layered LLMs ✅
+- [x] `RouterService` — `RouteHandler` enum (16 handlers), slash command parser (16 commands), `RouteResult` class
+- [x] Slash command routing wired into `ChatEngine.ProcessInput` after identity checks, before pending state checks
+- [x] Intent classifier activation in routing — confident classifier (≥0.85) maps to appropriate handler (math_query→Math, story_request→Story, etc.)
+- [x] `LlmTier` class + `LlmTiers` dictionary on `LLMConfig` — tiered config parsed from `llm_tiers` in `llm.json` (backwards compatible with flat config)
+- [x] Tier-aware `GenerateResponse(string input, string tier = "default")` — `GenerateWordForGame` uses `"fast"`, `GenerateHomeworkCheck`/`GenerateTrainingLabels` use `"powerful"`
+- [x] `ILLMProvider.GetProvider(string tier)` with fallback chain
+- [x] 43 new RouterService tests, updated `llm.json.example` with tiered config
+- [x] All 773 tests pass

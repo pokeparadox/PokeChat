@@ -16,5 +16,18 @@
     "empathy_happy", "empathy_sad", "empathy_angry",
     "empathy_afraid", "empathy_surprised"
   ],
-  "systemPrompt": "You are a friendly chat companion. Keep your responses brief and conversational, like a text message. Ask questions to keep the conversation going."
+  "systemPrompt": "You are a friendly chat companion. Keep your responses brief and conversational, like a text message. Ask questions to keep the conversation going.",
+
+  "llmTiers": {
+    "powerful": {
+      "model": "llama3.2:70b",
+      "endpoint": "http://localhost:11434",
+      "timeoutMs": 120000
+    },
+    "fast": {
+      "model": "llama3.2:1b",
+      "endpoint": "http://localhost:11434",
+      "timeoutMs": 10000
+    }
+  }
 }

@@ -2,6 +2,13 @@ using System.Text.Json;
 
 namespace PokeChat.LLM;
 
+public class LlmTier
+{
+    public string Model { get; set; } = "llama3.2";
+    public string Endpoint { get; set; } = "http://localhost:11434";
+    public int TimeoutMs { get; set; } = 30000;
+}
+
 public class LLMConfig
 {
     public bool Enabled { get; set; }
@@ -13,13 +20,15 @@ public class LLMConfig
     public bool SummariseToolResults { get; set; } = true;
     public List<string> EnhancedCategories { get; set; } = new();
     public string SystemPrompt { get; set; } = string.Empty;
+    public Dictionary<string, LlmTier>? LlmTiers { get; set; }
 }
 
 public class LLMOrchestrator : IDisposable
 {
-    private readonly ILLMProvider? _provider;
+    private readonly Dictionary<string, ILLMProvider> _tierProviders = new();
+    private readonly string _defaultTier = "default";
     public LLMConfig Config { get; } = new();
-    public bool IsAvailable => _provider != null && Config.Enabled;
+    public bool IsAvailable => _tierProviders.Count > 0 && Config.Enabled;
     public bool IsAccepted { get; private set; }
     public bool UserDeclined { get; private set; }
     public int CallsThisSession { get; private set; }
@@ -27,15 +36,45 @@ public class LLMOrchestrator : IDisposable
     public LLMOrchestrator(string configPath = "tools/llm.json")
     {
         Config = LoadConfig(configPath);
-        if (Config != null && Config.Enabled && !string.IsNullOrEmpty(Config.Endpoint))
-            _provider = new OllamaProvider(Config.Endpoint, Config.Model, Config.TimeoutMs);
+        if (Config.Enabled)
+            InitialiseProviders();
     }
 
     internal LLMOrchestrator(ILLMProvider provider, LLMConfig config)
     {
-        _provider = provider;
+        _tierProviders[_defaultTier] = provider;
         Config = config;
     }
+
+    private void InitialiseProviders()
+    {
+        if (Config.LlmTiers != null && Config.LlmTiers.Count > 0)
+        {
+            foreach (var kv in Config.LlmTiers)
+            {
+                var tier = kv.Value;
+                if (!string.IsNullOrEmpty(tier.Endpoint) && !string.IsNullOrEmpty(tier.Model))
+                {
+                    var provider = new OllamaProvider(tier.Endpoint, tier.Model, tier.TimeoutMs);
+                    _tierProviders[kv.Key.ToLowerInvariant()] = provider;
+                }
+            }
+        }
+
+        if (!_tierProviders.ContainsKey(_defaultTier) && !string.IsNullOrEmpty(Config.Endpoint) && !string.IsNullOrEmpty(Config.Model))
+        {
+            var provider = new OllamaProvider(Config.Endpoint, Config.Model, Config.TimeoutMs);
+            _tierProviders[_defaultTier] = provider;
+        }
+    }
+
+    internal ILLMProvider? GetProvider(string tier)
+    {
+        var key = tier.ToLowerInvariant();
+        return _tierProviders.TryGetValue(key, out var provider) ? provider : _tierProviders.GetValueOrDefault(_defaultTier);
+    }
+
+    public string[] GetAvailableTiers() => _tierProviders.Keys.ToArray();
 
     public static readonly string HomeworkCheckSystemPrompt =
         "You are a QA assistant for a learning chatbot. Review the conversation below for mistakes.\n\n" +
@@ -59,23 +98,25 @@ public class LLMOrchestrator : IDisposable
         UserDeclined = true;
     }
 
-    public string? GenerateResponse(string input)
+    public string? GenerateResponse(string input, string tier = "default")
     {
-        if (_provider == null || UserDeclined) return null;
+        var provider = GetProvider(tier);
+        if (provider == null || UserDeclined) return null;
         if (!Config.AlwaysOn && Config.MaxCallsPerSession > 0 && CallsThisSession >= Config.MaxCallsPerSession)
             return null;
 
         CallsThisSession++;
-        return _provider.GenerateResponse(input, Config.SystemPrompt);
+        return provider.GenerateResponse(input, Config.SystemPrompt);
     }
 
     public string? GenerateWordForGame(string storySoFar)
     {
-        if (_provider == null || UserDeclined) return null;
+        var provider = GetProvider("fast") ?? GetProvider(_defaultTier);
+        if (provider == null || UserDeclined) return null;
 
         var systemPrompt = "You are playing a word game. Add EXACTLY ONE word that continues the story in a " +
             "funny or interesting way, following proper grammar. Return ONLY that word, no punctuation or explanation.";
-        var result = _provider.GenerateResponse($"The story so far is: '{storySoFar}'", systemPrompt);
+        var result = provider.GenerateResponse($"The story so far is: '{storySoFar}'", systemPrompt);
         if (string.IsNullOrEmpty(result)) return null;
 
         var firstWord = result.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
@@ -84,33 +125,40 @@ public class LLMOrchestrator : IDisposable
 
     public string? GenerateGameStorySummary(string storyWords)
     {
-        if (_provider == null || UserDeclined) return null;
+        var provider = GetProvider(_defaultTier);
+        if (provider == null || UserDeclined) return null;
 
         var prompt = $"Here are some words chosen in a word game: '{storyWords}'. Write a short, funny story (2-3 sentences) using these words. Return only the story, no commentary.";
-        return _provider.GenerateResponse(prompt, "");
+        return provider.GenerateResponse(prompt, "");
     }
 
     public string? GenerateHomeworkCheck(string prompt)
     {
-        if (_provider == null || UserDeclined) return null;
-        return _provider.GenerateResponse(prompt, HomeworkCheckSystemPrompt);
+        var provider = GetProvider("powerful") ?? GetProvider(_defaultTier);
+        if (provider == null || UserDeclined) return null;
+        return provider.GenerateResponse(prompt, HomeworkCheckSystemPrompt);
     }
 
     public void Dispose()
     {
-        if (_provider is IDisposable disposable)
-            disposable.Dispose();
+        foreach (var provider in _tierProviders.Values)
+        {
+            if (provider is IDisposable disposable)
+                disposable.Dispose();
+        }
     }
 
     public string? GenerateInterviewInput(string prompt)
     {
-        if (_provider == null || UserDeclined) return null;
-        return _provider.GenerateResponse(prompt, InterviewSystemPrompt);
+        var provider = GetProvider(_defaultTier);
+        if (provider == null || UserDeclined) return null;
+        return provider.GenerateResponse(prompt, InterviewSystemPrompt);
     }
 
     public string? GenerateTrainingLabels(string conversationJson)
     {
-        if (_provider == null || UserDeclined) return null;
+        var provider = GetProvider("powerful") ?? GetProvider(_defaultTier);
+        if (provider == null || UserDeclined) return null;
 
         var prompt = "Review this conversation and label each user turn with an intent category. " +
             "Categories: greeting, name_intro, preference_statement, dislike_statement, possession_statement, " +
@@ -122,7 +170,7 @@ public class LLMOrchestrator : IDisposable
             "{\"labels\":[{\"input\":\"user said this\",\"intent\":\"category\"}]}\n\n" +
             $"Conversation:\n{conversationJson}";
 
-        return _provider.GenerateResponse(prompt, TrainingLabelsSystemPrompt);
+        return provider.GenerateResponse(prompt, TrainingLabelsSystemPrompt);
     }
 
     public static readonly string TrainingLabelsSystemPrompt =

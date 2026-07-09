@@ -284,6 +284,9 @@ public sealed class PokeChatDbContext : DbContext
             entity.Property(e => e.SessionGuid).IsRequired();
             entity.Property(e => e.StartedAt).IsRequired();
             entity.Property(e => e.TurnCount);
+            entity.Property(e => e.LastActiveAt);
+            entity.Property(e => e.BotName);
+            entity.Property(e => e.Persona);
             entity.HasOne<User>()
                 .WithMany()
                 .HasForeignKey(e => e.UserId);

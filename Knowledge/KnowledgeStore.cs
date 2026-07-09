@@ -972,16 +972,35 @@ public class KnowledgeStore(PokeChatDbContext context)
         return connected.ToList();
     }
 
-    public void CreateConversationSession(string sessionGuid, int userId)
+    public ConversationSession? GetSessionByGuid(string sessionGuid)
     {
+        return context.ConversationSessions.FirstOrDefault(s => s.SessionGuid == sessionGuid);
+    }
+
+    public void CreateConversationSession(string sessionGuid, int userId, string? botName = null, string? persona = null)
+    {
+        var now = DateTime.UtcNow.ToString("o");
         var session = new ConversationSession
         {
             SessionGuid = sessionGuid,
             UserId = userId,
-            StartedAt = DateTime.UtcNow.ToString("o"),
-            TurnCount = 0
+            StartedAt = now,
+            LastActiveAt = now,
+            TurnCount = 0,
+            BotName = botName,
+            Persona = persona
         };
         context.ConversationSessions.Add(session);
+    }
+
+    public void UpdateSessionActivity(string sessionGuid)
+    {
+        var session = context.ConversationSessions.FirstOrDefault(s => s.SessionGuid == sessionGuid);
+        if (session != null)
+        {
+            session.LastActiveAt = DateTime.UtcNow.ToString("o");
+            session.TurnCount++;
+        }
     }
 
     public void EndConversationSession(string sessionGuid)

@@ -8,4 +8,7 @@ public class ConversationSession
     public string StartedAt { get; set; } = string.Empty;
     public string? EndedAt { get; set; }
     public int TurnCount { get; set; }
+    public string? LastActiveAt { get; set; }
+    public string? BotName { get; set; }
+    public string? Persona { get; set; }
 }

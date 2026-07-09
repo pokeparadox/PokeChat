@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using PokeChat.Data;
 using PokeChat.Knowledge;
 using PokeChat.LLM;
+using PokeChat.Math;
 using PokeChat.Mcp;
 using PokeChat.NLP;
 using PokeChat.Responses;
@@ -30,7 +31,7 @@ public class ChatEngine : IDisposable
     private readonly HashSet<string> _greetingWords;
     private string _botName = "PokeChat";
     private readonly List<string> _renamePatterns;
-    private readonly string _sessionId = Guid.NewGuid().ToString();
+    private string _sessionId = Guid.NewGuid().ToString();
     private string _currentUserNameLower = string.Empty;
     private Dictionary<string, List<string>>? _cachedBotResponses;
     private static readonly string[] AlternativeNames = { "Zara", "Nova", "Echo", "Pixel", "Azure", "Kai", "Rex" };
@@ -45,6 +46,7 @@ public class ChatEngine : IDisposable
     private string? _pendingFollowUp;
     private int _followUpCount;
     private readonly ML.IntentClassifier _intentClassifier;
+    private readonly RouterService _router = new();
     private readonly List<(string Input, string Response)> _trainingBuffer = new();
     private const int RetrainThreshold = 25;
     private string _persona = "chat";
@@ -278,7 +280,7 @@ public class ChatEngine : IDisposable
         _currentUserNameLower = _currentUserName.ToLowerInvariant();
     }
 
-    internal ChatEngine(
+    public ChatEngine(
         PokeChatDbContext dbContext,
         KnowledgeStore knowledgeStore,
         ResponseEngine responseEngine,
@@ -379,6 +381,12 @@ public class ChatEngine : IDisposable
         var confirmResult = TryHandleConfirmation(input);
         if (confirmResult != null)
             return confirmResult;
+
+        var routeResult = _router.Route(input, _intentClassifier);
+        if (routeResult.Handler != RouteHandler.None)
+        {
+            return ExecuteSlashRoute(routeResult);
+        }
 
         if (_persona == "coding")
         {
@@ -1048,7 +1056,7 @@ public class ChatEngine : IDisposable
     internal string CurrentUserName => _currentUserName;
     internal int? SavedUserId => _savedUserId;
     internal string BotName => _botName;
-    internal string SessionId => _sessionId;
+    internal string SessionId { get => _sessionId; set => _sessionId = value; }
     internal string Persona => _persona;
     internal string? PendingFollowUp { get => _pendingFollowUp; set => _pendingFollowUp = value; }
     internal int FollowUpCount { get => _followUpCount; set => _followUpCount = value; }
@@ -1554,6 +1562,12 @@ public class ChatEngine : IDisposable
         return FinalizeNameSetup(name);
     }
 
+    internal void EstablishDefaultUser(string name = "Guest")
+    {
+        if (_currentUserId != null) return;
+        FinalizeNameSetup(name);
+    }
+
     private string FinalizeNameSetup(string name)
     {
         _currentUserName = char.ToUpper(name[0]) + name.Substring(1).ToLowerInvariant();
@@ -2018,6 +2032,118 @@ public class ChatEngine : IDisposable
             return fb[Random.Shared.Next(fb.Count)];
 
         return string.Empty;
+    }
+
+    private string ExecuteSlashRoute(RouteResult route)
+    {
+        switch (route.Handler)
+        {
+            case RouteHandler.Math:
+                var mathEngine = new SimpleMath();
+                var mathResult = mathEngine.Evaluate(route.Argument ?? "");
+                if (mathResult != null)
+                {
+                    var botResponses = GetCachedBotResponses();
+                    if (botResponses.TryGetValue("math_result", out var mathTemplates) && mathTemplates.Count > 0)
+                        return string.Format(mathTemplates[Random.Shared.Next(mathTemplates.Count)], mathResult.Expression, mathResult.Value);
+                    return $"{mathResult.Expression} = {mathResult.Value}";
+                }
+                return GetLLMResponse("math_parse_error");
+
+            case RouteHandler.Remind:
+                var remindInput = "remind " + (route.Argument ?? "");
+                if (TryHandleReminderRequest(remindInput, out var remindResponse))
+                    return remindResponse;
+                return GetLLMResponse("default_response");
+
+            case RouteHandler.Story:
+                return _responseEngine.GenerateResponse("tell me a story", _currentUserId);
+
+            case RouteHandler.Poem:
+                return _responseEngine.GenerateResponse("write a poem", _currentUserId);
+
+            case RouteHandler.Haiku:
+                return _responseEngine.GenerateResponse("write a haiku", _currentUserId);
+
+            case RouteHandler.Limerick:
+                return _responseEngine.GenerateResponse("write a limerick", _currentUserId);
+
+            case RouteHandler.Joke:
+                if (TryHandleJokeStart("tell me a joke", out var jokeResponse))
+                    return jokeResponse;
+                return GetLLMResponse("default_response");
+
+            case RouteHandler.Riddle:
+                if (TryHandleRiddleStart("tell me a riddle", out var riddleResponse))
+                    return riddleResponse;
+                return GetLLMResponse("default_response");
+
+            case RouteHandler.Quiz:
+                if (TryHandleQuizStart("quiz me", out var quizResponse))
+                    return quizResponse;
+                return GetLLMResponse("default_response");
+
+            case RouteHandler.Game:
+                if (TryHandleGameStart("word game", out var gameResponse))
+                    return gameResponse;
+                return GetLLMResponse("default_response");
+
+            case RouteHandler.Hangman:
+                if (TryHandleHangmanStart("play hangman", out var hangmanResponse))
+                    return hangmanResponse;
+                return GetLLMResponse("default_response");
+
+            case RouteHandler.SwitchPersona:
+                var switchInput = "switch to " + (route.Argument ?? "") + " mode";
+                var personaResult = TryHandlePersonaSwitch(switchInput);
+                if (personaResult != null)
+                    return personaResult;
+                return GetLLMResponse("default_response");
+
+            case RouteHandler.Stats:
+                var statsResponse = _responseEngine.HandleSelfKnowledgeRequest("what are my stats", _currentUserId);
+                if (statsResponse != null)
+                    return statsResponse;
+                return GetLLMResponse("default_response");
+
+            case RouteHandler.AboutMe:
+                var aboutResponse = _responseEngine.HandleSelfKnowledgeRequest("tell me about myself", _currentUserId);
+                if (aboutResponse != null)
+                    return aboutResponse;
+                return GetLLMResponse("default_response");
+
+            case RouteHandler.Reset:
+                if (TryHandleResetRequest("start fresh", out var resetResponse))
+                    return resetResponse;
+                return GetLLMResponse("default_response");
+
+            case RouteHandler.Help:
+                return GetHelpText();
+
+            default:
+                return GetLLMResponse("default_response");
+        }
+    }
+
+    internal static string GetHelpText()
+    {
+        return "Here are the commands I understand:\n\n"
+            + "/maths <expression> — Evaluate a maths expression (e.g. /maths 2 + 2)\n"
+            + "/remind <me to> <task> [at/in <time>] — Set a reminder\n"
+            + "/story — Tell me a story\n"
+            + "/poem — Write a poem\n"
+            + "/haiku — Write a haiku\n"
+            + "/limerick — Write a limerick\n"
+            + "/joke — Tell me a joke\n"
+            + "/riddle — Ask me a riddle\n"
+            + "/quiz — Quiz me on what I know\n"
+            + "/game — Play the word-chain story game\n"
+            + "/hangman — Play hangman\n"
+            + "/switch <mode> — Switch to coding or chat mode\n"
+            + "/stats — Show conversation statistics\n"
+            + "/about — Tell me what I know about you\n"
+            + "/reset — Reset all my memories of you\n"
+            + "/help — Show this help message";
     }
 
     private string? TryEarlyLlmRouting(string input)
