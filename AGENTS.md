@@ -132,6 +132,7 @@ Full history in MemPalace (`wing: pokechat, room: known-fixes`). Essentials only
 - **When creating a new phase plan:** File the plan to MemPalace (`wing: pokechat, room: plans`).
 - **When a phase is completed:** File detailed completion to MemPalace (`wing: pokechat, room: phase-summaries`), append a one-line summary to `.agents/history.md`.
 - **After each phase or significant milestone:** Update `README.md` only if user-facing changes (new features, CLI commands, DB schema visible to end users).
+- **When a new TODO/basic idea arises:** File it to MemPalace (`wing: pokechat, room: ideas`) instead of `.agents/todo.md`. Convert to a detailed plan in `wing: pokechat, room: plans` before implementing.
 - **Run log analysis during cleanup:** After completing a phase, scan `logs/*.log` for response abnormalities. Read each log file and inspect every `### Bot` response for known bad patterns:
   - **Spell checker false positives** — common short words flagged as unknown (hi→he, oh→of, why→way, ate→age, later→late, really→reality, everything→N/A)
   - **Garbage follow-ups** — bot asking about function-word objects ("not and any", "i someti ames and trains")

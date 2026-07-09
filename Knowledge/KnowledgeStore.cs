@@ -1026,7 +1026,8 @@ public class KnowledgeStore(PokeChatDbContext context)
         var signatures = facts
             .Where(f => !SummaryFilters.IsGarbageFact(f))
             .Select(FormatFact)
-            .Distinct()
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Take(10)
             .ToList();
 
         if (signatures.Count == 0)
@@ -1041,7 +1042,7 @@ public class KnowledgeStore(PokeChatDbContext context)
 
     private static string FormatFact(Fact fact)
     {
-        var stemmed = ChatSession.StemVerb(fact.Verb);
+        var stemmed = ChatEngine.StemVerb(fact.Verb);
         var conjVerb = ResponseEngine.ConjugateVerb(stemmed, fact.Subject);
         return $"{fact.Subject} {conjVerb} {fact.Object}";
     }

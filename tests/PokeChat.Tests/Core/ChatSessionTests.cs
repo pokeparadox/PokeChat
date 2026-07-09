@@ -369,9 +369,24 @@ public class ChatSessionTests
         using (db)
         {
             session.HandleNameInput("my name is Alice");
+            session.BotRenameAcceptProbability = 1.0;
             var result = session.TryHandleBotRename("can I call you Jeff", out var response);
             result.ShouldBeTrue();
             response.ShouldContain("Jeff", Case.Insensitive);
+        }
+    }
+
+    [Fact]
+    public void TryHandleBotRename_LowProbability_Rejects()
+    {
+        var (session, db) = CreateSessionAndDb(renamePatterns: new List<string> { "can i call you" });
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+            session.BotRenameAcceptProbability = 0.0;
+            var result = session.TryHandleBotRename("can I call you Jeff", out var response);
+            result.ShouldBeTrue();
+            response.ShouldNotContain("from now on", Case.Insensitive);
         }
     }
 
@@ -1096,7 +1111,7 @@ public class ChatSessionTests
 
             var response = session.ProcessInput("a made up word");
 
-            response.ShouldContain("Is it a person, place, thing, or verb");
+            response.ShouldContain("Is it a person, place, thing, verb, adjective, or noun");
         }
     }
 

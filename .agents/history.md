@@ -1589,8 +1589,48 @@ Dual-persona architecture (chat/coding) with persona-filtered rules, responses, 
 - [x] In-memory `ConcurrentDictionary<string, ChatSessionWrapper>` session management
 - [x] 713/713 tests pass, 0 build errors
 
+## Phase 47 — Quiz Builder (built alongside Sub-plan 1)
+- [x] `ContextKeys.QuizActive` / `QuizScore` / `QuizQuestionCount` / `QuizCurrentAnswer` / `QuizCurrentQuestion` / `QuizFacts`
+- [x] `KnowledgeStore.GetRandomFactsForQuiz()` — picks random user facts
+- [x] `ChatSession.TryHandleQuizStart()` — "quiz me" triggers
+- [x] `ChatSession.HandleQuizTurn()` — correct/wrong/give-up/complete
+- [x] `BuildQuizQuestion()` — fill-in-the-blank from fact triples
+- [x] Seed data: 3 quiz_question, 2 quiz_correct, 2 quiz_wrong, 2 quiz_score, 2 quiz_already_active, 2 quiz_no_facts
+- [x] 7 tests: start/few-facts/correct/wrong/give-up/complete/already-active
+- [x] 713/713 tests pass
+
+## Phase 46 — Timeline / Journal (built alongside Sub-plan 1)
+- [x] `ContextKeys.TimelineOffered` context key
+- [x] `KnowledgeStore.GetFactsInDateRange()` + `BuildTimeline()` — day-labelled chronological recap
+- [x] `ResponseEngine.HandleTimelineRequest()` — explicit trigger ("what happened this week")
+- [x] `ResponseEngine.BuildProactiveTimelineOffer()` — 1-in-10 chance at 5+ turns
+- [x] Seed data: 3 `timeline_response`, 2 `timeline_empty`, 2 `timeline_offer` templates
+- [x] 5 tests: GetFactsInDateRange, BuildTimeline, HandleTimelineRequest (found/empty), BuildProactiveTimelineOffer
+- [x] IsDeadEndCategory + emoji mapping
+- [x] 713/713 tests pass
+
+## Phase 45 — Preference Recommender (built alongside Sub-plan 1)
+- [x] `ContextKeys.RecommenderGiven` context key
+- [x] `KnowledgeStore.GetUserPreferences()` + `GetRecommendation()` — walks `is_a` WordLinks
+- [x] `ResponseEngine.BuildRecommendation()` — 1-in-8 chance in proactive fallback slot
+- [x] Seed data: 3 `recommender` bot response templates
+- [x] 5 tests: GetUserPreferences, GetRecommendation (found/not-found/skips-known), BuildRecommendation
+- [x] IsDeadEndCategory + emoji mapping
+- [x] 713/713 tests pass
+
 ## AGENTS.md cleanup (2026-07-07)
 - [x] Improvement Plan: completed phases moved to MemPalace (`wing: pokechat, room: phase-summaries`), keep only planned
 - [x] Known Fixes: full history moved to MemPalace (`wing: pokechat, room: known-fixes`), keep only 11 essentials
 - [x] Routines: updated post-phase workflow to file to MemPalace instead of AGENTS.md edits
 - [x] 250 lines → 151 lines
+
+## Phase 54 — Engine/UI Separation (2026-07-09)
+- [x] Extracted `ChatEngine` class from `ChatSession`: ~3892 lines of core logic (ProcessInput, all handlers, NLP pipeline, knowledge store, context, games, interview, LLM)
+- [x] ChatSession reduced to ~269 lines: Console I/O wrapper delegating to ChatEngine
+- [x] `ChatEngine.OnStatusUpdate` callback replaces `Console.Write` in `LlmCallWithIndicator` and `HandleGameTurn` (thinking indicator)
+- [x] `StartInterview()` / `EndInterview()` return strings instead of writing to Console
+- [x] Console.WriteLine in `RunHomeworkCheck` kept in engine (called from exit flow, harmless in non-Console contexts)
+- [x] `ChatSession.Start()` rewritten to delegate all state to `_engine`
+- [x] All 714 tests pass (0 changes needed — same constructor signatures, ChatSession delegates)
+- [x] `Program.cs` unchanged (`new ChatSession()` still creates engine internally)
+- [x] `KnowledgeStore.cs` updated: `ChatSession.StemVerb` → `ChatEngine.StemVerb`

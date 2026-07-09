@@ -33,7 +33,7 @@ Type `quit` or `exit` to leave.
 |---|---|
 | *(any word it doesn't know)* | Ask what it means, or suggest a correction |
 | `typo` / `never mind` / `forget it` | Cancel learning and move on |
-| *(after teaching a word)* `person` / `place` / `thing` / `verb` | Classify the word |
+| *(after teaching a word)* `person` / `place` / `thing` / `verb` / `adjective` / `noun` | Classify the word |
 | `what is the definition of X` / `define X` | Look up or ask you for a definition |
 | `what is another word for X` / `synonym for X` | Show related words |
 
@@ -189,14 +189,12 @@ All conversational data is persisted:
 - **Word definitions** — user-taught vocabulary
 - **Word links** — synonyms, antonyms, related words
 - **Noun categories** — person/place/thing classification
-- **Emotion keywords** — sentiment analysis with ~95 keywords across 5 sentiments
+- **Emotion keywords** — ~95 keywords across 5 sentiments for sentiment analysis
 - **Contractions** — 54 common English contractions mapped to expanded forms
 - **User bot names** — per-user custom bot name assignment
 - **Story templates** — 10+ slot-based templates for short story generation
 - **Learned response rules** — user-taught response patterns with confidence tracking
 - **Error knowledge base** — ~60 seeded compiler/runtime errors with regex patterns and fixes
-- **Emotion keywords** — ~95 keywords across 5 sentiments for sentiment analysis
-- **Contractions** — 54 common contractions expanded before tokenisation
 - **Temporal expressions** — 15 seeded time expressions (yesterday, last week, etc.)
 - **Inference word links** — `is_a` category chains for reasoning
 - **Jokes & Riddles** — 20 dad jokes, 13 riddles with hints and difficulty levels
@@ -262,9 +260,14 @@ All conversational data is persisted:
 | 50b | Coding Project Context (file mention detection, git branch) | ✅ |
 | 51b | Coding CLI Command DB (~90 NL→shell mappings, destructive confirmation) | ✅ |
 | 52 | Error Knowledge Base (~60 compiler errors, regex matching) | ✅ |
-| — | Neural Net Integration (~250 seeds, IntentClassifier, self-training) | ✅ |
+| 44 | Neural Net Integration (~250 seeds, IntentClassifier, self-training) | ✅ |
+| 45 | Preference Recommender (suggestions from `is_a` WordLinks, once/session) | ✅ |
+| 46 | Timeline / Journal (chronological fact recap by day, proactive offer) | ✅ |
+| 47 | Quiz Builder (multi-turn quiz from user facts, correct/wrong/score) | ✅ |
 | 53 | In-Chat Reminders (create/list/done/cancel, session-start due check) | ✅ |
 | — | Name Confusion Fix (POS validation, cross-session identity) | ✅ |
 | — | Meta-commentary Detection (confusion/not-helpful/mocking, repeated complaint tracking) | ✅ |
+| — | Word Classification Expansion (all 6 word types, "I don't know" + LLM fallback) | ✅ |
+| — | Sub-plan 1: Minimal HTTP API (`POST /chat`, `GET /health`, in-memory sessions) | ✅ |
 
 See `.agents/history.md` for completed improvements. 
