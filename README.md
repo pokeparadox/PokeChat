@@ -13,8 +13,12 @@ I want to use LLMs in order to not use LLMs.
 
 ```bash
 dotnet build
-dotnet run
+dotnet run --project Api/    # start the REST API
+dotnet run                   # start the console client (connects to API)
 ```
+
+The console client connects to `http://localhost:5000` by default.
+Override with: `POKECHAT_API_URL=http://host:port dotnet run`
 
 Type `quit` or `exit` to leave.
 
@@ -137,40 +141,47 @@ dotnet test
 
 ## Architecture
 
+Two-project solution:
+- **`Api/`** — Core library + REST API (all NLP, knowledge, response logic)
+- **`PokeChat.csproj`** — Thin console HTTP client (~70 lines)
+
 ```
-Program.cs                    → entry point, creates ChatSession
-Core/
-  ChatSession.cs              → main loop: greet → parse → respond → store
-  GreetingPool.cs             → loads random greeting from DB
-  ContextKeys.cs              → constants for context tracker
-  PredicateType.cs            → enum for predicate classification
-  INounCategoriser.cs         → interface for noun categorisation
-  NounCategoriser.cs          → DB + heuristics (person/place/thing)
-NLP/
-  Tokeniser.cs                → British English tokenisation
-  PosTagger.cs                → DB-loaded POS dictionary + heuristics
-  SvoExtractor.cs             → Subject-Verb-Object triple extraction
-  SentenceSplitter.cs         → multi-sentence splitting
-  PunctuationHelper.cs        → shared IsPunctuation utility
-  SpellChecker.cs             → Levenshtein spell correction
-  Pluraliser.cs               → singularise English plural nouns
-  ContractionExpander.cs      → expands contractions before tokenisation
-Math/
-  IMathEngine.cs              → math evaluation interface
-  SimpleMath.cs               → binary expression evaluator (+, -, *, /, ^)
-Knowledge/
-  KnowledgeStore.cs           → EF Core repository layer
-  Fact.cs                     → Facet model for facts
-  ContextTracker.cs           → conversation context, pronoun resolution
-Stories/
-  StoryGenerator.cs           → random short story composition
-Responses/
-  ResponseEngine.cs           → rule-based response generation
-  ResponseRules.cs            → DB-loaded regex rules
-Data/
-  PokeChatDbContext.cs        → EF Core DbContext
-  DbSeeder.cs                 → seeds initial data on first run
-  Schema.sql                  → reference DDL for all tables
+PokeChat.csproj              → console HTTP client (calls Api/)
+Api/
+  Program.cs                 → REST API endpoints (Minimal API)
+  Core/
+    ChatEngine.cs            → main loop: greet → parse → respond → store
+    ChatSession.cs           → Console I/O wrapper delegating to ChatEngine
+    GreetingPool.cs          → loads random greeting from DB
+    ContextKeys.cs           → constants for context tracker
+    PredicateType.cs         → enum for predicate classification
+    INounCategoriser.cs      → interface for noun categorisation
+    NounCategoriser.cs       → DB + heuristics (person/place/thing)
+  NLP/
+    Tokeniser.cs             → British English tokenisation
+    PosTagger.cs             → DB-loaded POS dictionary + heuristics
+    SvoExtractor.cs          → Subject-Verb-Object triple extraction
+    SentenceSplitter.cs      → multi-sentence splitting
+    PunctuationHelper.cs     → shared IsPunctuation utility
+    SpellChecker.cs          → Levenshtein spell correction
+    Pluraliser.cs            → singularise English plural nouns
+    ContractionExpander.cs   → expands contractions before tokenisation
+  Math/
+    IMathEngine.cs           → math evaluation interface
+    SimpleMath.cs            → binary expression evaluator (+, -, *, /, ^)
+  Knowledge/
+    KnowledgeStore.cs        → EF Core repository layer
+    Fact.cs                  → Facet model for facts
+    ContextTracker.cs        → conversation context, pronoun resolution
+  Stories/
+    StoryGenerator.cs        → random short story composition
+  Responses/
+    ResponseEngine.cs        → rule-based response generation
+    ResponseRules.cs         → DB-loaded regex rules
+  Data/
+    PokeChatDbContext.cs     → EF Core DbContext
+    DbSeeder.cs              → seeds initial data on first run
+    Schema.sql               → reference DDL for all tables
 ```
 
 ## Database
@@ -269,5 +280,8 @@ All conversational data is persisted:
 | — | Meta-commentary Detection (confusion/not-helpful/mocking, repeated complaint tracking) | ✅ |
 | — | Word Classification Expansion (all 6 word types, "I don't know" + LLM fallback) | ✅ |
 | — | Sub-plan 1: Minimal HTTP API (`POST /chat`, `GET /health`, in-memory sessions) | ✅ |
+| — | Sub-plan 2: Session Persistence (DB-backed LRU cache, CRUD endpoints) | ✅ |
+| — | Sub-plan 3: Smart Routing & Layered LLMs (slash commands, tiered LLM config) | ✅ |
+| — | Sub-plan 4: Engine/API Inversion (API = core library, Console = HTTP client) | ✅ |
 
 See `.agents/history.md` for completed improvements. 

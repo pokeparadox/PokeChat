@@ -1,5 +1,6 @@
 using PokeChat.Api.Models;
 using PokeChat.Api.Services;
+using PokeChat.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +15,11 @@ builder.Services.AddSingleton<SessionManager>();
 builder.Services.AddSingleton<OpenAIAdapter>();
 
 var app = builder.Build();
+
+using (var initContext = new PokeChatDbContext())
+{
+    new DatabaseInitializer(initContext).Initialize();
+}
 
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 

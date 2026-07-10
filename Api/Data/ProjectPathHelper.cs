@@ -7,7 +7,7 @@ internal static class ProjectPathHelper
         var current = startDirectory;
         while (!string.IsNullOrEmpty(current))
         {
-            if (File.Exists(Path.Combine(current, "PokeChat.csproj")))
+            if (File.Exists(Path.Combine(current, "PokeChat.Api.csproj")))
                 return current;
             current = Path.GetDirectoryName(current);
         }

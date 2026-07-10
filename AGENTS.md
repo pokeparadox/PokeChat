@@ -1,19 +1,20 @@
 # PokeChat — Agent Notes
 
 ## Project
-- C# console app, .NET 10 (`net10.0`)
-- Single project: `PokeChat.csproj` (solution: `PokeChat.slnx`)
+- C# .NET 10 (`net10.0`), two-project solution (`PokeChat.slnx`)
+- **`Api/PokeChat.Api.csproj`** — core library (Web SDK): ChatEngine, NLP, Knowledge, Data, Responses, Math, LLM, ML, MCP, Tools, Stories, Migrations
+- **`PokeChat.csproj`** — thin console HTTP client (~70 lines), calls the REST API
 - SQLite via **`Microsoft.EntityFrameworkCore.Sqlite`** (EF Core, not raw `Microsoft.Data.Sqlite`)
 - **`Facet`** + **`Facet.Extensions.EFCore`** for entity-to-model mapping (`[Facet(typeof(FactEntity))]` partial class)
-- Dependencies: `Microsoft.EntityFrameworkCore.Sqlite`, `Microsoft.EntityFrameworkCore.Design`, `Facet`, `Facet.Extensions.EFCore`
 
 ## Commands
 ```bash
-dotnet build                          # build
-dotnet run                            # run the chat application
-dotnet test                           # run all tests
-dotnet ef migrations add <Name>       # add a new schema migration
-dotnet ef migrations remove           # undo last migration (if unapplied)
+dotnet build                              # build all projects
+dotnet run --project Api/                 # start the REST API (default http://localhost:5000)
+dotnet run                                # start the console HTTP client (connects to API)
+dotnet test                               # run all tests
+dotnet ef migrations add <Name> --project Api/  # add a new schema migration
+dotnet ef migrations remove --project Api/      # undo last migration (if unapplied)
 ```
 
 ## Architecture
@@ -60,7 +61,7 @@ Responses/
 ```
 
 ## Key Details
-- **DB location:** `pokechat.db` in project root (resolved by walking up from `BaseDirectory` to find `PokeChat.csproj`); override via `POKECHAT_DB_PATH` environment variable
+- **DB location:** `pokechat.db` in project root (resolved by walking up from `BaseDirectory` to find `PokeChat.Api.csproj`); override via `POKECHAT_DB_PATH` environment variable
 - **DB init:** `DatabaseInitializer` in `ChatSession()` constructor. Uses EF Core migrations (`Database.Migrate()`) instead of `EnsureCreated()`. On first run, applies `InitialCreate` migration to create all tables. Detects legacy databases from the `EnsureCreated` era and seeds `__EFMigrationsHistory` to preserve existing data.
 - **Seeder:** `DbSeeder.Seed()` populates greetings, greeting words, response rules, POS dictionary (from `pos_dictionary.json`), name patterns, bot commands, misspellings, and bot responses on first run
 - **Knowledge extraction:** "my name is Alice" → (user, is_named, Alice); "I like pizza" → (user, likes, pizza); "the sky is blue" → (sky, is, blue) [general knowledge]
@@ -107,10 +108,9 @@ Responses/
 Completed phases in `.agents/history.md` and MemPalace (`wing: pokechat, room: phase-summaries`). Plans in MemPalace (`wing: pokechat, room: plans`); no files.
 ### Planned (in order)
 
-- **Phase 54:** Engine/UI Separation ✅
-- **Sub-plan 2:** Session Persistence
-- **Sub-plan 3:** Smart Routing & LLM Fallback
-- **Phase 55:** Alternative UI
+- **Sub-plan 5:** Alternative UI
+- **Sub-plan 6:** WebSocket Real-Time Streaming
+- **Sub-plan 7:** Rate Limiting & Session Quotas
 
 ## Known Fixes
 Full history in MemPalace (`wing: pokechat, room: known-fixes`). Essentials only here:
@@ -126,6 +126,8 @@ Full history in MemPalace (`wing: pokechat, room: known-fixes`). Essentials only
 - **POKECHAT_DB_PATH:** Environment variable overrides SQLite path.
 - **Garbage triple filter:** `FunctionWords` (not, never, no) filter single-function-word object triples.
 - **JokeStartPhrases:** `"funny"` removed — too broad.
+- **Console.WriteLine in ChatEngine:** Replaced with `OnStatusUpdate` callback — engine must not depend on Console directly.
+- **Guest name bug:** `SessionManager.GetOrCreate` called `EstablishDefaultUser("Guest")` which set `_currentUserId`, permanently blocking `HandleNameInput`. Gate now also checks `_currentUserName == "Guest"`.
 
 ## Routines
 - **Code review after every change:** After each modification, review the changed code for bugs and duplicate code — refactor any duplication found.

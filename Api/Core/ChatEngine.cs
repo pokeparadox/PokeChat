@@ -369,7 +369,7 @@ public class ChatEngine : IDisposable
             return HandleIdentityVerification(input, pendingIdentity);
         }
 
-        if (_currentUserId == null)
+        if (_currentUserId == null || _currentUserName == "Guest")
         {
             return HandleNameInput(input);
         }
@@ -3478,7 +3478,7 @@ public class ChatEngine : IDisposable
 
         var botResponses = GetCachedBotResponses();
         if (botResponses.TryGetValue("homework_check_processing", out var procResponses) && procResponses.Count > 0)
-            Console.WriteLine($"{_botName}: {procResponses[Random.Shared.Next(procResponses.Count)]}");
+            OnStatusUpdate?.Invoke($"{_botName}: {procResponses[Random.Shared.Next(procResponses.Count)]}");
 
         var prompt = BuildHomeworkCheckPrompt();
         if (string.IsNullOrEmpty(prompt)) return;
@@ -3528,14 +3528,14 @@ public class ChatEngine : IDisposable
             if (botResponses.TryGetValue("homework_check_summary", out var sumResponses) && sumResponses.Count > 0)
             {
                 var template = sumResponses[Random.Shared.Next(sumResponses.Count)];
-                Console.WriteLine($"{_botName}: {string.Format(template, summary)}");
+                OnStatusUpdate?.Invoke($"{_botName}: {string.Format(template, summary)}");
             }
         }
         else
         {
             if (botResponses.TryGetValue("homework_check_none", out var noneResponses) && noneResponses.Count > 0)
             {
-                Console.WriteLine($"{_botName}: {noneResponses[Random.Shared.Next(noneResponses.Count)]}");
+                OnStatusUpdate?.Invoke($"{_botName}: {noneResponses[Random.Shared.Next(noneResponses.Count)]}");
             }
         }
     }

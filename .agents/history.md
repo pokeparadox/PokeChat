@@ -1659,3 +1659,24 @@ Dual-persona architecture (chat/coding) with persona-filtered rules, responses, 
 - [x] `ILLMProvider.GetProvider(string tier)` with fallback chain
 - [x] 43 new RouterService tests, updated `llm.json.example` with tiered config
 - [x] All 773 tests pass
+
+---
+
+## Sub-plan 4: Engine/API Inversion (2026-07-09)
+- [x] Moved all source into `Api/`: Core/, NLP/, Data/, Knowledge/, Responses/, Math/, LLM/, ML/, MCP/, Tools/, Stories/, Migrations/
+- [x] `Api/PokeChat.Api.csproj` is now the core library (all NuGet packages, pos_dictionary.json copy rule)
+- [x] `PokeChat.csproj` gutted to thin HTTP client (~68 lines): health check, session creation, chat loop, session cleanup
+- [x] `Program.cs` rewritten: `POST /sessions`, `POST /sessions/{id}/chat`, `DELETE /sessions/{id}`, configurable via `POKECHAT_API_URL` env var
+- [x] `Api/Data/ProjectPathHelper.cs` updated: walks up for `PokeChat.Api.csproj` (was `PokeChat.csproj`)
+- [x] 3 stray `Console.WriteLine` in `Api/Core/ChatEngine.cs` replaced with `OnStatusUpdate` callbacks
+- [x] `tests/PokeChat.Tests.csproj` updated: references `Api/PokeChat.Api.csproj` only (no `ProjectReference` to `PokeChat.csproj`)
+- [x] Root `PokeChat.csproj` excludes `tests/**/*.cs` and `Api/**/*.cs` to prevent test compilation leaks
+- [x] 772/773 tests pass (1 pre-existing flaky race condition in `SessionManagerTests.Multiple_concurrent_sessions_dont_interfere`)
+
+---
+
+## Guest User Name Bug Fix (2026-07-09)
+- [x] `SessionManager.GetOrCreate` calls `EstablishDefaultUser("Guest")` on new sessions, setting `_currentUserId` before any user input
+- [x] This permanently blocks `HandleNameInput` (gated on `_currentUserId == null`), so "my name is Alice" through the API never sets the user's name
+- [x] Fixed: gate in `ProcessInput` now checks `_currentUserId == null || _currentUserName == "Guest"` — allows name extraction when user is still the default Guest
+- [x] 773/773 tests pass (0 failures)
