@@ -6,6 +6,7 @@ using PokeChat.Data.Entities;
 using PokeChat.Core;
 using PokeChat.Responses;
 using PokeChat.Stories;
+using PokeChat.ML;
 
 namespace PokeChat.Knowledge;
 
@@ -1640,5 +1641,49 @@ public class KnowledgeStore(PokeChatDbContext context)
 
         // No time and no date — default to 1 hour from now
         return fallbackTime.AddHours(1);
+    }
+
+    public List<(string Response, ML.ResponseContext Context, float Label)> GetRerankerTrainingData()
+    {
+        var conversations = context.Conversations
+            .OrderByDescending(c => c.Id)
+            .Take(500)
+            .ToList();
+
+        var effectiveness = context.ResponseEffectiveness
+            .ToDictionary(e => e.Category, e => e);
+
+        var results = new List<(string Response, ML.ResponseContext Context, float Label)>();
+        foreach (var conv in conversations)
+        {
+            if (string.IsNullOrEmpty(conv.BotResponse) || string.IsNullOrEmpty(conv.ResponseCategory))
+                continue;
+
+            double followUpRate = 0.5;
+            if (effectiveness.TryGetValue(conv.ResponseCategory, out var eff))
+                followUpRate = eff.FollowUpRate;
+
+            var ctx = new ML.ResponseContext
+            {
+                Category = conv.ResponseCategory,
+                SentimentScore = 0f,
+                PreviousResponse = null,
+                TurnNumber = 0,
+                UserInput = conv.UserInput,
+                CategoryFollowUpRate = followUpRate
+            };
+
+            results.Add((conv.BotResponse, ctx, (float)followUpRate));
+        }
+        return results;
+    }
+
+    public List<string> GetBotResponseTexts()
+    {
+        return context.BotResponses
+            .Select(b => b.ResponseText)
+            .Where(r => !string.IsNullOrEmpty(r) && !r.Contains('{'))
+            .Distinct()
+            .ToList();
     }
 }

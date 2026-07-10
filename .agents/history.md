@@ -1680,3 +1680,12 @@ Dual-persona architecture (chat/coding) with persona-filtered rules, responses, 
 - [x] This permanently blocks `HandleNameInput` (gated on `_currentUserId == null`), so "my name is Alice" through the API never sets the user's name
 - [x] Fixed: gate in `ProcessInput` now checks `_currentUserId == null || _currentUserName == "Guest"` — allows name extraction when user is still the default Guest
 - [x] 773/773 tests pass (0 failures)
+
+---
+
+## Phase D — Neural Response Generation (2026-07-10)
+- [x] D1: Neural Reranker — 15-feature extractor + 1-hidden-layer sigmoid net, scores response candidates instead of random pick
+- [x] D2: Next-Word Predictor — WordVocab + NGramModel (trigram/bigram/unigram) + neural smoother + beam search
+- [x] D3: Tiered Pipeline — NeuralResponsePipeline with RulesOnly/NeuralRerank/NeuralGenerate/Llm tiers, JSON config
+- [x] Wired into ResponseEngine.GetRandomResponse via optional NeuralResponsePipeline parameter
+- [x] 35 new tests, 808/808 pass

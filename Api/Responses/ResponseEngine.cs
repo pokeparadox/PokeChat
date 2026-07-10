@@ -28,6 +28,7 @@ public class ResponseEngine
     private readonly HashSet<string> _enhancedCategories;
     private readonly bool _summariseToolResults;
     private readonly ML.IntentClassifier? _intentClassifier;
+    private readonly ML.NeuralResponsePipeline? _neuralPipeline;
     private string _currentUserName = string.Empty;
     private string _botName = "PokeChat";
     private string? _currentUserInput;
@@ -104,7 +105,7 @@ public class ResponseEngine
             || (category != null && category.StartsWith("proactive_"));
     }
 
-    public ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker context, SpellChecker spellChecker, IPosTagger posTagger, ITokeniser tokeniser, ISvoExtractor svoExtractor, IMathEngine? mathEngine = null, StoryGenerator? storyGenerator = null, ToolRegistry? toolRegistry = null, List<ResponseRuleRecord>? toolTriggers = null, Func<string, string?>? llmGenerator = null, HashSet<string>? enhancedCategories = null, bool summariseToolResults = false, ML.IntentClassifier? intentClassifier = null)
+    public ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker context, SpellChecker spellChecker, IPosTagger posTagger, ITokeniser tokeniser, ISvoExtractor svoExtractor, IMathEngine? mathEngine = null, StoryGenerator? storyGenerator = null, ToolRegistry? toolRegistry = null, List<ResponseRuleRecord>? toolTriggers = null, Func<string, string?>? llmGenerator = null, HashSet<string>? enhancedCategories = null, bool summariseToolResults = false, ML.IntentClassifier? intentClassifier = null, ML.NeuralResponsePipeline? neuralPipeline = null)
     {
         _knowledgeStore = knowledgeStore;
         _context = context;
@@ -122,6 +123,7 @@ public class ResponseEngine
         _enhancedCategories = enhancedCategories ?? new HashSet<string>();
         _summariseToolResults = summariseToolResults;
         _intentClassifier = intentClassifier;
+        _neuralPipeline = neuralPipeline;
     }
 
     private static readonly HashSet<string> ModalVerbs = new(StringComparer.OrdinalIgnoreCase)
@@ -174,6 +176,35 @@ public class ResponseEngine
 
         if (_botResponses.TryGetValue(category, out var responses) && responses.Count > 0)
         {
+            if (_neuralPipeline != null && _neuralPipeline.Tier != ML.ResponseTier.RulesOnly && responses.Count >= 2)
+            {
+                var resolvedArgs = args.Select(a => a?.ToString() ?? "").ToList();
+                var candidates = responses.Select(r =>
+                {
+                    try { return resolvedArgs.Count > 0 ? string.Format(r, resolvedArgs.ToArray()) : r; }
+                    catch { return r; }
+                }).Where(r => !string.IsNullOrEmpty(r)).ToList();
+
+                if (candidates.Count >= 2)
+                {
+                    var ctx = new ML.ResponseContext
+                    {
+                        Category = category,
+                        CurrentIntent = _context.GetContext(ContextKeys.CurrentIntent),
+                        SentimentScore = 0f,
+                        PreviousResponse = _context.GetContext(ContextKeys.LastResponse),
+                        TurnNumber = int.TryParse(_context.GetContext(ContextKeys.ContextFollowUpCount), out var tn) ? tn : 0,
+                        UserInput = _currentUserInput,
+                        UserName = _currentUserName,
+                        CategoryFollowUpRate = _knowledgeStore.GetEffectiveness(category) ?? 0
+                    };
+
+                    var best = _neuralPipeline.GetResponse(category, candidates, ctx,
+                        _llmGenerator != null ? input => _llmGenerator(input) : null);
+                    return AddEmoji(best, category);
+                }
+            }
+
             var template = responses[Random.Shared.Next(responses.Count)];
             var result = args.Length > 0 ? string.Format(template, args) : template;
             return AddEmoji(result, category);

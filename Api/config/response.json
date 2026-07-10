@@ -1,0 +1,12 @@
+{
+  "responseTier": "neural_rerank",
+  "neural": {
+    "rerankerModel": "reranker_model.bin",
+    "predictorModel": "predictor_model",
+    "beamWidth": 3,
+    "maxResponseLength": 20,
+    "rerankerEnabled": true,
+    "predictorEnabled": false,
+    "autoRetrainAfterConversations": 50
+  }
+}

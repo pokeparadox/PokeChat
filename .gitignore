@@ -61,6 +61,9 @@ nunit-*.xml
 /obj
 pokechat.db
 logs/
+models/
+*.bin
+!Api/intent_model.bin
 
 # MemPalace per-project files (issue #185)
 mempalace.yaml

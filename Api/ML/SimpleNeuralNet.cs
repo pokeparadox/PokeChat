@@ -31,7 +31,7 @@ public class SimpleNeuralNet
                 weights[i, j] = (float)(Random.Shared.NextDouble() * 2.0 - 1.0) * scale;
     }
 
-    public float[] Predict(float[] input)
+    private float[] ForwardHidden(float[] input)
     {
         var hidden = new float[_hiddenSize];
         for (int j = 0; j < _hiddenSize; j++)
@@ -41,7 +41,11 @@ public class SimpleNeuralNet
                 sum += input[i] * _w1[i, j];
             hidden[j] = System.Math.Max(0, sum);
         }
+        return hidden;
+    }
 
+    private float[] ForwardOutput(float[] hidden)
+    {
         var output = new float[_outputSize];
         for (int k = 0; k < _outputSize; k++)
         {
@@ -50,9 +54,30 @@ public class SimpleNeuralNet
                 sum += hidden[j] * _w2[j, k];
             output[k] = sum;
         }
+        return output;
+    }
 
+    public float[] Predict(float[] input)
+    {
+        var hidden = ForwardHidden(input);
+        var output = ForwardOutput(hidden);
         Softmax(output);
         return output;
+    }
+
+    public float PredictScore(float[] input)
+    {
+        var hidden = ForwardHidden(input);
+        var output = ForwardOutput(hidden);
+        return Sigmoid(output[0]);
+    }
+
+    private static float Sigmoid(float x)
+    {
+        if (x >= 0)
+            return 1f / (1f + (float)System.Math.Exp(-x));
+        var ex = (float)System.Math.Exp(x);
+        return ex / (1f + ex);
     }
 
     private static void Softmax(float[] values)
@@ -116,6 +141,40 @@ public class SimpleNeuralNet
                         _w2[j, k] -= learningRate * dOutput[k] * hidden[j];
                 for (int k = 0; k < _outputSize; k++)
                     _b2[k] -= learningRate * dOutput[k];
+
+                for (int i = 0; i < _inputSize; i++)
+                    for (int j = 0; j < _hiddenSize; j++)
+                        _w1[i, j] -= learningRate * dHidden[j] * input[i];
+                for (int j = 0; j < _hiddenSize; j++)
+                    _b1[j] -= learningRate * dHidden[j];
+            }
+        }
+    }
+
+    public void TrainForScore(IReadOnlyList<(float[] Input, float Label)> examples, int epochs, float learningRate)
+    {
+        for (int epoch = 0; epoch < epochs; epoch++)
+        {
+            foreach (var (input, target) in examples)
+            {
+                var hidden = ForwardHidden(input);
+                var predicted = Sigmoid(ForwardOutput(hidden)[0]);
+
+                var dRaw = (predicted - target) * predicted * (1f - predicted);
+
+                var dW2 = new float[_hiddenSize];
+                for (int j = 0; j < _hiddenSize; j++)
+                    dW2[j] = dRaw * hidden[j];
+
+                var dB2 = dRaw;
+
+                var dHidden = new float[_hiddenSize];
+                for (int j = 0; j < _hiddenSize; j++)
+                    dHidden[j] = dRaw * _w2[j, 0] * (hidden[j] > 0 ? 1 : 0);
+
+                for (int j = 0; j < _hiddenSize; j++)
+                    _w2[j, 0] -= learningRate * dW2[j];
+                _b2[0] -= learningRate * dB2;
 
                 for (int i = 0; i < _inputSize; i++)
                     for (int j = 0; j < _hiddenSize; j++)
