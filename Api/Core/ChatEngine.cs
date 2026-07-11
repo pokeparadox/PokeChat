@@ -369,7 +369,7 @@ public class ChatEngine : IDisposable
             return HandleIdentityVerification(input, pendingIdentity);
         }
 
-        if (_currentUserId == null || _currentUserName == "Guest")
+        if ((_currentUserId == null || _currentUserName == "Guest") && _persona != "coding")
         {
             return HandleNameInput(input);
         }
@@ -697,7 +697,7 @@ public class ChatEngine : IDisposable
         return GetLLMResponse("persona_switch_" + newPersona);
     }
 
-    private void SwitchPersona(string persona)
+    internal void SwitchPersona(string persona)
     {
         _persona = persona;
         _context.SetContext(ContextKeys.CurrentPersona, persona);

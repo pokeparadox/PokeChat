@@ -15,9 +15,9 @@ public class OpenAIAdapter
         _upstream = upstream;
     }
 
-    public async Task<ChatCompletionResponse> ProcessAsync(ChatCompletionRequest request, string sessionId)
+    public async Task<ChatCompletionResponse> ProcessAsync(ChatCompletionRequest request, string sessionId, string persona = "chat")
     {
-        var engine = _sessionManager.GetOrCreate(sessionId, messages: request.Messages);
+        var engine = _sessionManager.GetOrCreate(sessionId, messages: request.Messages, persona: persona);
 
         var userMessage = request.Messages.LastOrDefault(m => m.Role == "user");
         var input = userMessage?.Content ?? "";
@@ -72,9 +72,9 @@ public class OpenAIAdapter
     }
 
     public async Task StreamResponseAsync(ChatCompletionRequest request, string sessionId,
-        Func<ChatCompletionChunk, Task> onChunk, Func<Task> onDone)
+        Func<ChatCompletionChunk, Task> onChunk, Func<Task> onDone, string persona = "chat")
     {
-        var engine = _sessionManager.GetOrCreate(sessionId, messages: request.Messages);
+        var engine = _sessionManager.GetOrCreate(sessionId, messages: request.Messages, persona: persona);
 
         var userMessage = request.Messages.LastOrDefault(m => m.Role == "user");
         var input = userMessage?.Content ?? "";

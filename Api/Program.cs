@@ -42,7 +42,8 @@ app.MapGet("/v1/models", () => Results.Ok(new
     @object = "list",
     data = new[]
     {
-        new { id = "pokechat-v1", @object = "model", created = 1700000000L, owned_by = "pokechat" }
+        new { id = "pokechat-v1", @object = "model", created = 1700000000L, owned_by = "pokechat" },
+        new { id = "pokecode-v1", @object = "model", created = 1700000000L, owned_by = "pokechat" }
     }
 }));
 
@@ -51,21 +52,33 @@ app.MapPost("/v1/chat/completions", async (HttpContext httpContext, ChatCompleti
     var sessionId = request.SessionId ?? Guid.NewGuid().ToString();
     sessions.UpdateActivity(sessionId);
 
+    var userAgent = httpContext.Request.Headers.UserAgent.FirstOrDefault();
+    var (persona, warning) = PersonaRouter.ResolvePersona(request.Model, userAgent);
+
     if (request.Stream)
     {
         httpContext.Response.ContentType = "text/event-stream";
         httpContext.Response.Headers.CacheControl = "no-cache";
         httpContext.Response.Headers.Connection = "keep-alive";
 
-        await adapter.StreamResponseAsync(request, sessionId,
-            chunk => httpContext.Response.WriteAsync($"data: {JsonSerializer.Serialize(chunk, jsonOptions)}\n\n"),
-            () => httpContext.Response.WriteAsync("data: [DONE]\n\n"));
+        await adapter.StreamResponseAsync(request, sessionId, persona: persona,
+            onChunk: chunk => httpContext.Response.WriteAsync($"data: {JsonSerializer.Serialize(chunk, jsonOptions)}\n\n"),
+            onDone: () => httpContext.Response.WriteAsync("data: [DONE]\n\n"));
 
         await httpContext.Response.Body.FlushAsync();
         return Results.Empty;
     }
 
-    var response = await adapter.ProcessAsync(request, sessionId);
+    var response = await adapter.ProcessAsync(request, sessionId, persona);
+
+    if (warning != null && response.Choices.Count > 0)
+    {
+        response.Choices[0].Message.Content = warning + "\n\n" + response.Choices[0].Message.Content;
+    }
+
+    httpContext.Response.Headers["X-PokeChat-Persona"] = persona;
+    httpContext.Response.Headers["X-PokeChat-Model"] = persona == "coding" ? "pokecode-v1" : "pokechat-v1";
+
     return Results.Ok(response);
 });
 

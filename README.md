@@ -283,5 +283,6 @@ All conversational data is persisted:
 | — | Sub-plan 2: Session Persistence (DB-backed LRU cache, CRUD endpoints) | ✅ |
 | — | Sub-plan 3: Smart Routing & Layered LLMs (slash commands, tiered LLM config) | ✅ |
 | — | Sub-plan 4: Engine/API Inversion (API = core library, Console = HTTP client) | ✅ |
+| — | Model-Based Persona Routing (`pokecode-v1` coding persona, User-Agent detection) | ✅ |
 
 See `.agents/history.md` for completed improvements. 

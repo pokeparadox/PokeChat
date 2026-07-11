@@ -42,7 +42,7 @@ public sealed class SessionManager : IDisposable
         _sessionTtl = TimeSpan.FromMinutes(sessionTtlMinutes);
     }
 
-    public ChatEngine GetOrCreate(string sessionId, string? userName = null, List<ChatMessage>? messages = null)
+    public ChatEngine GetOrCreate(string sessionId, string? userName = null, List<ChatMessage>? messages = null, string? persona = null)
     {
         EvictExpired();
 
@@ -63,7 +63,8 @@ public sealed class SessionManager : IDisposable
                 _dbContext.SaveChanges();
             }
 
-            var engine = _factory.Create(id);
+            var resolvedPersona = persona ?? dbSession.Persona ?? "chat";
+            var engine = _factory.Create(id, resolvedPersona);
 
             if (dbSession.UserId.HasValue)
             {
@@ -82,6 +83,12 @@ public sealed class SessionManager : IDisposable
             if (engine.CurrentUserId == null)
             {
                 engine.EstablishDefaultUser(userName ?? "Guest");
+            }
+
+            if (dbSession.Persona == null)
+            {
+                dbSession.Persona = resolvedPersona;
+                dbSession.BotName = engine.BotName;
             }
 
             return new CacheEntry(engine, dbSession);

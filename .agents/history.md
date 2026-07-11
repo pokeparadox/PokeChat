@@ -1689,3 +1689,17 @@ Dual-persona architecture (chat/coding) with persona-filtered rules, responses, 
 - [x] D3: Tiered Pipeline — NeuralResponsePipeline with RulesOnly/NeuralRerank/NeuralGenerate/Llm tiers, JSON config
 - [x] Wired into ResponseEngine.GetRandomResponse via optional NeuralResponsePipeline parameter
 - [x] 35 new tests, 808/808 pass
+
+---
+
+## Model-Based Persona Routing (2026-07-11)
+- [x] `PersonaRouter.cs` — maps `pokecode-v1` → coding persona, detects opencode/Copilot User-Agent, returns mismatch warning
+- [x] `GET /v1/models` returns both `pokechat-v1` (chat) and `pokecode-v1` (coding)
+- [x] `ChatEngineFactory.Create()` accepts `persona` parameter, calls `SwitchPersona`
+- [x] `SessionManager.GetOrCreate()` accepts persona, persists to `ConversationSession.Persona` + `BotName`
+- [x] `OpenAIAdapter` reads `request.Model`, resolves persona, forwards to session
+- [x] `ChatEngine` gates name prompting on `_persona != "coding"` — no "what's your name?" loop
+- [x] `ResponseEngine` gates 7 chat-only stages in coding mode (unknown words, sentiment, compliments, prediction, context follow-ups, random facts, proactive Qs) — explicit keyword triggers (poems, games, stories) still work
+- [x] User-Agent fallback: opencode/Copilot on `pokechat-v1` auto-switches to coding with warning in response
+- [x] Response headers: `X-PokeChat-Persona`, `X-PokeChat-Model`
+- [x] 808/808 tests pass (0 failures)

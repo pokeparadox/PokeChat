@@ -405,62 +405,71 @@ public class ResponseEngine
         var summaryResult = HandleSessionSummaryRequest(input, userId);
         if (summaryResult != null) return summaryResult;
 
-        var unknownWordsRaw = _context.GetContext(ContextKeys.UnknownWords);
-        if (!string.IsNullOrEmpty(unknownWordsRaw))
+        if (_persona != "coding")
         {
-            var unknownWords = unknownWordsRaw
-                .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                .Distinct()
-                .ToList();
-
-            if (unknownWords.Count > 0)
+            var unknownWordsRaw = _context.GetContext(ContextKeys.UnknownWords);
+            if (!string.IsNullOrEmpty(unknownWordsRaw))
             {
-                var word = unknownWords[0];
+                var unknownWords = unknownWordsRaw
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Distinct()
+                    .ToList();
 
-                if (unknownWords.Count > 1)
-                    _context.SetContext(ContextKeys.UnknownWords, string.Join(",", unknownWords.Skip(1)));
-                else
-                    _context.SetContext(ContextKeys.UnknownWords, null);
-                if (_spellChecker.HasSuggestions(word))
+                if (unknownWords.Count > 0)
                 {
-                    var suggestions = _spellChecker.SuggestCorrections(word);
-                    var suggestion = suggestions[0];
-                    _context.SetContext(ContextKeys.PendingClarificationWord, word);
-                    _context.SetContext(ContextKeys.PendingClarificationSuggestion, suggestion);
-                    return GetRandomResponse("unknown_word_suggestion", suggestion, word);
-                }
-                else
-                {
-                    _context.SetContext(ContextKeys.PendingClarificationWord, word);
-                    _context.SetContext(ContextKeys.PendingClarificationSuggestion, null);
-                    return GetRandomResponse("unknown_word_no_suggestion", word);
+                    var word = unknownWords[0];
+
+                    if (unknownWords.Count > 1)
+                        _context.SetContext(ContextKeys.UnknownWords, string.Join(",", unknownWords.Skip(1)));
+                    else
+                        _context.SetContext(ContextKeys.UnknownWords, null);
+                    if (_spellChecker.HasSuggestions(word))
+                    {
+                        var suggestions = _spellChecker.SuggestCorrections(word);
+                        var suggestion = suggestions[0];
+                        _context.SetContext(ContextKeys.PendingClarificationWord, word);
+                        _context.SetContext(ContextKeys.PendingClarificationSuggestion, suggestion);
+                        return GetRandomResponse("unknown_word_suggestion", suggestion, word);
+                    }
+                    else
+                    {
+                        _context.SetContext(ContextKeys.PendingClarificationWord, word);
+                        _context.SetContext(ContextKeys.PendingClarificationSuggestion, null);
+                        return GetRandomResponse("unknown_word_no_suggestion", word);
+                    }
                 }
             }
         }
 
-        var pendingSentiment = _context.GetContext(ContextKeys.PendingSentimentFollowUp);
-        if (!string.IsNullOrEmpty(pendingSentiment))
+        if (_persona != "coding")
         {
-            _context.SetContext(ContextKeys.PendingSentimentFollowUp, null);
-            var intensityRaw = _context.GetContext(ContextKeys.PendingSentimentIntensity);
-            _context.SetContext(ContextKeys.PendingSentimentIntensity, null);
-            if (int.TryParse(intensityRaw, out var intensity) && intensity >= 1)
+            var pendingSentiment = _context.GetContext(ContextKeys.PendingSentimentFollowUp);
+            if (!string.IsNullOrEmpty(pendingSentiment))
             {
-                var currentSentiment = _context.GetContext(ContextKeys.CurrentSentiment);
-                var ackCat = currentSentiment switch
+                _context.SetContext(ContextKeys.PendingSentimentFollowUp, null);
+                var intensityRaw = _context.GetContext(ContextKeys.PendingSentimentIntensity);
+                _context.SetContext(ContextKeys.PendingSentimentIntensity, null);
+                if (int.TryParse(intensityRaw, out var intensity) && intensity >= 1)
                 {
-                    "positive" => "sentiment_ack_positive",
-                    "negative" => "sentiment_ack_negative",
-                    _ => "sentiment_ack"
-                };
-                var ack = GetRandomResponse(ackCat);
-                if (!string.IsNullOrEmpty(ack))
-                    return ack;
+                    var currentSentiment = _context.GetContext(ContextKeys.CurrentSentiment);
+                    var ackCat = currentSentiment switch
+                    {
+                        "positive" => "sentiment_ack_positive",
+                        "negative" => "sentiment_ack_negative",
+                        _ => "sentiment_ack"
+                    };
+                    var ack = GetRandomResponse(ackCat);
+                    if (!string.IsNullOrEmpty(ack))
+                        return ack;
+                }
             }
         }
 
-        var sentimentResult = HandleSentiment();
-        if (sentimentResult != null) return sentimentResult;
+        if (_persona != "coding")
+        {
+            var sentimentResult = HandleSentiment();
+            if (sentimentResult != null) return sentimentResult;
+        }
 
         var mathResult = _mathEngine.Evaluate(input);
         if (mathResult != null)
@@ -501,12 +510,15 @@ public class ResponseEngine
         var inferenceResult = HandleInferenceResponse();
         if (inferenceResult != null) return inferenceResult;
 
-        var pendingCompliment = _context.GetContext(ContextKeys.PendingCompliment);
-        if (pendingCompliment != null)
+        if (_persona != "coding")
         {
-            _context.SetContext(ContextKeys.PendingCompliment, null);
-            var compliment = GetRandomCompliment(userId);
-            if (compliment != null) return compliment;
+            var pendingCompliment = _context.GetContext(ContextKeys.PendingCompliment);
+            if (pendingCompliment != null)
+            {
+                _context.SetContext(ContextKeys.PendingCompliment, null);
+                var compliment = GetRandomCompliment(userId);
+                if (compliment != null) return compliment;
+            }
         }
 
         var rule = ResponseRules.MatchRule(input, _knowledgeStore, _toolTriggers, _intentClassifier, _context, _persona);
@@ -527,8 +539,11 @@ public class ResponseEngine
             return ProcessToolMarkers(withBotName);
         }
 
-        var predictionResult = HandlePredictionRequest(input);
-        if (predictionResult != null) return predictionResult;
+        if (_persona != "coding")
+        {
+            var predictionResult = HandlePredictionRequest(input);
+            if (predictionResult != null) return predictionResult;
+        }
 
         var tokens = _tokeniser.Tokenise(input);
         var correctedTokens = _spellChecker.AutoCorrect(tokens);
@@ -545,7 +560,7 @@ public class ResponseEngine
             }
         }
 
-        if (!string.IsNullOrEmpty(_context.LastSubject))
+        if (_persona != "coding" && !string.IsNullOrEmpty(_context.LastSubject))
         {
             var lastHadSvo = _context.GetContext(ContextKeys.LastResponseHadSvo);
             if (lastHadSvo == "false")
@@ -620,51 +635,56 @@ public class ResponseEngine
             }
         }
 
-        var facts = userId.HasValue ? _knowledgeStore.GetFactsByUser(userId.Value) : new List<Fact>();
-        if (facts.Count > 0 && Random.Shared.Next(3) == 0)
+        if (_persona != "coding")
         {
-            var randomFact = facts[Random.Shared.Next(facts.Count)];
-            var conjVerb = ConjugateVerb(randomFact.Verb, randomFact.Subject);
-            return GetRandomResponse("random_fact_followup", randomFact.Subject, conjVerb, randomFact.Object);
-        }
-
-        if (Random.Shared.Next(5) == 0)
-        {
-            var roll = Random.Shared.Next(4);
-            if (roll < 2)
+            var facts = userId.HasValue ? _knowledgeStore.GetFactsByUser(userId.Value) : new List<Fact>();
+            if (facts.Count > 0 && Random.Shared.Next(3) == 0)
             {
-                var story = _storyGenerator.GenerateStory(_currentUserName, userId);
-                if (!string.IsNullOrEmpty(story))
+                var randomFact = facts[Random.Shared.Next(facts.Count)];
+                var conjVerb = ConjugateVerb(randomFact.Verb, randomFact.Subject);
+                return GetRandomResponse("random_fact_followup", randomFact.Subject, conjVerb, randomFact.Object);
+            }
+
+            if (Random.Shared.Next(5) == 0)
+            {
+                var roll = Random.Shared.Next(4);
+                if (roll < 2)
                 {
-                    var storyResponse = GetRandomResponse("story_response", story);
-                    if (!string.IsNullOrEmpty(storyResponse))
-                        return storyResponse;
+                    var story = _storyGenerator.GenerateStory(_currentUserName, userId);
+                    if (!string.IsNullOrEmpty(story))
+                    {
+                        var storyResponse = GetRandomResponse("story_response", story);
+                        if (!string.IsNullOrEmpty(storyResponse))
+                            return storyResponse;
+                    }
+                }
+                else if (roll == 2)
+                {
+                    var haiku = _poetryGenerator.GenerateHaiku(_currentUserName, userId);
+                    if (!string.IsNullOrEmpty(haiku))
+                        return GetRandomResponse("haiku_response", haiku);
+                }
+                else
+                {
+                    var limerick = _poetryGenerator.GenerateLimerick(_currentUserName, userId);
+                    if (!string.IsNullOrEmpty(limerick))
+                        return GetRandomResponse("limerick_response", limerick);
                 }
             }
-            else if (roll == 2)
-            {
-                var haiku = _poetryGenerator.GenerateHaiku(_currentUserName, userId);
-                if (!string.IsNullOrEmpty(haiku))
-                    return GetRandomResponse("haiku_response", haiku);
-            }
-            else
-            {
-                var limerick = _poetryGenerator.GenerateLimerick(_currentUserName, userId);
-                if (!string.IsNullOrEmpty(limerick))
-                    return GetRandomResponse("limerick_response", limerick);
-            }
+
+            var recommenderResult = BuildRecommendation(userId);
+            if (recommenderResult != null) return recommenderResult;
+
+            var timelineOffer = BuildProactiveTimelineOffer(userId);
+            if (timelineOffer != null) return timelineOffer;
+
+            var connectionNotice = BuildEntityConnectionNotice(userId);
+            if (connectionNotice != null) return connectionNotice;
+
+            return GenerateProactiveQuestion(userId);
         }
 
-        var recommenderResult = BuildRecommendation(userId);
-        if (recommenderResult != null) return recommenderResult;
-
-        var timelineOffer = BuildProactiveTimelineOffer(userId);
-        if (timelineOffer != null) return timelineOffer;
-
-        var connectionNotice = BuildEntityConnectionNotice(userId);
-        if (connectionNotice != null) return connectionNotice;
-
-        return GenerateProactiveQuestion(userId);
+        return GetRandomResponse("default_response");
     }
 
     private string? BuildTopicFollowUp()

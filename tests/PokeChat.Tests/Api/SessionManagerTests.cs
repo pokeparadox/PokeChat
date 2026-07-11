@@ -16,7 +16,7 @@ public class SessionManagerTests
 {
     private sealed class TestEngineFactory : ChatEngineFactory
     {
-        public override ChatEngine Create(string? sessionId = null)
+        public override ChatEngine Create(string? sessionId = null, string persona = "chat")
         {
             var engineDb = new FreshDbContext();
             TestDataHelper.SeedBotResponses(engineDb.Context);
@@ -40,7 +40,8 @@ public class SessionManagerTests
                 new List<string> { "my name is", "i am", "i'm", "call me" },
                 new HashSet<string> { "quit", "exit" },
                 new HashSet<string> { "hi", "hello" },
-                sessionId: sessionId ?? Guid.NewGuid().ToString());
+                sessionId: sessionId ?? Guid.NewGuid().ToString(),
+                persona: persona);
             return engine;
         }
     }
