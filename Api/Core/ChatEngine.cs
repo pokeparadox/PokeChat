@@ -966,11 +966,19 @@ public class ChatEngine : IDisposable
                 }
             }
 
-            var existingFact = _knowledgeStore.GetFact(resolvedSubject, triple.Verb, resolvedObject);
+            var existingFact = _knowledgeStore.GetFact(resolvedSubject, triple.Verb, resolvedObject, _currentUserId);
             if (existingFact == null)
             {
-                _knowledgeStore.StoreFact(fact);
-                anyTripleProcessed = true;
+                if (_currentUserId.HasValue &&
+                    _knowledgeStore.TryEndorseFact(resolvedSubject, triple.Verb, resolvedObject, _currentUserId.Value))
+                {
+                    anyTripleProcessed = true;
+                }
+                else
+                {
+                    _knowledgeStore.StoreFact(fact);
+                    anyTripleProcessed = true;
+                }
             }
 
             if (predicateType is PredicateType.GeneralFact or PredicateType.PersonalAttribute)

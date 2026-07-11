@@ -63,6 +63,7 @@ public sealed class PokeChatDbContext : DbContext
     public DbSet<PoemTemplate> PoemTemplates => Set<PoemTemplate>();
     public DbSet<ErrorKnowledgeEntry> ErrorKnowledgeEntries => Set<ErrorKnowledgeEntry>();
     public DbSet<Reminder> Reminders => Set<Reminder>();
+    public DbSet<FactEndorsement> FactEndorsements => Set<FactEndorsement>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -421,6 +422,21 @@ public sealed class PokeChatDbContext : DbContext
             entity.Property(e => e.DueAt).IsRequired();
             entity.Property(e => e.Status).IsRequired();
             entity.Property(e => e.CreatedAt).IsRequired();
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => e.UserId);
+        });
+
+        modelBuilder.Entity<FactEndorsement>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.FactId).IsRequired();
+            entity.Property(e => e.UserId).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.HasOne<FactEntity>()
+                .WithMany()
+                .HasForeignKey(e => e.FactId)
+                .OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<User>()
                 .WithMany()
                 .HasForeignKey(e => e.UserId);

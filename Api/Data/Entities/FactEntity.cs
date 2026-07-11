@@ -13,4 +13,5 @@ public class FactEntity
     public string? TimeContext { get; set; }
     public string? MentionedAt { get; set; }
     public string CreatedAt { get; set; } = string.Empty;
+    public double Confidence { get; set; } = 1.0;
 }

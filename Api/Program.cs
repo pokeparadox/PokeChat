@@ -1,5 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using PokeChat.Api.Models;
 using PokeChat.Api.Services;
 using PokeChat.Data;
@@ -24,11 +26,33 @@ var upstreamOptions = new UpstreamOptions();
 builder.Configuration.GetSection("Upstream").Bind(upstreamOptions);
 builder.Services.AddSingleton(upstreamOptions);
 
+var tokenOptions = new TokenBucketOptions();
+builder.Configuration.GetSection("RateLimiting").Bind(tokenOptions);
+builder.Services.AddSingleton(tokenOptions);
+builder.Services.AddSingleton<ITokenBucketStore, InMemoryTokenBucketStore>();
+
 builder.Services.AddHttpClient<UpstreamLLMClient>();
 builder.Services.AddSingleton<SessionManager>();
 builder.Services.AddSingleton<OpenAIAdapter>();
 
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("user-partitioned", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
+                Window = TimeSpan.FromSeconds(60),
+                QueueLimit = 2
+            }));
+});
+
 var app = builder.Build();
+
+app.UseRateLimiter();
 
 using (var initContext = new PokeChatDbContext())
 {
@@ -49,6 +73,7 @@ app.MapGet("/v1/models", () => Results.Ok(new
 
 app.MapPost("/v1/chat/completions", async (HttpContext httpContext, ChatCompletionRequest request, OpenAIAdapter adapter, SessionManager sessions) =>
 {
+    var rateLimitKey = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
     var sessionId = request.SessionId ?? Guid.NewGuid().ToString();
     sessions.UpdateActivity(sessionId);
 
@@ -61,7 +86,7 @@ app.MapPost("/v1/chat/completions", async (HttpContext httpContext, ChatCompleti
         httpContext.Response.Headers.CacheControl = "no-cache";
         httpContext.Response.Headers.Connection = "keep-alive";
 
-        await adapter.StreamResponseAsync(request, sessionId, persona: persona,
+        await adapter.StreamResponseAsync(request, sessionId, persona: persona, rateLimitKey: rateLimitKey,
             onChunk: chunk => httpContext.Response.WriteAsync($"data: {JsonSerializer.Serialize(chunk, jsonOptions)}\n\n"),
             onDone: () => httpContext.Response.WriteAsync("data: [DONE]\n\n"));
 
@@ -69,7 +94,7 @@ app.MapPost("/v1/chat/completions", async (HttpContext httpContext, ChatCompleti
         return Results.Empty;
     }
 
-    var response = await adapter.ProcessAsync(request, sessionId, persona);
+    var response = await adapter.ProcessAsync(request, sessionId, persona, rateLimitKey: rateLimitKey);
 
     if (warning != null && response.Choices.Count > 0)
     {
@@ -78,16 +103,18 @@ app.MapPost("/v1/chat/completions", async (HttpContext httpContext, ChatCompleti
 
     httpContext.Response.Headers["X-PokeChat-Persona"] = persona;
     httpContext.Response.Headers["X-PokeChat-Model"] = persona == "coding" ? "pokecode-v1" : "pokechat-v1";
+    httpContext.Response.Headers["X-RateLimit-Remaining"] = response.RateLimitRemaining.ToString();
+    httpContext.Response.Headers["X-RateLimit-Reset"] = response.RateLimitReset.ToString();
 
     return Results.Ok(response);
-});
+}).RequireRateLimiting("user-partitioned");
 
 app.MapPost("/sessions", (SessionManager sessions, SessionCreateRequest? request) =>
 {
     var sessionId = Guid.NewGuid().ToString();
     sessions.GetOrCreate(sessionId, request?.UserName);
     return Results.Created($"/sessions/{sessionId}", new { session_id = sessionId });
-});
+}).RequireRateLimiting("user-partitioned");
 
 app.MapGet("/sessions", (SessionManager sessions) =>
 {

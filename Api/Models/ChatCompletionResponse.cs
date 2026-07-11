@@ -16,4 +16,10 @@ public class ChatCompletionResponse
 
     [JsonPropertyName("x_route_info")]
     public RouteInfo? RouteInfo { get; set; }
+
+    [JsonPropertyName("x_ratelimit_remaining")]
+    public int RateLimitRemaining { get; set; }
+
+    [JsonPropertyName("x_ratelimit_reset")]
+    public int RateLimitReset { get; set; }
 }

@@ -99,7 +99,7 @@ public sealed class SessionManager : IDisposable
         SyncUserId(entry.Engine, entry.DbSession);
 
         if (_cache.Count > _maxSessions)
-            EvictLru();
+            EvictLru(entry.Engine.CurrentUserId);
 
         return entry.Engine;
     }
@@ -196,12 +196,37 @@ public sealed class SessionManager : IDisposable
             _dbContext.SaveChanges();
     }
 
-    private void EvictLru()
+    private void EvictLru(int? currentUserId = null)
     {
-        var toEvict = _cache
-            .OrderBy(kvp => kvp.Value.LastAccessed)
-            .Take(_cache.Count - _maxSessions)
-            .ToList();
+        var overage = _cache.Count - _maxSessions;
+        if (overage <= 0) return;
+
+        // Prefer evicting sessions belonging to the same user (likely the caller)
+        List<KeyValuePair<string, CacheEntry>> toEvict;
+
+        if (currentUserId.HasValue)
+        {
+            var sameUser = _cache
+                .Where(kvp => kvp.Value.Engine.CurrentUserId == currentUserId.Value)
+                .OrderBy(kvp => kvp.Value.LastAccessed)
+                .Take(overage)
+                .ToList();
+
+            var otherUsers = _cache
+                .Where(kvp => kvp.Value.Engine.CurrentUserId != currentUserId.Value)
+                .OrderBy(kvp => kvp.Value.LastAccessed)
+                .Take(overage - sameUser.Count)
+                .ToList();
+
+            toEvict = [.. sameUser, .. otherUsers];
+        }
+        else
+        {
+            toEvict = _cache
+                .OrderBy(kvp => kvp.Value.LastAccessed)
+                .Take(overage)
+                .ToList();
+        }
 
         foreach (var kvp in toEvict)
         {

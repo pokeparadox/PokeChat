@@ -41,10 +41,60 @@ public class KnowledgeStore(PokeChatDbContext context)
             EmotionIntensity = fact.EmotionIntensity,
             TimeContext = fact.TimeContext,
             MentionedAt = fact.MentionedAt,
-            CreatedAt = fact.CreatedAt
+            CreatedAt = fact.CreatedAt,
+            Confidence = 1.0
         };
 
         context.Facts.Add(entity);
+    }
+
+    public bool TryEndorseFact(string subject, string verb, string obj, int endorsingUserId)
+    {
+        var existing = context.Facts
+            .Where(f => f.Subject == subject && f.Verb == verb && f.Object == obj
+                        && f.UserId != null && f.UserId != endorsingUserId)
+            .OrderByDescending(f => f.Confidence)
+            .FirstOrDefault();
+
+        if (existing == null) return false;
+
+        existing.Confidence = System.Math.Min(5.0, existing.Confidence + 0.5);
+
+        context.FactEndorsements.Add(new FactEndorsement
+        {
+            FactId = existing.Id,
+            UserId = endorsingUserId,
+            CreatedAt = DateTime.UtcNow.ToString("o")
+        });
+
+        if (existing.Confidence >= 3.0 && existing.UserId.HasValue)
+        {
+            existing.UserId = null;
+        }
+
+        return true;
+    }
+
+    public List<FactEndorsement> GetEndorsements(int factId)
+    {
+        return context.FactEndorsements
+            .Where(e => e.FactId == factId)
+            .OrderByDescending(e => e.Id)
+            .ToList();
+    }
+
+    public List<Fact> GetPopularFacts(int minConfidence = 3)
+    {
+        return context.Facts
+            .Where(f => f.Confidence >= minConfidence)
+            .SelectFacet<Fact>()
+            .OrderByDescending(f => f.Confidence)
+            .ToList();
+    }
+
+    public int GetEndorsementCount(int factId)
+    {
+        return context.FactEndorsements.Count(e => e.FactId == factId);
     }
 
     public List<Fact> GetFactsBySubject(string subject)
@@ -215,14 +265,15 @@ public class KnowledgeStore(PokeChatDbContext context)
         return (null, null, null);
     }
 
-    public Fact? GetFact(string subject, string verb, string obj)
+    public Fact? GetFact(string subject, string verb, string obj, int? userId = null)
     {
-        var entity = context.Facts
-            .Where(f => f.Subject == subject && f.Verb == verb && f.Object == obj)
-            .SelectFacet<Fact>()
-            .FirstOrDefault();
+        var query = context.Facts
+            .Where(f => f.Subject == subject && f.Verb == verb && f.Object == obj);
 
-        return entity;
+        if (userId.HasValue)
+            query = query.Where(f => f.UserId == userId.Value);
+
+        return query.SelectFacet<Fact>().FirstOrDefault();
     }
 
     public List<Fact> GetAllFacts()
