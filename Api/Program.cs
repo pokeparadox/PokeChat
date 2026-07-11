@@ -1,8 +1,22 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using PokeChat.Api.Models;
 using PokeChat.Api.Services;
 using PokeChat.Data;
 
+var jsonOptions = new JsonSerializerOptions
+{
+    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+};
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
+    options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+});
 
 builder.Services.AddSingleton<ChatEngineFactory>();
 
@@ -23,11 +37,35 @@ using (var initContext = new PokeChatDbContext())
 
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 
-app.MapPost("/v1/chat/completions", async (ChatCompletionRequest request, OpenAIAdapter adapter, SessionManager sessions) =>
+app.MapGet("/v1/models", () => Results.Ok(new
+{
+    @object = "list",
+    data = new[]
+    {
+        new { id = "pokechat-v1", @object = "model", created = 1700000000L, owned_by = "pokechat" }
+    }
+}));
+
+app.MapPost("/v1/chat/completions", async (HttpContext httpContext, ChatCompletionRequest request, OpenAIAdapter adapter, SessionManager sessions) =>
 {
     var sessionId = request.SessionId ?? Guid.NewGuid().ToString();
-    var response = await adapter.ProcessAsync(request, sessionId);
     sessions.UpdateActivity(sessionId);
+
+    if (request.Stream)
+    {
+        httpContext.Response.ContentType = "text/event-stream";
+        httpContext.Response.Headers.CacheControl = "no-cache";
+        httpContext.Response.Headers.Connection = "keep-alive";
+
+        await adapter.StreamResponseAsync(request, sessionId,
+            chunk => httpContext.Response.WriteAsync($"data: {JsonSerializer.Serialize(chunk, jsonOptions)}\n\n"),
+            () => httpContext.Response.WriteAsync("data: [DONE]\n\n"));
+
+        await httpContext.Response.Body.FlushAsync();
+        return Results.Empty;
+    }
+
+    var response = await adapter.ProcessAsync(request, sessionId);
     return Results.Ok(response);
 });
 

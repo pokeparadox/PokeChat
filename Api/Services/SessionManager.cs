@@ -1,4 +1,6 @@
 using System.Collections.Concurrent;
+using System.Text.RegularExpressions;
+using PokeChat.Api.Models;
 using PokeChat.Core;
 using PokeChat.Data;
 using PokeChat.Data.Entities;
@@ -40,7 +42,7 @@ public sealed class SessionManager : IDisposable
         _sessionTtl = TimeSpan.FromMinutes(sessionTtlMinutes);
     }
 
-    public ChatEngine GetOrCreate(string sessionId, string? userName = null)
+    public ChatEngine GetOrCreate(string sessionId, string? userName = null, List<ChatMessage>? messages = null)
     {
         EvictExpired();
 
@@ -68,8 +70,13 @@ public sealed class SessionManager : IDisposable
                 var user = _dbContext.Users.Find(dbSession.UserId.Value);
                 if (user != null)
                 {
-                    engine.CurrentUserId = user.Id;
+                    engine.RestoreUser(user.Id, user.Name);
                 }
+            }
+
+            if (engine.CurrentUserId == null && messages != null)
+            {
+                TryRestoreUserFromMessages(engine, messages);
             }
 
             if (engine.CurrentUserId == null)
@@ -81,6 +88,8 @@ public sealed class SessionManager : IDisposable
         });
 
         entry.LastAccessed = DateTime.UtcNow;
+
+        SyncUserId(entry.Engine, entry.DbSession);
 
         if (_cache.Count > _maxSessions)
             EvictLru();
@@ -122,6 +131,8 @@ public sealed class SessionManager : IDisposable
         {
             dbSession.EndedAt = DateTime.UtcNow.ToString("o");
             dbSession.LastActiveAt = DateTime.UtcNow.ToString("o");
+            if (entry != null)
+                SyncUserId(entry.Engine, dbSession);
             _dbContext.SaveChanges();
         }
     }
@@ -133,6 +144,7 @@ public sealed class SessionManager : IDisposable
             entry.LastAccessed = DateTime.UtcNow;
             entry.DbSession.LastActiveAt = DateTime.UtcNow.ToString("o");
             entry.DbSession.TurnCount++;
+            SyncUserId(entry.Engine, entry.DbSession);
             _dbContext.SaveChanges();
         }
         else
@@ -168,6 +180,7 @@ public sealed class SessionManager : IDisposable
 
                     entry.DbSession.EndedAt = DateTime.UtcNow.ToString("o");
                     entry.DbSession.LastActiveAt = DateTime.UtcNow.ToString("o");
+                    SyncUserId(entry.Engine, entry.DbSession);
                 }
             }
         }
@@ -193,11 +206,84 @@ public sealed class SessionManager : IDisposable
 
                 entry.DbSession.EndedAt = DateTime.UtcNow.ToString("o");
                 entry.DbSession.LastActiveAt = DateTime.UtcNow.ToString("o");
+                SyncUserId(entry.Engine, entry.DbSession);
             }
         }
 
         if (_dbContext.ChangeTracker.HasChanges())
             _dbContext.SaveChanges();
+    }
+
+    private static readonly Regex NameFromUserPattern = new(
+        @"\b(?:my name is|i'm|i am|call me|i'm called|i'm named)\s+([A-Z][a-z]+)",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex NameFromBotPattern = new(
+        @"(?:welcome|nice to meet you|hello|hey|hi there),?\s+([A-Z][a-z]+)",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    public bool TryRestoreUserFromMessages(ChatEngine engine, List<ChatMessage> messages)
+    {
+        if (engine.CurrentUserId != null && engine.CurrentUserName != "Guest")
+            return false;
+
+        string? foundName = null;
+
+        foreach (var msg in messages)
+        {
+            if (string.IsNullOrEmpty(msg.Content)) continue;
+
+            if (string.Equals(msg.Role, "user", StringComparison.OrdinalIgnoreCase))
+            {
+                var match = NameFromUserPattern.Match(msg.Content);
+                if (match.Success)
+                {
+                    foundName = match.Groups[1].Value;
+                    break;
+                }
+            }
+            else if (string.Equals(msg.Role, "assistant", StringComparison.OrdinalIgnoreCase))
+            {
+                var match = NameFromBotPattern.Match(msg.Content);
+                if (match.Success)
+                {
+                    foundName = match.Groups[1].Value;
+                    break;
+                }
+            }
+        }
+
+        if (string.IsNullOrEmpty(foundName) || foundName.Length < 2 || foundName.Length > 30)
+            return false;
+
+        var user = _dbContext.Users.FirstOrDefault(u =>
+            u.Name.ToLower() == foundName.ToLower());
+        if (user == null)
+            return false;
+
+        engine.RestoreUser(user.Id, user.Name);
+        return true;
+    }
+
+    private void SyncUserId(ChatEngine engine, ConversationSession dbSession)
+    {
+        if (!engine.CurrentUserId.HasValue || dbSession.UserId.HasValue) return;
+
+        var userId = engine.CurrentUserId.Value;
+        var user = _dbContext.Users.Find(userId);
+        if (user == null)
+        {
+            user = new Data.Entities.User
+            {
+                Id = userId,
+                Name = engine.CurrentUserName,
+                FirstSeen = DateTime.UtcNow.ToString("o"),
+                LastSeen = DateTime.UtcNow.ToString("o")
+            };
+            _dbContext.Users.Add(user);
+        }
+        dbSession.UserId = userId;
+        _dbContext.SaveChanges();
     }
 
     public void Dispose()

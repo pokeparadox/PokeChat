@@ -65,6 +65,9 @@ models/
 *.bin
 !Api/intent_model.bin
 
+# User Files
+*.user
+
 # MemPalace per-project files (issue #185)
 mempalace.yaml
 entities.json

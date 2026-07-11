@@ -1568,6 +1568,24 @@ public class ChatEngine : IDisposable
         FinalizeNameSetup(name);
     }
 
+    internal void RestoreUser(int userId, string userName)
+    {
+        if (_currentUserId != null) return;
+        _currentUserId = userId;
+        _currentUserName = char.ToUpper(userName[0]) + userName.Substring(1).ToLowerInvariant();
+        _currentUserNameLower = _currentUserName.ToLowerInvariant();
+        _responseEngine.SetCurrentUserName(_currentUserName);
+        _context.UpdateLastSubject(_currentUserName);
+        _context.SetContext(ContextKeys.UserName, _currentUserName);
+
+        var storedName = _knowledgeStore.GetUserBotName(userId);
+        if (storedName != null)
+        {
+            _botName = char.ToUpper(storedName[0]) + storedName.Substring(1).ToLowerInvariant();
+            _responseEngine.SetBotName(_botName);
+        }
+    }
+
     private string FinalizeNameSetup(string name)
     {
         _currentUserName = char.ToUpper(name[0]) + name.Substring(1).ToLowerInvariant();

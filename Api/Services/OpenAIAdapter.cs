@@ -1,3 +1,4 @@
+using System.Text.Json;
 using PokeChat.Api.Models;
 using PokeChat.Core;
 
@@ -16,7 +17,7 @@ public class OpenAIAdapter
 
     public async Task<ChatCompletionResponse> ProcessAsync(ChatCompletionRequest request, string sessionId)
     {
-        var engine = _sessionManager.GetOrCreate(sessionId);
+        var engine = _sessionManager.GetOrCreate(sessionId, messages: request.Messages);
 
         var userMessage = request.Messages.LastOrDefault(m => m.Role == "user");
         var input = userMessage?.Content ?? "";
@@ -62,12 +63,77 @@ public class OpenAIAdapter
             ],
             Usage = new Usage
             {
-                PromptTokens = request.Messages.Sum(m => m.Content.Length / 4),
+                PromptTokens = request.Messages.Sum(m => (m.Content?.Length ?? 0) / 4),
                 CompletionTokens = responseText.Length / 4,
-                TotalTokens = (request.Messages.Sum(m => m.Content.Length) + responseText.Length) / 4
+                TotalTokens = (request.Messages.Sum(m => (m.Content?.Length ?? 0)) + responseText.Length) / 4
             },
             RouteInfo = routeInfo
         };
+    }
+
+    public async Task StreamResponseAsync(ChatCompletionRequest request, string sessionId,
+        Func<ChatCompletionChunk, Task> onChunk, Func<Task> onDone)
+    {
+        var engine = _sessionManager.GetOrCreate(sessionId, messages: request.Messages);
+
+        var userMessage = request.Messages.LastOrDefault(m => m.Role == "user");
+        var input = userMessage?.Content ?? "";
+
+        var responseText = engine.ProcessInput(input);
+
+        var chunkId = $"chatcmpl-{Guid.NewGuid().ToString("N")[..12]}";
+        var created = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+        // Send role chunk
+        await onChunk(new ChatCompletionChunk
+        {
+            Id = chunkId,
+            Created = created,
+            Model = request.Model,
+            Choices = [new ChunkChoice { Index = 0, Delta = new Delta { Role = "assistant" } }]
+        });
+
+        // Send content chunks word by word
+        if (responseText.Length > 0)
+        {
+            var words = responseText.Split(' ');
+            for (var i = 0; i < words.Length; i++)
+            {
+                var content = i < words.Length - 1 ? words[i] + " " : words[i];
+                await onChunk(new ChatCompletionChunk
+                {
+                    Id = chunkId,
+                    Created = created,
+                    Model = request.Model,
+                    Choices = [new ChunkChoice { Index = 0, Delta = new Delta { Content = content } }]
+                });
+            }
+        }
+
+        // Send final chunk with finish_reason
+        await onChunk(new ChatCompletionChunk
+        {
+            Id = chunkId,
+            Created = created,
+            Model = request.Model,
+            Choices =
+            [
+                new ChunkChoice
+                {
+                    Index = 0,
+                    Delta = new Delta(),
+                    FinishReason = "stop"
+                }
+            ],
+            Usage = new Usage
+            {
+                PromptTokens = request.Messages.Sum(m => m.Content?.Length ?? 0) / 4,
+                CompletionTokens = responseText.Length / 4,
+                TotalTokens = ((request.Messages.Sum(m => m.Content?.Length ?? 0)) + responseText.Length) / 4
+            }
+        });
+
+        await onDone();
     }
 
     private static string? DescribeRoute(string? category)
