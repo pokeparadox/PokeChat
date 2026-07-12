@@ -1,13 +1,25 @@
 # PokeChat
 
+## Overview
+
 A terminal chat bot with custom NLP — learns from conversations and stores knowledge in SQLite. No LLMs.
-The eventual goal is to make a useful bot that prioritises efficient methods and then falls back to more complicated mthods only when needed.
-I feel LLMs do this the wrong way around around.
+The eventual goal is to make a useful bot that prioritises efficient methods and then falls back to more complicated methods only when needed.
+I feel LLMs do this the wrong way around. They start with the trained model and then try to learn from the user, which is backwards. I want to start with the user and then fall back to LLMs only when needed.
+
+## PokeChat.Api
+
+Now the heart of the project. It runs as a REST API and handles all NLP, knowledge storage, and response generation. 
+It exposes an OpenAI-compatible endpoint for chat completions, so you can use it with any OpenAI-compatible client (e.g. [ChatGPT](https://chat.openai.com), [LangChain](https://www.langchain.com/), etc.) or your own custom client.
+The eventual goal is to have something that you could use as a coding assistant, which has memory and tools built in, but can also relay to a configured LLM as a fallback and learn from responses and interactions. 
+
+## PokeChat (Console Application)
+
+This is now a dumb, simple client application. All of the core code has been moved into the PokeChat.Api
 
 ## AI Tools Disclosure
 
 This project is an experiment with [opencode](https://opencode.ai) and various AI models to explore autonomous software engineering capabilities.
-I want to use LLMs in order to not use LLMs.
+I want to use LLMs in order to not have to use LLMs. 
 
 ## Quick Start
 

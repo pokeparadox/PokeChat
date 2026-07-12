@@ -1776,3 +1776,23 @@ Dual-persona architecture (chat/coding) with persona-filtered rules, responses, 
 - [x] `--restore-db` CLI flag — restores `pokechat.db` from `.bak` file
 - [x] **Nullable warnings cleanup** — all 11 CS warnings fixed (CS8600, CS8602, CS8603, CS8604, CS8625). Removed unused `System.Security.Cryptography.Xml` and `System.Net.Http.Json` packages. 0 warnings, 859/859 pass.
 
+## Bot Command Prefix Change (2026-07-12)
+- [x] Changed command prefix from `/` → `!` → `~` to avoid clashes with OpenCode (`/`) and shell history expansion (`!`)
+- [x] `RouterService.cs` — `input[0] == '~'`, renamed `IsSlashCommand` → `IsBotCommand`, `SlashCommandMap` → `BotCommandMap`, `TryParseSlashCommand` → `TryParseBotCommand`
+- [x] `ChatEngine.cs` — `ExecuteSlashRoute` → `ExecuteBotRoute`, help text updated to `~` prefix
+- [x] `RouterService.cs` — `LooksLikePath()` guard prevents `~path` inputs from being parsed as commands
+- [x] 3 new tests for path guard, 862/862 pass
+
+## SessionManager DI Fix (2026-07-12)
+- [x] Removed ambiguous convenience constructors from `SessionManager` that bypassed DI
+- [x] Registered `PokeChatDbContext` as singleton in `Program.cs`
+- [x] Updated all test usages to pass explicit `PokeChatDbContext` + `SessionQuotaOptions`
+- [x] 862/862 pass
+
+## Database Initialization Rewrite (2026-07-12)
+- [x] Rewrote `DatabaseInitializer` — removed complex `GetPendingMigrations` → `ValidateSchema` → `RecreateFromBackup` flow
+- [x] New flow: `Migrate()` → wipe tables via raw SQL + `ClearAllPools()` → retry `Migrate()` → last resort `EnsureCreated()`
+- [x] `WipeAllTables()` uses raw `SqliteConnection` to drop all tables (bypasses EF stale connection state)
+- [x] Fixed `ValidateSchema()` connection leak — now closes connection in both success and error paths
+- [x] 862/862 pass
+

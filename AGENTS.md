@@ -62,7 +62,7 @@ Responses/
 
 ## Key Details
 - **DB location:** `pokechat.db` in project root (resolved by walking up from `BaseDirectory` to find `PokeChat.Api.csproj`); override via `POKECHAT_DB_PATH` environment variable
-- **DB init:** `DatabaseInitializer` in `ChatSession()` constructor. Uses EF Core migrations (`Database.Migrate()`) instead of `EnsureCreated()`. On first run, applies `InitialCreate` migration to create all tables. Detects legacy databases from the `EnsureCreated` era and seeds `__EFMigrationsHistory` to preserve existing data.
+- **DB init:** `DatabaseInitializer` in `Program.cs`. Uses EF Core `Migrate()`. On failure, wipes all tables via raw SQL (`WipeAllTables` + `ClearAllPools`) and retries `Migrate()`. Last resort falls back to `EnsureCreated()`. Restores learned data from `.bak` backup when available. `~` prefix used for bot commands (not `/` — clashes with OpenCode, not `!` — clashes with shell history expansion). Path guard prevents `~path` inputs from being treated as commands.
 - **Seeder:** `DbSeeder.Seed()` populates greetings, greeting words, response rules, POS dictionary (from `pos_dictionary.json`), name patterns, bot commands, misspellings, and bot responses on first run
 - **Knowledge extraction:** "my name is Alice" → (user, is_named, Alice); "I like pizza" → (user, likes, pizza); "the sky is blue" → (sky, is, blue) [general knowledge]
 - **Pronoun resolution:** ContextTracker resolves "it/this/that" → last object, "he/she" → last subject, "they/their" → last object (then last subject), "him/her/them" → last object
@@ -72,7 +72,7 @@ Responses/
 - **Bot responses:** ResponseEngine templates (defaults, follow-ups, clarification prompts) stored in `bot_responses` table, loaded at construction time
 - **Greeting learning:** When user responds to name prompt with a novel first word, it's learned as a greeting word
 - **Name extraction:** Uses `name_patterns` table (e.g. "my name is", "i am", "call me") to extract names from input
-- **Bot commands:** Exit commands loaded from `bot_commands` table (`quit`, `exit`, etc.)
+- **Bot commands:** Exit commands loaded from `bot_commands` table (`quit`, `exit`, etc.). Action commands (e.g. `~story`, `~maths`, `~help`) use `~` prefix, hardcoded in `RouterService.BotCommandMap`. Path guard in `LooksLikePath()` prevents `~path` inputs from being parsed as commands.
 - **ChatSession:** Implements `IDisposable` to clean up the DbContext
 - **NLP interfaces:** All NLP components implement interfaces (`ITokeniser`, `IPosTagger`, `ISentenceSplitter`, `ISvoExtractor`) for testability
 - **SpellChecker:** Levenshtein-based spell correction with `misspellings` table for known errors; `pos_dictionary` as known word dictionary
@@ -103,8 +103,6 @@ Responses/
 - `conversation_metrics` — id, user_id, session_id, turn_count, facts_learned, dominant_sentiment, sentiment_trend, topics_discussed, bot_response_stats, avg_response_length, session_length, started_at, ended_at
 - `response_effectiveness` — id, category (unique), avg_session_length_after, used_count, follow_up_rate, last_used
 
-## Skills
-- `.skills/grammar-bot-testing.md` — reusable script for running the bot through conversation scenarios and analysing responses for grammar/natural flow bugs.
 
 ## Improvement Plan
 Completed phases in `.agents/history.md` and MemPalace (`wing: pokechat, room: phase-summaries`). Plans in MemPalace (`wing: pokechat, room: plans`); no files.
@@ -128,6 +126,9 @@ Full history in MemPalace (`wing: pokechat, room: known-fixes`). Essentials only
 - **JokeStartPhrases:** `"funny"` removed — too broad.
 - **Console.WriteLine in ChatEngine:** Replaced with `OnStatusUpdate` callback — engine must not depend on Console directly.
 - **Guest name bug:** `SessionManager.GetOrCreate` called `EstablishDefaultUser("Guest")` which set `_currentUserId`, permanently blocking `HandleNameInput`. Gate now also checks `_currentUserName == "Guest"`.
+- **Bot command prefix:** Changed from `/` → `!` → `~` to avoid clashes with OpenCode (`/`) and shell history expansion (`!`). `~` has no shell conflicts and is familiar from IRC/Discord bots.
+- **Database initialization rewrite:** Removed complex `GetPendingMigrations` → `ValidateSchema` → `RecreateFromBackup` flow that had stale connection state issues. Now just `Migrate()` with wipe-and-retry fallback. `EnsureCreated()` only used as last resort (incompatible with `Migrate()`).
+- **SessionManager DI ambiguity:** Removed convenience constructors that created `new PokeChatDbContext()` internally. Single constructor `(ChatEngineFactory, PokeChatDbContext, SessionQuotaOptions)` registered via DI.
 
 ## Routines
 - **Code review after every change:** After each modification, review the changed code for bugs and duplicate code — refactor any duplication found.
