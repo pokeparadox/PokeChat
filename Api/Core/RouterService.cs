@@ -18,7 +18,8 @@ public enum RouteHandler
     Stats,
     AboutMe,
     Reset,
-    Help
+    Help,
+    Weather
 }
 
 public class RouteResult
@@ -51,7 +52,8 @@ public class RouterService
         ["stats"] = RouteHandler.Stats,
         ["about"] = RouteHandler.AboutMe,
         ["reset"] = RouteHandler.Reset,
-        ["help"] = RouteHandler.Help
+        ["help"] = RouteHandler.Help,
+        ["weather"] = RouteHandler.Weather
     };
 
     private static readonly Dictionary<string, RouteHandler> IntentHandlerMap = new(StringComparer.OrdinalIgnoreCase)
@@ -67,6 +69,7 @@ public class RouterService
         ["compliment_request"] = RouteHandler.AboutMe,
         ["about_me_query"] = RouteHandler.AboutMe,
         ["stats_query"] = RouteHandler.Stats,
+        ["weather_query"] = RouteHandler.Weather,
         ["farewell"] = RouteHandler.None,
     };
 
@@ -74,7 +77,7 @@ public class RouterService
     {
         "math_query", "story_request", "poetry_request", "joke_request",
         "riddle_start", "game_start", "hangman_start", "reset_request",
-        "compliment_request", "about_me_query", "stats_query"
+        "compliment_request", "about_me_query", "stats_query", "weather_query"
     };
 
     private const float ConfidenceThreshold = 0.85f;

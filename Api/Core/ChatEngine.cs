@@ -2161,6 +2161,9 @@ public class ChatEngine : IDisposable
 
     private string HandleWeatherRoute(RouteResult route)
     {
+        // Clear any pending learn/classify/LLM states that would interfere with a factual weather query
+        ClearPendingState();
+
         if (_weatherApiClient == null || !_weatherApiClient.IsEnabled)
             return _responseEngine.GetResponse("weather_no_api_key") ?? "Sorry, I don't have a weather API key set up yet.";
 

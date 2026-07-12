@@ -1664,5 +1664,32 @@ public static class DbSeeder
             CreatedAt = now,
             Persona = "coding"
         }));
+
+        var weatherResponses = new (string Category, string ResponseText)[]
+        {
+            ("weather_result", "{0}: {1}°C, {2}. Humidity {3}%."),
+            ("weather_result", "{0}: {1}°C and {2}."),
+            ("weather_result", "{0} is currently {1}°C with {2}."),
+            ("weather_result", "Right now in {0} it's {1}°C, {2}."),
+            ("weather_result_rain", "{0}: {1}°C, {2}. You might want to grab an umbrella!"),
+            ("weather_result_rain", "{0}: {1}°C with {2}. Bring an umbrella if you're heading out!"),
+            ("weather_result_rain", "It's {1}°C and {2} in {0}. An umbrella would be wise!"),
+            ("weather_result_snow", "{0}: {1}°C, {2}. Stay warm out there!"),
+            ("weather_result_snow", "{0}: {1}°C and {2}. Dress in layers!"),
+            ("weather_result_wind", "{0}: {1}°C, {2}. Windy at {3} m/s."),
+            ("weather_error", "Sorry, I couldn't fetch the weather right now. Try again in a moment."),
+            ("weather_error", "Something went wrong getting the weather. Please try again later."),
+            ("weather_no_location", "Where are you? Tell me your city and I'll check the weather."),
+            ("weather_no_location", "I don't know your location yet. What city are you in?"),
+            ("weather_no_api_key", "I don't have a weather API key set up yet. Set WEATHER_API_KEY to enable weather reports."),
+            ("weather_location_saved", "Got it — {0}! I'll remember that for next time."),
+            ("weather_location_saved", "I've noted you're in {0}. I'll use that for future weather queries."),
+        };
+        context.BotResponses.AddRange(weatherResponses.Select(r => new BotResponse
+        {
+            Category = r.Category,
+            ResponseText = r.ResponseText,
+            CreatedAt = now
+        }));
     }
 }

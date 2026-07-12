@@ -14,6 +14,7 @@ var jsonOptions = new JsonSerializerOptions
 };
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddUserSecrets<PokeChat.Api.Services.WeatherApiOptions>();
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {

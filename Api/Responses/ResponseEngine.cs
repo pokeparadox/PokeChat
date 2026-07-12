@@ -68,7 +68,37 @@ public class ResponseEngine
 
     public string GetResponse(string category, params object[] args)
     {
-        return GetRandomResponse(category, args);
+        var resp = GetRandomResponse(category, args);
+        if (!string.IsNullOrEmpty(resp))
+            return resp;
+
+        // Built-in fallbacks for weather categories to avoid returning empty strings when DB wasn't seeded
+        if (category == "weather_no_api_key")
+            return "Sorry, I don't have a weather API key set up yet.";
+        if (category == "weather_no_location")
+            return "Where are you? Tell me your city and I'll check the weather.";
+        if (category == "weather_error")
+            return "Sorry, I couldn't get the weather right now.";
+
+        if (category.StartsWith("weather_result"))
+        {
+            // args: city, temp, description (, extras)
+            try
+            {
+                var city = args.Length > 0 ? args[0]?.ToString() ?? "" : "";
+                var temp = args.Length > 1 ? args[1]?.ToString() ?? "" : "";
+                var desc = args.Length > 2 ? args[2]?.ToString() ?? "" : "";
+                return string.IsNullOrEmpty(city)
+                    ? $"{temp}°C, {desc}."
+                    : $"{city}: {temp}°C, {desc}.";
+            }
+            catch
+            {
+                return "I have the weather, but couldn't format it.";
+            }
+        }
+
+        return string.Empty;
     }
 
     public void SetCurrentUserName(string name)
