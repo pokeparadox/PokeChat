@@ -2162,7 +2162,7 @@ public class ChatEngine : IDisposable
     private string HandleWeatherRoute(RouteResult route)
     {
         if (_weatherApiClient == null || !_weatherApiClient.IsEnabled)
-            return GetLLMResponse("weather_no_api_key");
+            return _responseEngine.GetResponse("weather_no_api_key") ?? "Sorry, I don't have a weather API key set up yet.";
 
         var input = route.OriginalInput ?? route.Argument ?? "";
         var city = WeatherApiClient.ExtractCity(input);
@@ -2176,13 +2176,13 @@ public class ChatEngine : IDisposable
         }
 
         if (string.IsNullOrWhiteSpace(city))
-            return GetLLMResponse("weather_no_location");
+            return _responseEngine.GetResponse("weather_no_location") ?? "Where are you? Tell me your city and I'll check the weather.";
 
         try
         {
             var weather = _weatherApiClient.GetWeatherAsync(city).GetAwaiter().GetResult();
             if (weather == null)
-                return GetLLMResponse("weather_error");
+                return _responseEngine.GetResponse("weather_error") ?? "Sorry, I couldn't get the weather right now.";
 
             if (_currentUserId.HasValue && !string.IsNullOrWhiteSpace(weather.Name))
             {
