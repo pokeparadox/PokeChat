@@ -34,6 +34,7 @@ public class ResponseEngine
     private string _botName = "PokeChat";
     private string? _currentUserInput;
     private string _persona = "chat";
+    private readonly PokeChat.Api.Services.WeatherApiClient? _weatherApiClient;
 
     private static readonly HashSet<string> ObjectPronouns = new(StringComparer.OrdinalIgnoreCase)
         { "you", "me", "him", "her", "them", "it", "us", "this", "that" };
@@ -106,7 +107,7 @@ public class ResponseEngine
             || (category != null && category.StartsWith("proactive_"));
     }
 
-    public ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker context, SpellChecker spellChecker, IPosTagger posTagger, ITokeniser tokeniser, ISvoExtractor svoExtractor, IMathEngine? mathEngine = null, ITimeEngine? timeEngine = null, StoryGenerator? storyGenerator = null, ToolRegistry? toolRegistry = null, List<ResponseRuleRecord>? toolTriggers = null, Func<string, string?>? llmGenerator = null, HashSet<string>? enhancedCategories = null, bool summariseToolResults = false, ML.IntentClassifier? intentClassifier = null, ML.NeuralResponsePipeline? neuralPipeline = null)
+    public ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker context, SpellChecker spellChecker, IPosTagger posTagger, ITokeniser tokeniser, ISvoExtractor svoExtractor, IMathEngine? mathEngine = null, ITimeEngine? timeEngine = null, StoryGenerator? storyGenerator = null, ToolRegistry? toolRegistry = null, List<ResponseRuleRecord>? toolTriggers = null, Func<string, string?>? llmGenerator = null, HashSet<string>? enhancedCategories = null, bool summariseToolResults = false, ML.IntentClassifier? intentClassifier = null, ML.NeuralResponsePipeline? neuralPipeline = null, PokeChat.Api.Services.WeatherApiClient? weatherApiClient = null)
     {
         _knowledgeStore = knowledgeStore;
         _context = context;
@@ -126,6 +127,7 @@ public class ResponseEngine
         _summariseToolResults = summariseToolResults;
         _intentClassifier = intentClassifier;
         _neuralPipeline = neuralPipeline;
+        _weatherApiClient = weatherApiClient;
     }
 
     private static readonly HashSet<string> ModalVerbs = new(StringComparer.OrdinalIgnoreCase)
@@ -540,15 +542,18 @@ public class ResponseEngine
 
         var timelineResult = HandleTimelineRequest(input, userId);
         if (timelineResult != null) return timelineResult;
-
+ 
         var temporalResult = HandleTemporalQuery(input, userId);
         if (temporalResult != null) return temporalResult;
-
-        var entityResult = HandleEntityQuery(input, userId);
-        if (entityResult != null) return entityResult;
-
-        var storyResult = HandleStoryRequest(input, userId);
-        if (storyResult != null) return storyResult;
+ 
+                var weatherResult = HandleWeatherRequest(input, userId);
+                if (weatherResult != null) return weatherResult;
+ 
+                var entityResult = HandleEntityQuery(input, userId);
+                if (entityResult != null) return entityResult;
+ 
+                var storyResult = HandleStoryRequest(input, userId);
+                if (storyResult != null) return storyResult;
 
         var poemResult = HandlePoetryRequest(input, userId);
         if (poemResult != null) return poemResult;
@@ -1053,6 +1058,98 @@ public class ResponseEngine
 
         var timeline = _knowledgeStore.BuildTimeline(recentFacts);
         return GetRandomResponse("timeline_response", timeline);
+    }
+
+    private string? HandleWeatherRequest(string input, int? userId)
+    {
+        if (_weatherApiClient == null)
+            return null;
+
+        var lower = input.ToLowerInvariant();
+        var triggers = new[] { "weather", "temperature", "forecast", "rain", "snow", "umbrella", "hot today", "cold today" };
+        var isWeather = triggers.Any(t => lower.Contains(t));
+        if (!isWeather) return null;
+
+        if (!_weatherApiClient.IsEnabled)
+        {
+            var resp = GetRandomResponse("weather_no_api_key");
+            return string.IsNullOrEmpty(resp) ? "Sorry, I don't have a weather API key set up yet." : resp;
+        }
+
+        var city = PokeChat.Api.Services.WeatherApiClient.ExtractCity(input);
+        if (string.IsNullOrWhiteSpace(city) && userId.HasValue)
+        {
+            var locationFact = _knowledgeStore.GetFactsBySubject("user").FirstOrDefault(f => f.Verb == "location" && f.UserId == userId.Value);
+            if (locationFact != null)
+                city = locationFact.Object;
+        }
+
+        if (string.IsNullOrWhiteSpace(city))
+        {
+            var resp = GetRandomResponse("weather_no_location");
+            return string.IsNullOrEmpty(resp) ? "Where are you? Tell me your city and I'll check the weather." : resp;
+        }
+
+        try
+        {
+            var weather = _weatherApiClient.GetWeatherAsync(city).GetAwaiter().GetResult();
+            if (weather == null)
+            {
+                var resp = GetRandomResponse("weather_error");
+                return string.IsNullOrEmpty(resp) ? "Sorry, I couldn't get the weather right now." : resp;
+            }
+
+            if (userId.HasValue && !string.IsNullOrWhiteSpace(weather.Name))
+            {
+                var existingLocation = _knowledgeStore.GetFactsBySubject("user").FirstOrDefault(f => f.Verb == "location" && f.UserId == userId.Value);
+                if (existingLocation == null)
+                {
+                    _knowledgeStore.StoreFact(new Knowledge.Fact
+                    {
+                        UserId = userId,
+                        Subject = "user",
+                        Verb = "location",
+                        Object = weather.Name,
+                        PredicateType = "UserAttribute",
+                        CreatedAt = DateTime.UtcNow.ToString("o")
+                    });
+                    _knowledgeStore.Save();
+                }
+            }
+
+            var botResponses = _botResponses;
+            var category = "weather_result";
+            var mainCondition = weather.MainCondition?.ToLowerInvariant() ?? string.Empty;
+            if (mainCondition.Contains("rain") || mainCondition.Contains("drizzle") || mainCondition.Contains("thunderstorm"))
+                category = "weather_result_rain";
+            else if (mainCondition.Contains("snow"))
+                category = "weather_result_snow";
+            else if (weather.Wind != null && weather.Wind.Speed >= 10)
+                category = "weather_result_wind";
+
+            var responseCity = weather.Name ?? city;
+
+            if (botResponses.TryGetValue(category, out var templates) && templates.Count > 0)
+            {
+                var template = templates[Random.Shared.Next(templates.Count)];
+                return category switch
+                {
+                    "weather_result" => string.Format(template, responseCity, weather.TempCelsius.ToString("F0"), weather.Description, weather.Main?.Humidity ?? 0),
+                    "weather_result_rain" => string.Format(template, responseCity, weather.TempCelsius.ToString("F0"), weather.Description),
+                    "weather_result_snow" => string.Format(template, responseCity, weather.TempCelsius.ToString("F0"), weather.Description),
+                    "weather_result_wind" => string.Format(template, responseCity, weather.TempCelsius.ToString("F0"), weather.Description, weather.Wind?.Speed ?? 0),
+                    _ => string.Format(template, responseCity, weather.TempCelsius.ToString("F0"), weather.Description),
+                };
+            }
+
+            return $"{responseCity}: {weather.TempCelsius:F0}°C, {weather.Description}.";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Weather] Error fetching weather for '{city}': {ex}");
+            var resp = GetRandomResponse("weather_error");
+            return string.IsNullOrEmpty(resp) ? "Sorry, I couldn't get the weather right now." : resp;
+        }
     }
 
     private string? BuildProactiveTimelineOffer(int? userId)

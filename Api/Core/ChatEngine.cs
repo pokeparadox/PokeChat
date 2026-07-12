@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using PokeChat.Api.Services;
 using PokeChat.Data;
 using PokeChat.Knowledge;
 using PokeChat.LLM;
@@ -50,6 +51,7 @@ public class ChatEngine : IDisposable
     private readonly List<(string Input, string Response)> _trainingBuffer = new();
     private const int RetrainThreshold = 25;
     private string _persona = "chat";
+    private readonly WeatherApiClient? _weatherApiClient;
 
     private static readonly HashSet<string> PersonaTriggers = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -258,6 +260,8 @@ public class ChatEngine : IDisposable
         _intentClassifier = new ML.IntentClassifier();
         _intentClassifier.LoadOrCreate(ML.SeedTrainingData.Examples);
 
+        _weatherApiClient = new WeatherApiClient(WeatherApiOptions.Load());
+
         _llmOrchestrator = new LLMOrchestrator();
         var llmGenerator = _llmOrchestrator.Config.AlwaysOn && _llmOrchestrator.IsAvailable
             ? new Func<string, string?>(prompt => _llmOrchestrator.GenerateResponse(prompt))
@@ -265,7 +269,7 @@ public class ChatEngine : IDisposable
         var enhancedCats = _llmOrchestrator.Config.EnhancedCategories.Count > 0
             ? new HashSet<string>(_llmOrchestrator.Config.EnhancedCategories, StringComparer.OrdinalIgnoreCase)
             : new HashSet<string>();
-        _responseEngine = new ResponseEngine(_knowledgeStore, _context, _spellChecker, _posTagger, _tokeniser, _svoExtractor, timeEngine: new SystemTimeEngine(), toolRegistry: toolRegistry, toolTriggers: toolTriggers, llmGenerator: llmGenerator, enhancedCategories: enhancedCats, summariseToolResults: _llmOrchestrator.Config.SummariseToolResults, intentClassifier: _intentClassifier);
+        _responseEngine = new ResponseEngine(_knowledgeStore, _context, _spellChecker, _posTagger, _tokeniser, _svoExtractor, timeEngine: new SystemTimeEngine(), toolRegistry: toolRegistry, toolTriggers: toolTriggers, llmGenerator: llmGenerator, enhancedCategories: enhancedCats, summariseToolResults: _llmOrchestrator.Config.SummariseToolResults, intentClassifier: _intentClassifier, weatherApiClient: _weatherApiClient);
         AutoSeedPosDictionary(_mcpRegistry);
 
         var spellDict = new HashSet<string>(posEntries.Select(e => e.Word), StringComparer.OrdinalIgnoreCase);
@@ -327,6 +331,7 @@ public class ChatEngine : IDisposable
         _intentClassifier = intentClassifier ?? new ML.IntentClassifier();
         _persona = persona;
         _context.SetContext(ContextKeys.CurrentPersona, persona);
+        _weatherApiClient = null;
     }
 
     private void AutoSeedPosDictionary(McpRegistry registry)
@@ -2146,8 +2151,92 @@ public class ChatEngine : IDisposable
             case RouteHandler.Help:
                 return GetHelpText();
 
+            case RouteHandler.Weather:
+                return HandleWeatherRoute(route);
+
             default:
                 return GetLLMResponse("default_response");
+        }
+    }
+
+    private string HandleWeatherRoute(RouteResult route)
+    {
+        if (_weatherApiClient == null || !_weatherApiClient.IsEnabled)
+            return GetLLMResponse("weather_no_api_key");
+
+        var input = route.OriginalInput ?? route.Argument ?? "";
+        var city = WeatherApiClient.ExtractCity(input);
+
+        if (string.IsNullOrWhiteSpace(city) && _currentUserId.HasValue)
+        {
+            var locationFact = _knowledgeStore.GetFactsBySubject("user")
+                .FirstOrDefault(f => f.Verb == "location" && f.UserId == _currentUserId.Value);
+            if (locationFact != null)
+                city = locationFact.Object;
+        }
+
+        if (string.IsNullOrWhiteSpace(city))
+            return GetLLMResponse("weather_no_location");
+
+        try
+        {
+            var weather = _weatherApiClient.GetWeatherAsync(city).GetAwaiter().GetResult();
+            if (weather == null)
+                return GetLLMResponse("weather_error");
+
+            if (_currentUserId.HasValue && !string.IsNullOrWhiteSpace(weather.Name))
+            {
+                var existingLocation = _knowledgeStore.GetFactsBySubject("user")
+                    .FirstOrDefault(f => f.Verb == "location" && f.UserId == _currentUserId.Value);
+                if (existingLocation == null)
+                {
+                    _knowledgeStore.StoreFact(new Knowledge.Fact
+                    {
+                        UserId = _currentUserId.Value,
+                        Subject = "user",
+                        Verb = "location",
+                        Object = weather.Name,
+                        PredicateType = "UserAttribute",
+                        CreatedAt = DateTime.UtcNow.ToString("o")
+                    });
+                    _knowledgeStore.Save();
+                }
+            }
+
+            var botResponses = GetCachedBotResponses();
+            var category = "weather_result";
+
+            var mainCondition = weather.MainCondition?.ToLowerInvariant() ?? string.Empty;
+            if (mainCondition.Contains("rain") || mainCondition.Contains("drizzle") || mainCondition.Contains("thunderstorm"))
+                category = "weather_result_rain";
+            else if (mainCondition.Contains("snow"))
+                category = "weather_result_snow";
+            else if (weather.Wind != null && weather.Wind.Speed >= 10)
+                category = "weather_result_wind";
+
+            var responseCity = weather.Name ?? city;
+
+            if (botResponses.TryGetValue(category, out var templates) && templates.Count > 0)
+            {
+                var template = templates[Random.Shared.Next(templates.Count)];
+                return category switch
+                {
+                    "weather_result" => string.Format(template, responseCity, weather.TempCelsius.ToString("F0"), weather.Description, weather.Main?.Humidity ?? 0),
+                    "weather_result_rain" => string.Format(template, responseCity, weather.TempCelsius.ToString("F0"), weather.Description),
+                    "weather_result_snow" => string.Format(template, responseCity, weather.TempCelsius.ToString("F0"), weather.Description),
+                    "weather_result_wind" => string.Format(template, responseCity, weather.TempCelsius.ToString("F0"), weather.Description, weather.Wind?.Speed ?? 0),
+                    _ => string.Format(template, responseCity, weather.TempCelsius.ToString("F0"), weather.Description),
+                };
+            }
+
+            return $"{responseCity}: {weather.TempCelsius:F0}°C, {weather.Description}.";
+        }
+        catch (Exception ex)
+        {
+            var msg = $"[Weather] Exception while fetching weather for '{city}': {ex.Message}";
+            _sessionLogger?.LogSystem(msg);
+            Console.WriteLine(msg + "\n" + ex);
+            return GetLLMResponse("weather_error") ?? "Sorry, I couldn't get the weather right now.";
         }
     }
 
@@ -2169,6 +2258,7 @@ public class ChatEngine : IDisposable
             + "~stats — Show conversation statistics\n"
             + "~about — Tell me what I know about you\n"
             + "~reset — Reset all my memories of you\n"
+            + "~weather [city] — Tell me the weather (e.g. ~weather London)\n"
             + "~help — Show this help message";
     }
 
@@ -2178,6 +2268,12 @@ public class ChatEngine : IDisposable
         if (_llmOrchestrator == null || !_llmOrchestrator.IsAvailable || _llmOrchestrator.UserDeclined)
             return null;
         if (!_intentClassifier.IsReady)
+            return null;
+
+        // Avoid intercepting clear tool-like or factual requests such as weather.
+        var lower = input.ToLowerInvariant();
+        var weatherTriggers = new[] { "weather", "temperature", "forecast", "rain", "snow", "umbrella", "hot today", "cold today" };
+        if (weatherTriggers.Any(t => lower.Contains(t)))
             return null;
 
         var probs = _intentClassifier.PredictProbabilities(input);
