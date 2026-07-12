@@ -38,7 +38,18 @@ var sessionQuotas = new SessionQuotaOptions();
 builder.Configuration.GetSection("SessionQuotas").Bind(sessionQuotas);
 builder.Services.AddSingleton(sessionQuotas);
 
+var weatherOptions = new WeatherApiOptions();
+builder.Configuration.GetSection("Weather").Bind(weatherOptions);
+var envWeatherKey = Environment.GetEnvironmentVariable("WEATHER_API_KEY");
+if (!string.IsNullOrWhiteSpace(envWeatherKey))
+    weatherOptions.ApiKey = envWeatherKey;
+var envWeatherBase = Environment.GetEnvironmentVariable("WEATHER_API_BASE_URL");
+if (!string.IsNullOrWhiteSpace(envWeatherBase))
+    weatherOptions.BaseUrl = envWeatherBase;
+builder.Services.AddSingleton(weatherOptions);
+
 builder.Services.AddHttpClient<UpstreamLLMClient>();
+builder.Services.AddHttpClient<WeatherApiClient>();
 builder.Services.AddSingleton<SessionManager>();
 builder.Services.AddSingleton<OpenAIAdapter>();
 builder.Services.AddSingleton<TitleGenerator>();
@@ -194,9 +205,17 @@ app.MapDelete("/sessions/{id}", (string id, SessionManager sessions) =>
 app.MapPost("/sessions/{id}/chat", (string id, ChatRequest request, SessionManager sessions) =>
 {
     var engine = sessions.GetOrCreate(id);
-    var response = engine.ProcessInput(request.Message);
-    sessions.UpdateActivity(id);
-    return Results.Ok(new { response, session_id = id });
+    try
+    {
+        var response = engine.ProcessInput(request.Message);
+        sessions.UpdateActivity(id);
+        return Results.Ok(new { response, session_id = id });
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[Error] Exception while processing chat for session {id}: {ex}");
+        return Results.Problem(detail: ex.Message, statusCode: 500);
+    }
 });
 
 app.Run();
