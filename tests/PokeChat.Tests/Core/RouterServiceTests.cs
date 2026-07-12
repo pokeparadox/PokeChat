@@ -111,6 +111,16 @@ public class RouterServiceTests
         result.Handler.ShouldBe(RouteHandler.None);
     }
 
+    [Theory]
+    [InlineData("~/story")]
+    [InlineData("~/.config")]
+    [InlineData("~\\story")]
+    public void Route_TildeWithPathChars_ReturnsNone(string input)
+    {
+        var result = _router.Route(input);
+        result.Handler.ShouldBe(RouteHandler.None);
+    }
+
     [Fact]
     public void Route_OriginalInputPreserved()
     {

@@ -132,6 +132,11 @@ public class RouterService
 
     private static RouteResult? TryParseBotCommand(string input)
     {
+        var afterTilde = input[1..];
+
+        if (LooksLikePath(afterTilde))
+            return null;
+
         var spaceIdx = input.IndexOf(' ', StringComparison.Ordinal);
         string cmd;
         string? arg;
@@ -159,5 +164,21 @@ public class RouterService
         }
 
         return null;
+    }
+
+    private static bool LooksLikePath(string afterTilde)
+    {
+        if (afterTilde.Contains('/') || afterTilde.Contains('\\'))
+            return true;
+
+        var homeDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (!string.IsNullOrEmpty(homeDir))
+        {
+            var expanded = Path.Combine(homeDir, afterTilde);
+            if (Directory.Exists(expanded) || File.Exists(expanded))
+                return true;
+        }
+
+        return false;
     }
 }

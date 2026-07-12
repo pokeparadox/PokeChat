@@ -76,3 +76,5 @@ tools/tools.json
 mcp.json
 tools/llm.json
 
+pokechat.db-shm
+pokechat.db-wal
