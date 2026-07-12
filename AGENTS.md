@@ -109,7 +109,6 @@ Completed phases in `.agents/history.md` and MemPalace (`wing: pokechat, room: p
 ### Planned (in order)
 
 - **Sub-plan 5:** Alternative UI
-- **Sub-plan 6:** WebSocket Real-Time Streaming
 - **Sub-plan 7:** Rate Limiting & Session Quotas
 
 ## Known Fixes

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using PokeChat.Api.Models;
 using PokeChat.Core;
 
@@ -98,7 +99,8 @@ public class OpenAIAdapter
     }
 
     public async Task StreamResponseAsync(ChatCompletionRequest request, string sessionId,
-        Func<ChatCompletionChunk, Task> onChunk, Func<Task> onDone, string persona = "chat", string? rateLimitKey = null)
+        Func<ChatCompletionChunk, Task> onChunk, Func<Task> onDone,
+        string persona = "chat", string? rateLimitKey = null, CancellationToken ct = default)
     {
         var engine = _sessionManager.GetOrCreate(sessionId, userName: request.User, messages: request.Messages, persona: persona);
 
@@ -132,23 +134,6 @@ public class OpenAIAdapter
             return;
         }
 
-        var responseText = engine.ProcessInput(input);
-
-        var engineHandled = !engine.LastResponseIsDeadEnd;
-
-        if (!engineHandled && _upstream != null)
-        {
-            var upstreamAllowed = _tokenBucket.TryDeduct(rateKey, _tokenOptions.StreamUpstreamCost);
-            if (upstreamAllowed)
-            {
-                var upstreamResult = await _upstream.ForwardAsync(request);
-                if (upstreamResult?.Choices.Count > 0)
-                {
-                    responseText = upstreamResult.Choices[0].Message?.Content ?? responseText;
-                }
-            }
-        }
-
         var chunkId = $"chatcmpl-{Guid.NewGuid().ToString("N")[..12]}";
         var created = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
@@ -158,16 +143,75 @@ public class OpenAIAdapter
             Choices = [new ChunkChoice { Index = 0, Delta = new Delta { Role = "assistant" } }]
         });
 
+        var statusLock = new object();
+        var statusBuffer = new List<ChatCompletionChunk>();
+        var statusFlushed = false;
+
+        Action<string>? statusCallback = msg =>
+        {
+            if (string.IsNullOrEmpty(msg) || msg == "clear")
+                return;
+
+            var statusChunk = new ChatCompletionChunk
+            {
+                Id = chunkId, Created = created, Model = request.Model,
+                Choices = [new ChunkChoice { Index = 0, Delta = new Delta { Content = $"[{msg}]" } }]
+            };
+
+            lock (statusLock)
+            {
+                if (statusFlushed)
+                    onChunk(statusChunk).GetAwaiter().GetResult();
+                else
+                    statusBuffer.Add(statusChunk);
+            }
+        };
+
+        engine.OnStatusUpdate = statusCallback;
+
+        string responseText;
+        bool engineHandled;
+
+        try
+        {
+            var engineTask = Task.Run(() => engine.ProcessInput(input), ct);
+            responseText = await engineTask;
+        }
+        finally
+        {
+            engine.OnStatusUpdate = null;
+
+            lock (statusLock)
+            {
+                statusFlushed = true;
+                foreach (var chunk in statusBuffer)
+                    onChunk(chunk).GetAwaiter().GetResult();
+                statusBuffer.Clear();
+            }
+        }
+
+        engineHandled = !engine.LastResponseIsDeadEnd;
+
+        if (!engineHandled && _upstream != null)
+        {
+            var upstreamAllowed = _tokenBucket.TryDeduct(rateKey, _tokenOptions.StreamUpstreamCost);
+            if (upstreamAllowed)
+            {
+                var streamed = await _upstream.ForwardStreamingAsync(request, onChunk, onDone, ct);
+                if (streamed)
+                    return;
+            }
+        }
+
         if (responseText.Length > 0)
         {
-            var words = responseText.Split(' ');
-            for (var i = 0; i < words.Length; i++)
+            var sentences = ChunkBySentences(responseText);
+            for (var i = 0; i < sentences.Count; i++)
             {
-                var content = i < words.Length - 1 ? words[i] + " " : words[i];
                 await onChunk(new ChatCompletionChunk
                 {
                     Id = chunkId, Created = created, Model = request.Model,
-                    Choices = [new ChunkChoice { Index = 0, Delta = new Delta { Content = content } }]
+                    Choices = [new ChunkChoice { Index = 0, Delta = new Delta { Content = sentences[i] } }]
                 });
             }
         }
@@ -185,6 +229,27 @@ public class OpenAIAdapter
         });
 
         await onDone();
+    }
+
+    internal static List<string> ChunkBySentences(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+            return [];
+
+        var chunks = new List<string>();
+        var matches = Regex.Matches(text, @"[^.!?]+[.!?]+[\s]?|[^.!?]+$");
+
+        foreach (Match match in matches)
+        {
+            var value = match.Value;
+            if (!string.IsNullOrWhiteSpace(value))
+                chunks.Add(value);
+        }
+
+        if (chunks.Count == 0)
+            chunks.Add(text);
+
+        return chunks;
     }
 
     private ChatCompletionResponse RateLimitedResponse(ChatCompletionRequest request, int needed, string rateKey)

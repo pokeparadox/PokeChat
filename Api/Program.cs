@@ -91,7 +91,8 @@ app.MapPost("/v1/chat/completions", async (HttpContext httpContext, ChatCompleti
 
         await adapter.StreamResponseAsync(request, sessionId, persona: persona, rateLimitKey: rateLimitKey,
             onChunk: chunk => httpContext.Response.WriteAsync($"data: {JsonSerializer.Serialize(chunk, jsonOptions)}\n\n"),
-            onDone: () => httpContext.Response.WriteAsync("data: [DONE]\n\n"));
+            onDone: () => httpContext.Response.WriteAsync("data: [DONE]\n\n"),
+            ct: httpContext.RequestAborted);
 
         await httpContext.Response.Body.FlushAsync();
         return Results.Empty;

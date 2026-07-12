@@ -1751,3 +1751,11 @@ Dual-persona architecture (chat/coding) with persona-filtered rules, responses, 
 - [x] Whole-word boundary matching prevents false matches (e.g. "implementation" doesn't trigger "implement" keyword)
 - [x] 18 new tests, 826/826 pass
 
+## Sub-plan 6: Real-Time Streaming (2026-07-12)
+- [x] **Part A:** `UpstreamLLMClient.ForwardStreamingAsync` — true SSE streaming for upstream LLMs (`stream: true`, `HttpCompletionOption.ResponseHeadersRead`, SSE line parsing, `[DONE]` handling)
+- [x] **Part B:** `OpenAIAdapter.ChunkBySentences()` — sentence-level chunking replaces word-by-word splitting for NLP responses
+- [x] **Part C:** Engine status streaming via `Task.Run` — `OnStatusUpdate` callbacks written as `[thinking]`/`[processing]` SSE chunks before response text
+- [x] `UpstreamOptions.StreamByDefault` config flag
+- [x] `Program.cs` — passes `CancellationToken` from `RequestAborted`
+- [x] 17 new tests (9 UpstreamLLMClient + 8 OpenAIAdapter), 843/843 pass
+
