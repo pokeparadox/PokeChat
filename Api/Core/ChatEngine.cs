@@ -385,7 +385,7 @@ public class ChatEngine : IDisposable
         var routeResult = _router.Route(input, _intentClassifier);
         if (routeResult.Handler != RouteHandler.None)
         {
-            return ExecuteSlashRoute(routeResult);
+            return ExecuteBotRoute(routeResult);
         }
 
         if (_persona == "coding")
@@ -2060,7 +2060,7 @@ public class ChatEngine : IDisposable
         return string.Empty;
     }
 
-    private string ExecuteSlashRoute(RouteResult route)
+    private string ExecuteBotRoute(RouteResult route)
     {
         switch (route.Handler)
         {
@@ -2154,22 +2154,22 @@ public class ChatEngine : IDisposable
     internal static string GetHelpText()
     {
         return "Here are the commands I understand:\n\n"
-            + "/maths <expression> — Evaluate a maths expression (e.g. /maths 2 + 2)\n"
-            + "/remind <me to> <task> [at/in <time>] — Set a reminder\n"
-            + "/story — Tell me a story\n"
-            + "/poem — Write a poem\n"
-            + "/haiku — Write a haiku\n"
-            + "/limerick — Write a limerick\n"
-            + "/joke — Tell me a joke\n"
-            + "/riddle — Ask me a riddle\n"
-            + "/quiz — Quiz me on what I know\n"
-            + "/game — Play the word-chain story game\n"
-            + "/hangman — Play hangman\n"
-            + "/switch <mode> — Switch to coding or chat mode\n"
-            + "/stats — Show conversation statistics\n"
-            + "/about — Tell me what I know about you\n"
-            + "/reset — Reset all my memories of you\n"
-            + "/help — Show this help message";
+            + "~maths <expression> — Evaluate a maths expression (e.g. ~maths 2 + 2)\n"
+            + "~remind <me to> <task> [at/in <time>] — Set a reminder\n"
+            + "~story — Tell me a story\n"
+            + "~poem — Write a poem\n"
+            + "~haiku — Write a haiku\n"
+            + "~limerick — Write a limerick\n"
+            + "~joke — Tell me a joke\n"
+            + "~riddle — Ask me a riddle\n"
+            + "~quiz — Quiz me on what I know\n"
+            + "~game — Play the word-chain story game\n"
+            + "~hangman — Play hangman\n"
+            + "~switch <mode> — Switch to coding or chat mode\n"
+            + "~stats — Show conversation statistics\n"
+            + "~about — Tell me what I know about you\n"
+            + "~reset — Reset all my memories of you\n"
+            + "~help — Show this help message";
     }
 
     private string? TryEarlyLlmRouting(string input)

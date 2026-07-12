@@ -26,14 +26,14 @@ public class RouteResult
     public RouteHandler Handler { get; set; }
     public string? Argument { get; set; }
     public string? OriginalInput { get; set; }
-    public bool IsSlashCommand { get; set; }
+    public bool IsBotCommand { get; set; }
     public string? IntentCategory { get; set; }
     public double Confidence { get; set; }
 }
 
 public class RouterService
 {
-    private static readonly Dictionary<string, RouteHandler> SlashCommandMap = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, RouteHandler> BotCommandMap = new(StringComparer.OrdinalIgnoreCase)
     {
         ["maths"] = RouteHandler.Math,
         ["math"] = RouteHandler.Math,
@@ -84,11 +84,11 @@ public class RouterService
         if (string.IsNullOrEmpty(input) || input.Length <= 1)
             return new RouteResult { Handler = RouteHandler.None, OriginalInput = input };
 
-        if (input[0] == '/')
+        if (input[0] == '~')
         {
-            var slashResult = TryParseSlashCommand(input);
-            if (slashResult != null)
-                return slashResult;
+            var botResult = TryParseBotCommand(input);
+            if (botResult != null)
+                return botResult;
         }
 
         return new RouteResult { Handler = RouteHandler.None, OriginalInput = input };
@@ -99,11 +99,11 @@ public class RouterService
         if (string.IsNullOrEmpty(input) || input.Length <= 1)
             return new RouteResult { Handler = RouteHandler.None, OriginalInput = input };
 
-        if (input[0] == '/')
+        if (input[0] == '~')
         {
-            var slashResult = TryParseSlashCommand(input);
-            if (slashResult != null)
-                return slashResult;
+            var botResult = TryParseBotCommand(input);
+            if (botResult != null)
+                return botResult;
         }
 
         if (classifier?.IsReady == true)
@@ -130,7 +130,7 @@ public class RouterService
         return new RouteResult { Handler = RouteHandler.None, OriginalInput = input };
     }
 
-    private static RouteResult? TryParseSlashCommand(string input)
+    private static RouteResult? TryParseBotCommand(string input)
     {
         var spaceIdx = input.IndexOf(' ', StringComparison.Ordinal);
         string cmd;
@@ -147,14 +147,14 @@ public class RouterService
             arg = null;
         }
 
-        if (SlashCommandMap.TryGetValue(cmd, out var handler))
+        if (BotCommandMap.TryGetValue(cmd, out var handler))
         {
             return new RouteResult
             {
                 Handler = handler,
                 Argument = string.IsNullOrEmpty(arg) ? null : arg,
                 OriginalInput = input,
-                IsSlashCommand = true
+                IsBotCommand = true
             };
         }
 

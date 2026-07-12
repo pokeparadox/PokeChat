@@ -21,6 +21,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
 });
 
+builder.Services.AddSingleton<PokeChatDbContext>();
 builder.Services.AddSingleton<ChatEngineFactory>();
 
 var upstreamOptions = new UpstreamOptions();
@@ -58,6 +59,23 @@ builder.Services.AddRateLimiter(options =>
 });
 
 var app = builder.Build();
+
+if (args.Contains("--restore-db"))
+{
+    var dbPath = Path.Combine(AppContext.BaseDirectory, "pokechat.db");
+    var envPath = Environment.GetEnvironmentVariable("POKECHAT_DB_PATH");
+    if (!string.IsNullOrEmpty(envPath)) dbPath = envPath;
+
+    if (BackupHelper.Restore(dbPath))
+    {
+        Console.WriteLine("[Database] Restored from backup.");
+    }
+    else
+    {
+        Console.WriteLine("[Database] No backup found at " + BackupHelper.GetBackupPath(dbPath));
+    }
+    return;
+}
 
 app.UseRateLimiter();
 

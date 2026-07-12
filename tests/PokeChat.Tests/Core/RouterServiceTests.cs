@@ -23,120 +23,120 @@ public class RouterServiceTests
     }
 
     [Fact]
-    public void Route_NoSlash_ReturnsNone()
+    public void Route_NoTildePrefix_ReturnsNone()
     {
         var result = _router.Route("hello");
         result.Handler.ShouldBe(RouteHandler.None);
     }
 
     [Fact]
-    public void Route_SingleSlash_ReturnsNone()
+    public void Route_SingleTilde_ReturnsNone()
     {
-        var result = _router.Route("/");
+        var result = _router.Route("~");
         result.Handler.ShouldBe(RouteHandler.None);
     }
 
     [Fact]
-    public void Route_SlashMaths_ReturnsMathHandler()
+    public void Route_TildeMaths_ReturnsMathHandler()
     {
-        var result = _router.Route("/maths 2 + 2");
+        var result = _router.Route("~maths 2 + 2");
         result.Handler.ShouldBe(RouteHandler.Math);
         result.Argument.ShouldBe("2 + 2");
-        result.IsSlashCommand.ShouldBeTrue();
+        result.IsBotCommand.ShouldBeTrue();
     }
 
     [Fact]
-    public void Route_SlashMath_ReturnsMathHandler()
+    public void Route_TildeMath_ReturnsMathHandler()
     {
-        var result = _router.Route("/math 2+2");
+        var result = _router.Route("~math 2+2");
         result.Handler.ShouldBe(RouteHandler.Math);
         result.Argument.ShouldBe("2+2");
-        result.IsSlashCommand.ShouldBeTrue();
+        result.IsBotCommand.ShouldBeTrue();
     }
 
     [Fact]
-    public void Route_SlashRemind_ReturnsRemindHandler()
+    public void Route_TildeRemind_ReturnsRemindHandler()
     {
-        var result = _router.Route("/remind me to take out the rubbish at 5pm");
+        var result = _router.Route("~remind me to take out the rubbish at 5pm");
         result.Handler.ShouldBe(RouteHandler.Remind);
         result.Argument.ShouldBe("me to take out the rubbish at 5pm");
-        result.IsSlashCommand.ShouldBeTrue();
+        result.IsBotCommand.ShouldBeTrue();
     }
 
     [Fact]
-    public void Route_SlashRemindNoArgs_ReturnsRemindHandler()
+    public void Route_TildeRemindNoArgs_ReturnsRemindHandler()
     {
-        var result = _router.Route("/remind");
+        var result = _router.Route("~remind");
         result.Handler.ShouldBe(RouteHandler.Remind);
         result.Argument.ShouldBeNull();
     }
 
     [Theory]
-    [InlineData("/story", RouteHandler.Story)]
-    [InlineData("/poem", RouteHandler.Poem)]
-    [InlineData("/haiku", RouteHandler.Haiku)]
-    [InlineData("/limerick", RouteHandler.Limerick)]
-    [InlineData("/joke", RouteHandler.Joke)]
-    [InlineData("/riddle", RouteHandler.Riddle)]
-    [InlineData("/quiz", RouteHandler.Quiz)]
-    [InlineData("/game", RouteHandler.Game)]
-    [InlineData("/hangman", RouteHandler.Hangman)]
-    [InlineData("/stats", RouteHandler.Stats)]
-    [InlineData("/about", RouteHandler.AboutMe)]
-    [InlineData("/reset", RouteHandler.Reset)]
-    [InlineData("/help", RouteHandler.Help)]
-    public void Route_SlashCommand_ReturnsCorrectHandler(string input, RouteHandler expected)
+    [InlineData("~story", RouteHandler.Story)]
+    [InlineData("~poem", RouteHandler.Poem)]
+    [InlineData("~haiku", RouteHandler.Haiku)]
+    [InlineData("~limerick", RouteHandler.Limerick)]
+    [InlineData("~joke", RouteHandler.Joke)]
+    [InlineData("~riddle", RouteHandler.Riddle)]
+    [InlineData("~quiz", RouteHandler.Quiz)]
+    [InlineData("~game", RouteHandler.Game)]
+    [InlineData("~hangman", RouteHandler.Hangman)]
+    [InlineData("~stats", RouteHandler.Stats)]
+    [InlineData("~about", RouteHandler.AboutMe)]
+    [InlineData("~reset", RouteHandler.Reset)]
+    [InlineData("~help", RouteHandler.Help)]
+    public void Route_TildeCommand_ReturnsCorrectHandler(string input, RouteHandler expected)
     {
         var result = _router.Route(input);
         result.Handler.ShouldBe(expected);
-        result.IsSlashCommand.ShouldBeTrue();
+        result.IsBotCommand.ShouldBeTrue();
     }
 
     [Theory]
-    [InlineData("/switch coding", "coding")]
-    [InlineData("/switch chat", "chat")]
-    [InlineData("/switch", null)]
-    public void Route_SlashSwitch_ReturnsSwitchHandlerWithArgument(string input, string? expectedArg)
+    [InlineData("~switch coding", "coding")]
+    [InlineData("~switch chat", "chat")]
+    [InlineData("~switch", null)]
+    public void Route_TildeSwitch_ReturnsSwitchHandlerWithArgument(string input, string? expectedArg)
     {
         var result = _router.Route(input);
         result.Handler.ShouldBe(RouteHandler.SwitchPersona);
         result.Argument.ShouldBe(expectedArg);
-        result.IsSlashCommand.ShouldBeTrue();
+        result.IsBotCommand.ShouldBeTrue();
     }
 
     [Fact]
-    public void Route_SlashUnknown_ReturnsNone()
+    public void Route_TildeUnknown_ReturnsNone()
     {
-        var result = _router.Route("/xyzzy");
+        var result = _router.Route("~xyzzy");
         result.Handler.ShouldBe(RouteHandler.None);
     }
 
     [Fact]
     public void Route_OriginalInputPreserved()
     {
-        var result = _router.Route("/joke");
-        result.OriginalInput.ShouldBe("/joke");
+        var result = _router.Route("~joke");
+        result.OriginalInput.ShouldBe("~joke");
     }
 
     [Fact]
     public void Route_CaseInsensitive()
     {
-        var result = _router.Route("/MATH 42");
+        var result = _router.Route("~MATH 42");
         result.Handler.ShouldBe(RouteHandler.Math);
         result.Argument.ShouldBe("42");
     }
 
     [Fact]
-    public void Route_SlashWithLeadingWhitespace_ReturnsNone()
+    public void Route_TildeWithLeadingWhitespace_ReturnsNone()
     {
-        var result = _router.Route(" /help");
+        var result = _router.Route(" ~help");
         result.Handler.ShouldBe(RouteHandler.None);
     }
 
     [Fact]
-    public void Route_SlashHelpWithTrailingSpaces_ReturnsHelp()
+    public void Route_TildeHelpWithTrailingSpaces_ReturnsHelp()
     {
-        var result = _router.Route("/help   ");
+        var result = _router.Route("~help   ");
         result.Handler.ShouldBe(RouteHandler.Help);
     }
 
@@ -145,9 +145,9 @@ public class RouterServiceTests
     {
         var help = ChatEngine.GetHelpText();
         help.ShouldNotBeNullOrEmpty();
-        help.ShouldContain("/maths");
-        help.ShouldContain("/help");
-        help.ShouldContain("/remind");
+        help.ShouldContain("~maths");
+        help.ShouldContain("~help");
+        help.ShouldContain("~remind");
     }
 
     [Fact]
@@ -284,7 +284,7 @@ public class RouterServiceTests
     }
 
     [Fact]
-    public void Route_ClassifierSlashOverrides_ReturnsSlashResult()
+    public void Route_ClassifierTildeOverrides_ReturnsTildeResult()
     {
         var classifier = new IntentClassifier();
         classifier.Train(new List<(string, string)>
@@ -293,9 +293,9 @@ public class RouterServiceTests
             ("i like pizza", "preference_statement"),
         });
 
-        var result = _router.Route("/story", classifier);
+        var result = _router.Route("~story", classifier);
         result.Handler.ShouldBe(RouteHandler.Story);
-        result.IsSlashCommand.ShouldBeTrue();
+        result.IsBotCommand.ShouldBeTrue();
     }
 
     [Fact]

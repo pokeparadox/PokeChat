@@ -31,21 +31,6 @@ public sealed class SessionManager : IDisposable
     private readonly TimeSpan _sessionTtl;
     private readonly SessionQuotaOptions _quotas;
 
-    public SessionManager(ChatEngineFactory factory, int maxSessions = 50, int sessionTtlMinutes = 60)
-        : this(factory, new PokeChatDbContext(), maxSessions, sessionTtlMinutes)
-    {
-    }
-
-    public SessionManager(ChatEngineFactory factory, PokeChatDbContext dbContext, int maxSessions = 50, int sessionTtlMinutes = 60)
-        : this(factory, dbContext, new SessionQuotaOptions { MaxSessions = maxSessions, SessionTtlMinutes = sessionTtlMinutes })
-    {
-    }
-
-    public SessionManager(ChatEngineFactory factory, SessionQuotaOptions quotas)
-        : this(factory, new PokeChatDbContext(), quotas)
-    {
-    }
-
     public SessionManager(ChatEngineFactory factory, PokeChatDbContext dbContext, SessionQuotaOptions quotas)
     {
         _factory = factory;

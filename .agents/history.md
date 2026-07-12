@@ -1770,3 +1770,9 @@ Dual-persona architecture (chat/coding) with persona-filtered rules, responses, 
 - [x] `Program.cs` — `SessionQuotaOptions` wired through DI
 - [x] 18 new tests (9 SessionQuotaTests + 8 LLMOrchestratorTests + 1 updated), 859/859 pass
 
+## Database Recovery + Nullable Cleanup (2026-07-12)
+- [x] **BackupHelper** — new `Api/Data/BackupHelper.cs`: file copy backup/restore, ATTACH+INSERT cross-schema data copy between old and new DB
+- [x] **DatabaseInitializer** — auto-backs up `pokechat.db` → `pokechat.db.bak` before every migration. On schema mismatch, auto-recreates DB and copies learned data (facts, rules, responses, etc.) from backup. Schema validation via direct table queries after migration.
+- [x] `--restore-db` CLI flag — restores `pokechat.db` from `.bak` file
+- [x] **Nullable warnings cleanup** — all 11 CS warnings fixed (CS8600, CS8602, CS8603, CS8604, CS8625). Removed unused `System.Security.Cryptography.Xml` and `System.Net.Http.Json` packages. 0 warnings, 859/859 pass.
+

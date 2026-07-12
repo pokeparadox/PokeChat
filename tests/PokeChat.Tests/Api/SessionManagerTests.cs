@@ -51,7 +51,7 @@ public class SessionManagerTests
     {
         using var fresh = new FreshDbContext();
         var factory = new TestEngineFactory();
-        using var manager = new SessionManager(factory, fresh.Context, maxSessions: 10, sessionTtlMinutes: 60);
+        using var manager = new SessionManager(factory, fresh.Context, new SessionQuotaOptions { MaxSessions = 10, SessionTtlMinutes = 60 });
 
         var sessionId = "test-session-1";
         var engine = manager.GetOrCreate(sessionId);
@@ -69,7 +69,7 @@ public class SessionManagerTests
     {
         using var fresh = new FreshDbContext();
         var factory = new TestEngineFactory();
-        using var manager = new SessionManager(factory, fresh.Context, maxSessions: 10, sessionTtlMinutes: 60);
+        using var manager = new SessionManager(factory, fresh.Context, new SessionQuotaOptions { MaxSessions = 10, SessionTtlMinutes = 60 });
 
         var sessionId = "test-session-2";
         var engine1 = manager.GetOrCreate(sessionId);
@@ -83,7 +83,7 @@ public class SessionManagerTests
     {
         using var fresh = new FreshDbContext();
         var factory = new TestEngineFactory();
-        using var manager = new SessionManager(factory, fresh.Context, maxSessions: 10, sessionTtlMinutes: 60);
+        using var manager = new SessionManager(factory, fresh.Context, new SessionQuotaOptions { MaxSessions = 10, SessionTtlMinutes = 60 });
 
         var engine1 = manager.GetOrCreate("session-alpha");
         var engine2 = manager.GetOrCreate("session-beta");
@@ -96,7 +96,7 @@ public class SessionManagerTests
     {
         using var fresh = new FreshDbContext();
         var factory = new TestEngineFactory();
-        using var manager = new SessionManager(factory, fresh.Context, maxSessions: 10, sessionTtlMinutes: 60);
+        using var manager = new SessionManager(factory, fresh.Context, new SessionQuotaOptions { MaxSessions = 10, SessionTtlMinutes = 60 });
 
         var sessionId = "test-session-exists";
         manager.GetOrCreate(sessionId);
@@ -109,7 +109,7 @@ public class SessionManagerTests
     {
         using var fresh = new FreshDbContext();
         var factory = new TestEngineFactory();
-        using var manager = new SessionManager(factory, fresh.Context, maxSessions: 10, sessionTtlMinutes: 60);
+        using var manager = new SessionManager(factory, fresh.Context, new SessionQuotaOptions { MaxSessions = 10, SessionTtlMinutes = 60 });
 
         manager.SessionExists("nonexistent-session").ShouldBeFalse();
     }
@@ -119,7 +119,7 @@ public class SessionManagerTests
     {
         using var fresh = new FreshDbContext();
         var factory = new TestEngineFactory();
-        using var manager = new SessionManager(factory, fresh.Context, maxSessions: 10, sessionTtlMinutes: 60);
+        using var manager = new SessionManager(factory, fresh.Context, new SessionQuotaOptions { MaxSessions = 10, SessionTtlMinutes = 60 });
 
         var sessionId = "test-session-end";
         manager.GetOrCreate(sessionId);
@@ -138,7 +138,7 @@ public class SessionManagerTests
     {
         using var fresh = new FreshDbContext();
         var factory = new TestEngineFactory();
-        using var manager = new SessionManager(factory, fresh.Context, maxSessions: 10, sessionTtlMinutes: 60);
+        using var manager = new SessionManager(factory, fresh.Context, new SessionQuotaOptions { MaxSessions = 10, SessionTtlMinutes = 60 });
 
         Should.NotThrow(() => manager.EndSession("ghost-session"));
     }
@@ -148,7 +148,7 @@ public class SessionManagerTests
     {
         using var fresh = new FreshDbContext();
         var factory = new TestEngineFactory();
-        using var manager = new SessionManager(factory, fresh.Context, maxSessions: 10, sessionTtlMinutes: 60);
+        using var manager = new SessionManager(factory, fresh.Context, new SessionQuotaOptions { MaxSessions = 10, SessionTtlMinutes = 60 });
 
         manager.GetOrCreate("active-1");
         manager.GetOrCreate("active-2");
@@ -167,7 +167,7 @@ public class SessionManagerTests
     {
         using var fresh = new FreshDbContext();
         var factory = new TestEngineFactory();
-        using var manager = new SessionManager(factory, fresh.Context, maxSessions: 10, sessionTtlMinutes: 60);
+        using var manager = new SessionManager(factory, fresh.Context, new SessionQuotaOptions { MaxSessions = 10, SessionTtlMinutes = 60 });
 
         var sessionId = "test-update-activity";
         manager.GetOrCreate(sessionId);
@@ -185,7 +185,7 @@ public class SessionManagerTests
     {
         using var fresh = new FreshDbContext();
         var factory = new TestEngineFactory();
-        using var manager = new SessionManager(factory, fresh.Context, maxSessions: 10, sessionTtlMinutes: 60);
+        using var manager = new SessionManager(factory, fresh.Context, new SessionQuotaOptions { MaxSessions = 10, SessionTtlMinutes = 60 });
 
         var user = new User { Name = "Alice", FirstSeen = DateTime.UtcNow.ToString("o"), LastSeen = DateTime.UtcNow.ToString("o") };
         fresh.Context.Users.Add(user);
@@ -211,7 +211,7 @@ public class SessionManagerTests
     {
         using var fresh = new FreshDbContext();
         var factory = new TestEngineFactory();
-        using var manager = new SessionManager(factory, fresh.Context, maxSessions: 10, sessionTtlMinutes: 60);
+        using var manager = new SessionManager(factory, fresh.Context, new SessionQuotaOptions { MaxSessions = 10, SessionTtlMinutes = 60 });
 
         var engineA = manager.GetOrCreate("session-A");
         var engineB = manager.GetOrCreate("session-B");
@@ -228,7 +228,7 @@ public class SessionManagerTests
     {
         using var fresh = new FreshDbContext();
         var factory = new TestEngineFactory();
-        using var manager = new SessionManager(factory, fresh.Context, maxSessions: 10, sessionTtlMinutes: 60);
+        using var manager = new SessionManager(factory, fresh.Context, new SessionQuotaOptions { MaxSessions = 10, SessionTtlMinutes = 60 });
 
         var sessionId = "lifecycle-test";
         var engine = manager.GetOrCreate(sessionId);
@@ -255,7 +255,7 @@ public class SessionManagerTests
     {
         using var fresh = new FreshDbContext();
         var factory = new TestEngineFactory();
-        using var manager = new SessionManager(factory, fresh.Context, maxSessions: 3, sessionTtlMinutes: 60);
+        using var manager = new SessionManager(factory, fresh.Context, new SessionQuotaOptions { MaxSessions = 3, SessionTtlMinutes = 60 });
 
         manager.GetOrCreate("session-1");
         manager.GetOrCreate("session-2");

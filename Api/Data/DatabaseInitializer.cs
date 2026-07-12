@@ -9,56 +9,94 @@ public class DatabaseInitializer(PokeChatDbContext context)
 {
     public void Initialize()
     {
+        var dbPath = ResolveDbPath();
+        var bakPath = BackupHelper.GetBackupPath(dbPath);
+
+        BackupHelper.Backup(dbPath);
+
         try
         {
-            var pending = context.Database.GetPendingMigrations().ToList();
-            if (pending.Count > 0)
-                context.Database.Migrate();
+            context.Database.Migrate();
         }
-        catch (SqliteException)
+        catch
         {
-            // __EFMigrationsHistory table doesn't exist yet.
-            // Determine if this is a legacy DB (from EnsureCreated) or a fresh DB.
-            if (HasTables())
+            Console.WriteLine("[Database] Migration failed. Wiping and re-migrating...");
+            WipeAllTables(dbPath);
+
+            try
             {
-                // Legacy DB: seed migration history then apply any new migrations
-                SeedMigrationHistory();
+                context.Database.Migrate();
+            }
+            catch
+            {
+                Console.WriteLine("[Database] Re-migration also failed. Creating schema from model...");
+                context.Database.EnsureCreated();
             }
 
-            context.Database.Migrate();
+            if (File.Exists(bakPath))
+            {
+                try
+                {
+                    Console.WriteLine("[Database] Copying learned data from backup...");
+                    BackupHelper.CopyData(bakPath, dbPath);
+                    Console.WriteLine("[Database] Learned data restored.");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Database] Backup restore failed: {ex.Message}");
+                }
+            }
         }
 
         DbSeeder.Seed(context);
     }
 
-    private bool HasTables()
+    private void WipeAllTables(string dbPath)
     {
-        try
+        context.Database.CloseConnection();
+        SqliteConnection.ClearAllPools();
+
+        using var conn = new SqliteConnection($"Data Source={dbPath}");
+        conn.Open();
+
+        using var getTables = conn.CreateCommand();
+        getTables.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'";
+        var tables = new List<string>();
+        using (var reader = getTables.ExecuteReader())
         {
-            var count = (int)context.Database.ExecuteSqlRaw(
-                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name != '__EFMigrationsHistory'");
-            return count > 0;
+            while (reader.Read())
+                tables.Add(reader.GetString(0));
         }
-        catch
+
+        using var pragma = conn.CreateCommand();
+        pragma.CommandText = "PRAGMA foreign_keys = OFF";
+        pragma.ExecuteNonQuery();
+
+        foreach (var table in tables)
         {
-            return false;
+            using var drop = conn.CreateCommand();
+            drop.CommandText = $"DROP TABLE IF EXISTS \"{table}\"";
+            drop.ExecuteNonQuery();
         }
+
+        using var pragmaOn = conn.CreateCommand();
+        pragmaOn.CommandText = "PRAGMA foreign_keys = ON";
+        pragmaOn.ExecuteNonQuery();
+
+        conn.Close();
     }
 
-    private void SeedMigrationHistory()
+    private static string ResolveDbPath()
     {
-        var migrationsAssembly = ((IInfrastructure<IServiceProvider>)context.Database).GetService<IMigrationsAssembly>();
-        var allMigrations = migrationsAssembly.Migrations.Keys.ToList();
-        if (allMigrations.Count == 0) return;
+        var envPath = Environment.GetEnvironmentVariable("POKECHAT_DB_PATH");
+        if (!string.IsNullOrEmpty(envPath))
+            return envPath;
 
-        context.Database.ExecuteSqlRaw(
-            "CREATE TABLE \"__EFMigrationsHistory\" (\"MigrationId\" TEXT NOT NULL CONSTRAINT \"PK___EFMigrationsHistory\" PRIMARY KEY, \"ProductVersion\" TEXT NOT NULL)");
+        var baseDir = AppContext.BaseDirectory;
+        var root = ProjectPathHelper.FindProjectRoot(baseDir);
+        if (root != null)
+            return Path.Combine(root, "pokechat.db");
 
-        foreach (var migrationId in allMigrations)
-        {
-            context.Database.ExecuteSqlRaw(
-                "INSERT INTO \"__EFMigrationsHistory\" (\"MigrationId\", \"ProductVersion\") VALUES ({0}, {1})",
-                migrationId, "10.0.0");
-        }
+        return Path.Combine(baseDir, "pokechat.db");
     }
 }

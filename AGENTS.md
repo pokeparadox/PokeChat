@@ -78,6 +78,7 @@ Responses/
 - **SpellChecker:** Levenshtein-based spell correction with `misspellings` table for known errors; `pos_dictionary` as known word dictionary
 - **KnowledgeStore.Save():** Batch save method replaces per-operation SaveChanges; callers call `Save()` at logical boundaries
 - **Rate limiting:** Token bucket per IP (`TokenBucketStore`/`ITokenBucketStore`), configurable costs per request type. `SessionQuotaOptions` controls per-user session cap, per-session turn cap, and per-session upstream LLM call cap. Defaults: 60 tokens/min, 50 max sessions, 10 max sessions per user, 100 turns per session, 20 upstream calls per session.
+- **Database recovery:** `DatabaseInitializer` auto-backs up `pokechat.db` → `pokechat.db.bak` on every startup. On schema mismatch or migration failure, automatically recreates the DB and copies learned data from backup. `--restore-db` CLI flag restores from backup manually. `BackupHelper` uses SQLite ATTACH+INSERT for cross-schema data copy.
 
 ## DB Schema
 - `users` — id, name (unique), first_seen, last_seen

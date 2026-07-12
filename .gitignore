@@ -60,6 +60,7 @@ nunit-*.xml
 /bin
 /obj
 pokechat.db
+pokechat.db.bak
 logs/
 models/
 *.bin
@@ -74,3 +75,4 @@ entities.json
 tools/tools.json
 mcp.json
 tools/llm.json
+
