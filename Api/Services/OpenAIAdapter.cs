@@ -11,12 +11,14 @@ public class OpenAIAdapter
     private readonly UpstreamLLMClient? _upstream;
     private readonly ITokenBucketStore _tokenBucket;
     private readonly TokenBucketOptions _tokenOptions;
+    private readonly SessionQuotaOptions _quotas;
 
-    public OpenAIAdapter(SessionManager sessionManager, ITokenBucketStore tokenBucket, TokenBucketOptions tokenOptions, UpstreamLLMClient? upstream = null)
+    public OpenAIAdapter(SessionManager sessionManager, ITokenBucketStore tokenBucket, TokenBucketOptions tokenOptions, SessionQuotaOptions quotas, UpstreamLLMClient? upstream = null)
     {
         _sessionManager = sessionManager;
         _tokenBucket = tokenBucket;
         _tokenOptions = tokenOptions;
+        _quotas = quotas;
         _upstream = upstream;
     }
 
@@ -33,6 +35,30 @@ public class OpenAIAdapter
         if (!nlpAllowed)
         {
             return RateLimitedResponse(request, _tokenOptions.NlpCost, rateKey);
+        }
+
+        if (_sessionManager.IsTurnQuotaExceeded(sessionId))
+        {
+            return new ChatCompletionResponse
+            {
+                Model = request.Model,
+                Choices =
+                [
+                    new ChatCompletionChoice
+                    {
+                        Index = 0,
+                        Message = new ChatMessage { Role = "assistant", Content = "Session turn limit reached. Please start a new session." },
+                        FinishReason = "stop"
+                    }
+                ],
+                Usage = new Usage(),
+                RouteInfo = new RouteInfo
+                {
+                    Category = "session_turn_quota_exceeded",
+                    EngineHandled = false,
+                    Description = "session turn quota exceeded"
+                }
+            };
         }
 
         var responseText = engine.ProcessInput(input);
@@ -56,20 +82,28 @@ public class OpenAIAdapter
             }
             else
             {
-                var upstreamResult = await _upstream.ForwardAsync(request);
-                if (upstreamResult != null)
+                if (!_sessionManager.TryConsumeUpstreamCall(sessionId))
                 {
-                    upstreamResult.RouteInfo = new RouteInfo
-                    {
-                        Category = "upstream_llm",
-                        EngineHandled = false,
-                        Description = $"routed to upstream LLM"
-                    };
-                    AddRateLimitHeaders(upstreamResult, rateKey);
-                    return upstreamResult;
+                    routeInfo.Category = "upstream_quota_exceeded";
+                    routeInfo.Description = "upstream LLM call quota exceeded for this session";
                 }
+                else
+                {
+                    var upstreamResult = await _upstream.ForwardAsync(request);
+                    if (upstreamResult != null)
+                    {
+                        upstreamResult.RouteInfo = new RouteInfo
+                        {
+                            Category = "upstream_llm",
+                            EngineHandled = false,
+                            Description = $"routed to upstream LLM"
+                        };
+                        AddRateLimitHeaders(upstreamResult, rateKey);
+                        return upstreamResult;
+                    }
 
-                routeInfo.Description = "engine dead-end, upstream unavailable (returning engine fallback)";
+                    routeInfo.Description = "engine dead-end, upstream unavailable (returning engine fallback)";
+                }
             }
         }
 
@@ -124,6 +158,30 @@ public class OpenAIAdapter
             {
                 Id = errChunkId, Created = errCreated, Model = request.Model,
                 Choices = [new ChunkChoice { Index = 0, Delta = new Delta { Content = "Rate limited — insufficient tokens. Try again shortly." } }]
+            });
+            await onChunk(new ChatCompletionChunk
+            {
+                Id = errChunkId, Created = errCreated, Model = request.Model,
+                Choices = [new ChunkChoice { Index = 0, Delta = new Delta(), FinishReason = "stop" }]
+            });
+            await onDone();
+            return;
+        }
+
+        if (_sessionManager.IsTurnQuotaExceeded(sessionId))
+        {
+            var errChunkId = $"chatcmpl-{Guid.NewGuid().ToString("N")[..12]}";
+            var errCreated = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+            await onChunk(new ChatCompletionChunk
+            {
+                Id = errChunkId, Created = errCreated, Model = request.Model,
+                Choices = [new ChunkChoice { Index = 0, Delta = new Delta { Role = "assistant" } }]
+            });
+            await onChunk(new ChatCompletionChunk
+            {
+                Id = errChunkId, Created = errCreated, Model = request.Model,
+                Choices = [new ChunkChoice { Index = 0, Delta = new Delta { Content = "Session turn limit reached. Please start a new session." } }]
             });
             await onChunk(new ChatCompletionChunk
             {
@@ -195,7 +253,7 @@ public class OpenAIAdapter
         if (!engineHandled && _upstream != null)
         {
             var upstreamAllowed = _tokenBucket.TryDeduct(rateKey, _tokenOptions.StreamUpstreamCost);
-            if (upstreamAllowed)
+            if (upstreamAllowed && _sessionManager.TryConsumeUpstreamCall(sessionId))
             {
                 var streamed = await _upstream.ForwardStreamingAsync(request, onChunk, onDone, ct);
                 if (streamed)

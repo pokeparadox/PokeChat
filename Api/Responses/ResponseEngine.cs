@@ -868,7 +868,7 @@ public class ResponseEngine
             return null;
 
         _context.SetContext(ContextKeys.RecommenderGiven, "true");
-        return GetRandomResponse("recommender", recommendation.Suggestion, recommendation.LikedItem, recommendation.Category);
+        return GetRandomResponse("recommender", recommendation.Suggestion ?? "", recommendation.LikedItem ?? "", recommendation.Category ?? "");
     }
 
     private string? HandleSentiment()

@@ -547,7 +547,7 @@ public class ChatEngine : IDisposable
             return reminderResponse;
 
         if (TryHandleMetaCommentary(input, out var metaResponse))
-            return metaResponse;
+            return metaResponse!;
 
         LearnGreetingWords(input);
 
@@ -2436,7 +2436,7 @@ public class ChatEngine : IDisposable
         return true;
     }
 
-    internal bool TryHandleMetaCommentary(string input, out string response)
+    internal bool TryHandleMetaCommentary(string input, out string? response)
     {
         response = null;
         var lower = input.Trim().ToLowerInvariant();
@@ -2444,7 +2444,7 @@ public class ChatEngine : IDisposable
         if (lower.Length < 8)
             return false;
 
-        string category = null;
+        string? category = null;
 
         if (MetaConfusionTriggers.Any(t => lower.Contains(t)))
             category = "complaint_acknowledged";
@@ -3965,6 +3965,11 @@ public class ChatEngine : IDisposable
         _knowledgeStore.Save();
         _context.SetContext(ContextKeys.PendingReminderTask, null);
         _context.SetContext(ContextKeys.PendingReminderTime, null);
+        if (reminder == null)
+        {
+            response = string.Empty;
+            return false;
+        }
         response = _responseEngine.GetResponse("reminder_created", reminder.Task, FormatReminderTime(reminder.DueAt));
         return true;
     }
@@ -3986,6 +3991,8 @@ public class ChatEngine : IDisposable
         _knowledgeStore.Save();
         _context.SetContext(ContextKeys.PendingReminderTask, null);
         _context.SetContext(ContextKeys.PendingReminderTime, null);
+        if (reminder == null)
+            return string.Empty;
         return _responseEngine.GetResponse("reminder_created", reminder.Task, FormatReminderTime(reminder.DueAt));
     }
 

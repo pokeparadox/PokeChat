@@ -5,8 +5,8 @@ namespace PokeChat.Api.Services;
 public class TokenBucketOptions
 {
     public bool Enabled { get; set; } = true;
-    public int TokensPerMinute { get; set; } = 20;
-    public int MaxTokens { get; set; } = 20;
+    public int TokensPerMinute { get; set; } = 60;
+    public int MaxTokens { get; set; } = 60;
     public int NlpCost { get; set; } = 1;
     public int UpstreamCost { get; set; } = 20;
     public int StreamNlpCost { get; set; } = 2;

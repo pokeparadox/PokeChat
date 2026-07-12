@@ -77,6 +77,7 @@ Responses/
 - **NLP interfaces:** All NLP components implement interfaces (`ITokeniser`, `IPosTagger`, `ISentenceSplitter`, `ISvoExtractor`) for testability
 - **SpellChecker:** Levenshtein-based spell correction with `misspellings` table for known errors; `pos_dictionary` as known word dictionary
 - **KnowledgeStore.Save():** Batch save method replaces per-operation SaveChanges; callers call `Save()` at logical boundaries
+- **Rate limiting:** Token bucket per IP (`TokenBucketStore`/`ITokenBucketStore`), configurable costs per request type. `SessionQuotaOptions` controls per-user session cap, per-session turn cap, and per-session upstream LLM call cap. Defaults: 60 tokens/min, 50 max sessions, 10 max sessions per user, 100 turns per session, 20 upstream calls per session.
 
 ## DB Schema
 - `users` — id, name (unique), first_seen, last_seen
@@ -109,7 +110,6 @@ Completed phases in `.agents/history.md` and MemPalace (`wing: pokechat, room: p
 ### Planned (in order)
 
 - **Sub-plan 5:** Alternative UI
-- **Sub-plan 7:** Rate Limiting & Session Quotas
 
 ## Known Fixes
 Full history in MemPalace (`wing: pokechat, room: known-fixes`). Essentials only here:
@@ -130,6 +130,7 @@ Full history in MemPalace (`wing: pokechat, room: known-fixes`). Essentials only
 
 ## Routines
 - **Code review after every change:** After each modification, review the changed code for bugs and duplicate code — refactor any duplication found.
+- **Record build warnings as todos:** Any compiler/build warnings should be filed to MemPalace (`wing: pokechat, room: ideas`) as TODOs for future cleanup. Do not ignore them.
 - **When creating a new phase plan:** File the plan to MemPalace (`wing: pokechat, room: plans`).
 - **When a phase is completed:** File detailed completion to MemPalace (`wing: pokechat, room: phase-summaries`), append a one-line summary to `.agents/history.md`.
 - **After each phase or significant milestone:** Update `README.md` only if user-facing changes (new features, CLI commands, DB schema visible to end users).

@@ -1759,3 +1759,14 @@ Dual-persona architecture (chat/coding) with persona-filtered rules, responses, 
 - [x] `Program.cs` — passes `CancellationToken` from `RequestAborted`
 - [x] 17 new tests (9 UpstreamLLMClient + 8 OpenAIAdapter), 843/843 pass
 
+## Sub-plan 7: Rate Limiting & Session Quotas (2026-07-12)
+- [x] **Part A:** `SessionQuotaOptions` config class — `MaxSessions`, `MaxSessionsPerUser`, `MaxTurnsPerSession`, `MaxUpstreamCallsPerSession`, `SessionTtlMinutes`
+- [x] **Part B:** Per-user session cap via `CountSessionsForUser()` — enforced in `/sessions` POST endpoint
+- [x] **Part C:** Per-session turn cap via `IsTurnQuotaExceeded()` — checked in `OpenAIAdapter.ProcessAsync` and `StreamResponseAsync`
+- [x] **Part D:** Token bucket defaults updated (20→60 tokens/min, matching appsettings.json)
+- [x] **Part E:** Upstream LLM call cap via `TryConsumeUpstreamCall()` — tracked per session, cleaned up on session end/eviction
+- [x] **Part F:** `LLMOrchestrator.TryConsumeCall()` — shared `CallsThisSession` counter enforced across all 6 LLM methods (`GenerateResponse`, `GenerateWordForGame`, `GenerateGameStorySummary`, `GenerateHomeworkCheck`, `GenerateInterviewInput`, `GenerateTrainingLabels`)
+- [x] `appsettings.json` — `RateLimiting` and `SessionQuotas` sections with all configurable options
+- [x] `Program.cs` — `SessionQuotaOptions` wired through DI
+- [x] 18 new tests (9 SessionQuotaTests + 8 LLMOrchestratorTests + 1 updated), 859/859 pass
+

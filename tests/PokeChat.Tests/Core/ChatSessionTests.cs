@@ -2650,6 +2650,7 @@ public class ChatSessionTests
             session.DetectFileMentions("check src/Core/ChatSession.cs");
             session.GetContextValue("current_file").ShouldBe("src/Core/ChatSession.cs");
             var recent = session.GetContextValue("recent_files");
+            recent.ShouldNotBeNull();
             recent.ShouldContain("ChatSession.cs");
         }
     }

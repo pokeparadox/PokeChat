@@ -89,7 +89,7 @@ public class PoetryGenerator
         if (syllables <= 0)
         {
             var word = _knowledgeStore.GetRandomWord(wordType);
-            if (wordType == "verb" && GenerationUtils.ExcludedVerbs.Contains(word))
+            if (wordType == "verb" && word != null && GenerationUtils.ExcludedVerbs.Contains(word))
                 return null;
             if (wordType == "adjective" && word != null && word.EndsWith("ed", StringComparison.OrdinalIgnoreCase))
                 return null;

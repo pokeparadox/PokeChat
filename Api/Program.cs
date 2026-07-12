@@ -33,6 +33,10 @@ builder.Services.AddSingleton(tokenOptions);
 builder.Services.AddSingleton<ITokenBucketStore, InMemoryTokenBucketStore>();
 builder.Services.AddSingleton<ITimeEngine, SystemTimeEngine>();
 
+var sessionQuotas = new SessionQuotaOptions();
+builder.Configuration.GetSection("SessionQuotas").Bind(sessionQuotas);
+builder.Services.AddSingleton(sessionQuotas);
+
 builder.Services.AddHttpClient<UpstreamLLMClient>();
 builder.Services.AddSingleton<SessionManager>();
 builder.Services.AddSingleton<OpenAIAdapter>();

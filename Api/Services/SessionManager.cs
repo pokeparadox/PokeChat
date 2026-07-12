@@ -24,10 +24,12 @@ public sealed class SessionManager : IDisposable
     }
 
     private readonly ConcurrentDictionary<string, CacheEntry> _cache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, int> _upstreamCallsPerSession = new(StringComparer.OrdinalIgnoreCase);
     private readonly ChatEngineFactory _factory;
     private readonly PokeChatDbContext _dbContext;
     private readonly int _maxSessions;
     private readonly TimeSpan _sessionTtl;
+    private readonly SessionQuotaOptions _quotas;
 
     public SessionManager(ChatEngineFactory factory, int maxSessions = 50, int sessionTtlMinutes = 60)
         : this(factory, new PokeChatDbContext(), maxSessions, sessionTtlMinutes)
@@ -35,11 +37,22 @@ public sealed class SessionManager : IDisposable
     }
 
     public SessionManager(ChatEngineFactory factory, PokeChatDbContext dbContext, int maxSessions = 50, int sessionTtlMinutes = 60)
+        : this(factory, dbContext, new SessionQuotaOptions { MaxSessions = maxSessions, SessionTtlMinutes = sessionTtlMinutes })
+    {
+    }
+
+    public SessionManager(ChatEngineFactory factory, SessionQuotaOptions quotas)
+        : this(factory, new PokeChatDbContext(), quotas)
+    {
+    }
+
+    public SessionManager(ChatEngineFactory factory, PokeChatDbContext dbContext, SessionQuotaOptions quotas)
     {
         _factory = factory;
         _dbContext = dbContext;
-        _maxSessions = maxSessions;
-        _sessionTtl = TimeSpan.FromMinutes(sessionTtlMinutes);
+        _quotas = quotas;
+        _maxSessions = quotas.MaxSessions;
+        _sessionTtl = TimeSpan.FromMinutes(quotas.SessionTtlMinutes);
     }
 
     public ChatEngine GetOrCreate(string sessionId, string? userName = null, List<ChatMessage>? messages = null, string? persona = null)
@@ -133,6 +146,8 @@ public sealed class SessionManager : IDisposable
             entry.Engine.Dispose();
         }
 
+        _upstreamCallsPerSession.TryRemove(sessionId, out _);
+
         var dbSession = _dbContext.ConversationSessions.FirstOrDefault(s => s.SessionGuid == sessionId);
         if (dbSession != null)
         {
@@ -166,6 +181,29 @@ public sealed class SessionManager : IDisposable
         }
     }
 
+    public int CountSessionsForUser(int userId)
+    {
+        return _cache.Count(kvp => kvp.Value.Engine.CurrentUserId == userId);
+    }
+
+    public bool IsTurnQuotaExceeded(string sessionId)
+    {
+        var dbSession = _dbContext.ConversationSessions.FirstOrDefault(s => s.SessionGuid == sessionId);
+        if (dbSession == null) return false;
+        return dbSession.TurnCount >= _quotas.MaxTurnsPerSession;
+    }
+
+    public bool TryConsumeUpstreamCall(string sessionId)
+    {
+        var count = _upstreamCallsPerSession.AddOrUpdate(sessionId, 1, (_, c) => c + 1);
+        return count <= _quotas.MaxUpstreamCallsPerSession;
+    }
+
+    public int GetUpstreamCalls(string sessionId)
+    {
+        return _upstreamCallsPerSession.GetValueOrDefault(sessionId);
+    }
+
     public bool SessionExists(string sessionId)
     {
         return _cache.ContainsKey(sessionId) ||
@@ -189,6 +227,8 @@ public sealed class SessionManager : IDisposable
                     entry.DbSession.LastActiveAt = DateTime.UtcNow.ToString("o");
                     SyncUserId(entry.Engine, entry.DbSession);
                 }
+
+                _upstreamCallsPerSession.TryRemove(kvp.Key, out _);
             }
         }
 
@@ -240,6 +280,8 @@ public sealed class SessionManager : IDisposable
                 entry.DbSession.LastActiveAt = DateTime.UtcNow.ToString("o");
                 SyncUserId(entry.Engine, entry.DbSession);
             }
+
+            _upstreamCallsPerSession.TryRemove(kvp.Key, out _);
         }
 
         if (_dbContext.ChangeTracker.HasChanges())

@@ -102,10 +102,8 @@ public class LLMOrchestrator : IDisposable
     {
         var provider = GetProvider(tier);
         if (provider == null || UserDeclined) return null;
-        if (!Config.AlwaysOn && Config.MaxCallsPerSession > 0 && CallsThisSession >= Config.MaxCallsPerSession)
-            return null;
+        if (!TryConsumeCall()) return null;
 
-        CallsThisSession++;
         return provider.GenerateResponse(input, Config.SystemPrompt);
     }
 
@@ -113,6 +111,7 @@ public class LLMOrchestrator : IDisposable
     {
         var provider = GetProvider("fast") ?? GetProvider(_defaultTier);
         if (provider == null || UserDeclined) return null;
+        if (!TryConsumeCall()) return null;
 
         var systemPrompt = "You are playing a word game. Add EXACTLY ONE word that continues the story in a " +
             "funny or interesting way, following proper grammar. Return ONLY that word, no punctuation or explanation.";
@@ -127,6 +126,7 @@ public class LLMOrchestrator : IDisposable
     {
         var provider = GetProvider(_defaultTier);
         if (provider == null || UserDeclined) return null;
+        if (!TryConsumeCall()) return null;
 
         var prompt = $"Here are some words chosen in a word game: '{storyWords}'. Write a short, funny story (2-3 sentences) using these words. Return only the story, no commentary.";
         return provider.GenerateResponse(prompt, "");
@@ -136,7 +136,17 @@ public class LLMOrchestrator : IDisposable
     {
         var provider = GetProvider("powerful") ?? GetProvider(_defaultTier);
         if (provider == null || UserDeclined) return null;
+        if (!TryConsumeCall()) return null;
+
         return provider.GenerateResponse(prompt, HomeworkCheckSystemPrompt);
+    }
+
+    private bool TryConsumeCall()
+    {
+        if (!Config.AlwaysOn && Config.MaxCallsPerSession > 0 && CallsThisSession >= Config.MaxCallsPerSession)
+            return false;
+        CallsThisSession++;
+        return true;
     }
 
     public void Dispose()
@@ -152,6 +162,8 @@ public class LLMOrchestrator : IDisposable
     {
         var provider = GetProvider(_defaultTier);
         if (provider == null || UserDeclined) return null;
+        if (!TryConsumeCall()) return null;
+
         return provider.GenerateResponse(prompt, InterviewSystemPrompt);
     }
 
@@ -159,6 +171,7 @@ public class LLMOrchestrator : IDisposable
     {
         var provider = GetProvider("powerful") ?? GetProvider(_defaultTier);
         if (provider == null || UserDeclined) return null;
+        if (!TryConsumeCall()) return null;
 
         var prompt = "Review this conversation and label each user turn with an intent category. " +
             "Categories: greeting, name_intro, preference_statement, dislike_statement, possession_statement, " +

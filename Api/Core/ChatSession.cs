@@ -72,10 +72,10 @@ public class ChatSession : IDisposable
 
         while (true)
         {
-            string input;
+            string? input;
             if (_engine.IsInterviewActive && _engine.InterviewEngine != null)
             {
-                string question;
+                string? question;
                 if (_engine.PendingFollowUp != null)
                 {
                     question = _engine.PendingFollowUp;
@@ -241,7 +241,7 @@ public class ChatSession : IDisposable
     internal void DetectFileMentions(string input) => _engine.DetectFileMentions(input);
     internal string? GetContextValue(string key) => _engine.GetContextValue(key);
     public string? GetSessionStartReminderMessage() => _engine.GetSessionStartReminderMessage();
-    internal bool TryHandleMetaCommentary(string input, out string response) => _engine.TryHandleMetaCommentary(input, out response);
+    internal bool TryHandleMetaCommentary(string input, out string? response) => _engine.TryHandleMetaCommentary(input, out response);
     internal IReadOnlyList<TopicEntry> TopicStack => _engine.TopicStack;
     internal string? LastSubject => _engine.LastSubject;
     internal string? LastObject => _engine.LastObject;
