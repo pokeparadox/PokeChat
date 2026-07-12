@@ -19,6 +19,7 @@ public class ResponseEngine
     private readonly ITokeniser _tokeniser;
     private readonly ISvoExtractor _svoExtractor;
     private readonly IMathEngine _mathEngine;
+    private readonly ITimeEngine? _timeEngine;
     private readonly StoryGenerator _storyGenerator;
     private readonly PoetryGenerator _poetryGenerator;
     private readonly ToolRegistry? _toolRegistry;
@@ -105,7 +106,7 @@ public class ResponseEngine
             || (category != null && category.StartsWith("proactive_"));
     }
 
-    public ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker context, SpellChecker spellChecker, IPosTagger posTagger, ITokeniser tokeniser, ISvoExtractor svoExtractor, IMathEngine? mathEngine = null, StoryGenerator? storyGenerator = null, ToolRegistry? toolRegistry = null, List<ResponseRuleRecord>? toolTriggers = null, Func<string, string?>? llmGenerator = null, HashSet<string>? enhancedCategories = null, bool summariseToolResults = false, ML.IntentClassifier? intentClassifier = null, ML.NeuralResponsePipeline? neuralPipeline = null)
+    public ResponseEngine(KnowledgeStore knowledgeStore, ContextTracker context, SpellChecker spellChecker, IPosTagger posTagger, ITokeniser tokeniser, ISvoExtractor svoExtractor, IMathEngine? mathEngine = null, ITimeEngine? timeEngine = null, StoryGenerator? storyGenerator = null, ToolRegistry? toolRegistry = null, List<ResponseRuleRecord>? toolTriggers = null, Func<string, string?>? llmGenerator = null, HashSet<string>? enhancedCategories = null, bool summariseToolResults = false, ML.IntentClassifier? intentClassifier = null, ML.NeuralResponsePipeline? neuralPipeline = null)
     {
         _knowledgeStore = knowledgeStore;
         _context = context;
@@ -114,6 +115,7 @@ public class ResponseEngine
         _tokeniser = tokeniser;
         _svoExtractor = svoExtractor;
         _mathEngine = mathEngine ?? new SimpleMath();
+        _timeEngine = timeEngine;
         _storyGenerator = storyGenerator ?? new StoryGenerator(knowledgeStore);
         _poetryGenerator = new PoetryGenerator(knowledgeStore);
         _toolRegistry = toolRegistry;
@@ -481,6 +483,50 @@ public class ResponseEngine
                 return GetRandomResponse("math_confirmation", mathResult.Expression, mathResult.Value);
             }
             return GetRandomResponse("math_result", mathResult.Expression, mathResult.Value);
+        }
+
+        var timeResult = _timeEngine?.Evaluate(input, userId);
+        if (timeResult != null)
+        {
+            var timezone = timeResult.Timezone ?? "UTC";
+            if (timezone != "UTC" && userId.HasValue)
+            {
+                var existingTimezone = _knowledgeStore.GetFactsBySubject("user")
+                    .FirstOrDefault(f => f.Verb == "timezone" && f.UserId == userId);
+                if (existingTimezone == null)
+                {
+                    _knowledgeStore.StoreFact(new Fact
+                    {
+                        UserId = userId,
+                        Subject = "user",
+                        Verb = "timezone",
+                        Object = timezone,
+                        PredicateType = "UserAttribute",
+                        CreatedAt = DateTime.UtcNow.ToString("o")
+                    });
+                }
+            }
+            return GetRandomResponse("time_result", timeResult.FormattedTime, timeResult.TimeOfDayPhrase, timezone);
+        }
+
+        var timezoneExtracted = _timeEngine?.ExtractTimezone(input);
+        if (timezoneExtracted != null && userId.HasValue)
+        {
+            var existingTimezone = _knowledgeStore.GetFactsBySubject("user")
+                .FirstOrDefault(f => f.Verb == "timezone" && f.UserId == userId);
+            if (existingTimezone == null)
+            {
+                _knowledgeStore.StoreFact(new Fact
+                {
+                    UserId = userId,
+                    Subject = "user",
+                    Verb = "timezone",
+                    Object = timezoneExtracted,
+                    PredicateType = "UserAttribute",
+                    CreatedAt = DateTime.UtcNow.ToString("o")
+                });
+                return GetRandomResponse("timezone_set", timezoneExtracted);
+            }
         }
 
         var dictResult = HandleDictionaryQuery(input);

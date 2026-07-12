@@ -102,6 +102,15 @@ Type `quit` or `exit` to leave.
 | `switch to chat mode` / `enter chat mode` | Switch back to chat persona |
 | `interview mode` / `train the bot` | Start interactive bot training |
 
+### Time & Timezone
+| If you say… | The bot will… |
+|---|---|
+| `what's the time` / `what time is it` / `tell me the time` / `current time` | Tell the current time (UTC by default) |
+| `what's the date` / `today's date` / `current date` | Show today's date |
+| `what day is it` / `what day of the week` | Show the day of the week |
+| *(add)* `in EST` / `in PST timezone` | Convert to that timezone |
+| `my timezone is GMT` / `I'm in EST` / `set my time zone to PST` | Remember your timezone for future queries |
+
 ### Self-Knowledge & Stats
 | If you say… | The bot will… |
 |---|---|
@@ -184,6 +193,29 @@ Api/
     Schema.sql               → reference DDL for all tables
 ```
 
+## REST API
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/health` | GET | Health check |
+| `/v1/models` | GET | List available models (`pokechat-v1`, `pokecode-v1`) |
+| `/v1/chat/completions` | POST | OpenAI-compatible chat (stream + non-stream) |
+| `/v1/title` | POST | Generate a conversation title from message history |
+| `/sessions` | POST/GET | Create or list sessions |
+| `/sessions/{id}` | GET/DELETE | Get or end a session |
+| `/sessions/{id}/chat` | POST | Send a message to a session |
+
+### `/v1/title`
+
+```json
+POST /v1/title
+{ "messages": [{ "role": "user", "content": "I'm getting a NullReferenceException in ChatEngine" }] }
+
+→ { "title": "ChatEngine Debugging" }
+```
+
+Classifies the last user message into one of 9 categories (debugging, planning, feature, setup, testing, code_review, brainstorm, question, chat) and extracts a key subject to form a readable title. No LLM required — pure keyword + regex matching, returns in <1ms.
+
 ## Database
 
 SQLite via EF Core. Location: `pokechat.db` in project root (auto-created).
@@ -259,30 +291,4 @@ All conversational data is persisted:
 | 36 | Mad Libs + Would You Rather + Magic 8 Ball | ✅ |
 | 37 | Cross-Session Recall (~30% chance at session start) | ✅ |
 | 38 | Emoji Personality (117 category-appropriate emoji) | ✅ |
-| — | Interview Mode (LLM-driven / non-LLM, bot-asks questions) | ✅ |
-| 40 | Word List Consolidation (shared GenerationUtils) | ✅ |
-| 41 | Universal LLM Thinking Indicator | ✅ |
-| 42 | Non-LLM Interview Mode (30-question bank) | ✅ |
-| 43 | Hang-Man Game (POS-dictionary word guessing) | ✅ |
-| 48 | Entity Graph Explorer (BFS path finding, relation queries) | ✅ |
-| 49 | Persona System (coding/chat, persona-filtered rules) | ✅ |
-| 50 | Shell Command Tool (whitelist-based security) | ✅ |
-| 51 | File Operations Tool (read/write/list/search, path traversal protection) | ✅ |
-| 50b | Coding Project Context (file mention detection, git branch) | ✅ |
-| 51b | Coding CLI Command DB (~90 NL→shell mappings, destructive confirmation) | ✅ |
-| 52 | Error Knowledge Base (~60 compiler errors, regex matching) | ✅ |
-| 44 | Neural Net Integration (~250 seeds, IntentClassifier, self-training) | ✅ |
-| 45 | Preference Recommender (suggestions from `is_a` WordLinks, once/session) | ✅ |
-| 46 | Timeline / Journal (chronological fact recap by day, proactive offer) | ✅ |
-| 47 | Quiz Builder (multi-turn quiz from user facts, correct/wrong/score) | ✅ |
-| 53 | In-Chat Reminders (create/list/done/cancel, session-start due check) | ✅ |
-| — | Name Confusion Fix (POS validation, cross-session identity) | ✅ |
-| — | Meta-commentary Detection (confusion/not-helpful/mocking, repeated complaint tracking) | ✅ |
-| — | Word Classification Expansion (all 6 word types, "I don't know" + LLM fallback) | ✅ |
-| — | Sub-plan 1: Minimal HTTP API (`POST /chat`, `GET /health`, in-memory sessions) | ✅ |
-| — | Sub-plan 2: Session Persistence (DB-backed LRU cache, CRUD endpoints) | ✅ |
-| — | Sub-plan 3: Smart Routing & Layered LLMs (slash commands, tiered LLM config) | ✅ |
-| — | Sub-plan 4: Engine/API Inversion (API = core library, Console = HTTP client) | ✅ |
-| — | Model-Based Persona Routing (`pokecode-v1` coding persona, User-Agent detection) | ✅ |
-
 See `.agents/history.md` for completed improvements. 

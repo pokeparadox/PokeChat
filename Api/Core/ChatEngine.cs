@@ -265,7 +265,7 @@ public class ChatEngine : IDisposable
         var enhancedCats = _llmOrchestrator.Config.EnhancedCategories.Count > 0
             ? new HashSet<string>(_llmOrchestrator.Config.EnhancedCategories, StringComparer.OrdinalIgnoreCase)
             : new HashSet<string>();
-        _responseEngine = new ResponseEngine(_knowledgeStore, _context, _spellChecker, _posTagger, _tokeniser, _svoExtractor, toolRegistry: toolRegistry, toolTriggers: toolTriggers, llmGenerator: llmGenerator, enhancedCategories: enhancedCats, summariseToolResults: _llmOrchestrator.Config.SummariseToolResults, intentClassifier: _intentClassifier);
+        _responseEngine = new ResponseEngine(_knowledgeStore, _context, _spellChecker, _posTagger, _tokeniser, _svoExtractor, timeEngine: new SystemTimeEngine(), toolRegistry: toolRegistry, toolTriggers: toolTriggers, llmGenerator: llmGenerator, enhancedCategories: enhancedCats, summariseToolResults: _llmOrchestrator.Config.SummariseToolResults, intentClassifier: _intentClassifier);
         AutoSeedPosDictionary(_mcpRegistry);
 
         var spellDict = new HashSet<string>(posEntries.Select(e => e.Word), StringComparer.OrdinalIgnoreCase);
@@ -2050,8 +2050,8 @@ public class ChatEngine : IDisposable
             ["llm_thinking"] = new() { "Let me check with my AI..." },
             ["persona_switch_chat"] = new() { "Switched to chat mode. I'm PokeChat again!" },
             ["persona_switch_coding"] = new() { "Switched to coding mode. I'm PokeCode — ready to help with code." },
-            ["coding_confirmation_prompt"] = new() { "Are you sure you want to run that command? (yes/no)", "That could be destructive. Are you sure? (yes/no)" },
-            ["coding_confirmation_denied"] = new() { "Cancelled.", "Command cancelled.", "OK, I won't run it." },
+            ["coding_confirmation_prompt"] = new() { "Are you sure you want to run that command, {name}? (yes/no)", "That could be destructive, {name}. Are you sure? (yes/no)" },
+            ["coding_confirmation_denied"] = new() { "Cancelled, {name}.", "Command cancelled as requested, {name}." },
         };
 
         if (fallbacks.TryGetValue(category, out var fb) && fb.Count > 0)

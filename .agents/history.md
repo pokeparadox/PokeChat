@@ -1703,3 +1703,51 @@ Dual-persona architecture (chat/coding) with persona-filtered rules, responses, 
 - [x] User-Agent fallback: opencode/Copilot on `pokechat-v1` auto-switches to coding with warning in response
 - [x] Response headers: `X-PokeChat-Persona`, `X-PokeChat-Model`
 - [x] 808/808 tests pass (0 failures)
+
+---
+
+## Multi-User REST API Support (2026-07-12)
+- [x] `request.User` (OpenAI-compatible field) plumbed into `SessionManager.GetOrCreate()` — user identity flows from API to session
+- [x] `KnowledgeStore.StoreFact()` scopes facts per-user; `GetFact()` filters by `currentUserId` for dedup
+- [x] `SessionManager.EvictLru()` scoped per-user — one user's cache pressure doesn't evict another's sessions
+- [x] IP-based rate limiting middleware (30 req/min fixed window) — per-IP, not per-session
+- [x] All 808 tests pass
+
+## Fact Consensus & Global Promotion (2026-07-12)
+- [x] `FactEntity.Confidence` (double, default 1.0) + `FactEndorsement` table (FactId, UserId, CreatedAt)
+- [x] `KnowledgeStore.TryEndorseFact()` — identical (subject, verb, object) from different users → +0.5 Confidence (cap 5.0), skips duplicate row
+- [x] `GetPopularFacts(int minConfidence)` / `GetEndorsements(int factId)` for querying consensus
+- [x] Auto-promote to global (`UserId = null`) when Confidence ≥ 3.0 — fact becomes visible to all users
+- [x] Decay exemption: Confidence ≥ 2.0 facts are never deleted by knowledge decay cleanup
+- [x] EF Core migration: `FactConsensus` — adds Confidence column + FactEndorsements table
+- [x] 808/808 tests pass
+
+## Token-Based Variable Rate Limiting (2026-07-12)
+- [x] `ITokenBucketStore` / `InMemoryTokenBucketStore` / `TokenBucketOptions` — per-IP token buckets with TTL eviction
+- [x] Tiered cost model: NLP = 1 token, upstream LLM = 20 tokens, refill 20 tokens/min cap 20
+- [x] `OpenAIAdapter` checks before engine call and before upstream ForwardAsync — rejects upstream if insufficient tokens
+- [x] Response headers: `X-RateLimit-Remaining`, `X-RateLimit-Reset` on every response
+- [x] Configured via `appsettings.json` `RateLimiting` section (costs, refill rate, max tokens)
+- [x] 808/808 tests pass
+
+## Time-of-Day Query Handler (2026-07-12)
+- [x] `ITimeEngine` interface + `SystemTimeEngine` — detects time/date/day queries via `[GeneratedRegex]` patterns
+- [x] Timezone extraction (`"in EST"`, `"in PST timezone"`) and IANA zone conversion
+- [x] Timezone persistence: explicit "my timezone is GMT" stores as user fact (`KnowledgeStore.StoreFact`)
+- [x] `time_result` and `timezone_set` bot response categories (3 templates each) seeded in DbSeeder
+- [x] Wired into `ResponseEngine.GenerateResponse` immediately after math evaluation block
+- [x] `ITimeEngine` registered in DI (`builder.Services.AddSingleton<ITimeEngine, SystemTimeEngine>()`)
+- [x] 808/808 tests pass
+
+## Coding Persona Name Memory (2026-07-12)
+- [x] `DbSeeder.cs` — added `{name}` and `{bot_name}` placeholders to 6 coding_* categories; added 8 new categories (`coding_greeting`, `coding_default`, `coding_error`, `coding_clarification`)
+- [x] `ChatEngine.cs` — updated hardcoded fallbacks (`coding_confirmation_prompt`, `coding_confirmation_denied`) with `{name}` placeholder
+- [x] `tests/Helpers/TestDataHelper.cs` — updated seed data to match DbSeeder
+- [x] 808/808 tests pass
+
+## Title Generator (2026-07-12)
+- [x] `Api/Services/TitleGenerator.cs` — keyword-based classifier with 9 categories (debugging, planning, feature, setup, testing, code_review, brainstorm, question, general_chat) + subject extraction via regex patterns and significance scoring
+- [x] `Api/Program.cs` — registered singleton, `POST /v1/title` endpoint accepting `{ messages: [...] }`, returning `{ title: "..." }`
+- [x] Whole-word boundary matching prevents false matches (e.g. "implementation" doesn't trigger "implement" keyword)
+- [x] 18 new tests, 826/826 pass
+

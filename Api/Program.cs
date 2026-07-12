@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using PokeChat.Api.Models;
 using PokeChat.Api.Services;
 using PokeChat.Data;
+using PokeChat.Math;
 
 var jsonOptions = new JsonSerializerOptions
 {
@@ -30,10 +31,12 @@ var tokenOptions = new TokenBucketOptions();
 builder.Configuration.GetSection("RateLimiting").Bind(tokenOptions);
 builder.Services.AddSingleton(tokenOptions);
 builder.Services.AddSingleton<ITokenBucketStore, InMemoryTokenBucketStore>();
+builder.Services.AddSingleton<ITimeEngine, SystemTimeEngine>();
 
 builder.Services.AddHttpClient<UpstreamLLMClient>();
 builder.Services.AddSingleton<SessionManager>();
 builder.Services.AddSingleton<OpenAIAdapter>();
+builder.Services.AddSingleton<TitleGenerator>();
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -109,6 +112,12 @@ app.MapPost("/v1/chat/completions", async (HttpContext httpContext, ChatCompleti
     return Results.Ok(response);
 }).RequireRateLimiting("user-partitioned");
 
+app.MapPost("/v1/title", (TitleRequest request, TitleGenerator generator) =>
+{
+    var title = generator.GenerateTitle(request.Messages);
+    return Results.Ok(new { title });
+});
+
 app.MapPost("/sessions", (SessionManager sessions, SessionCreateRequest? request) =>
 {
     var sessionId = Guid.NewGuid().ToString();
@@ -177,4 +186,9 @@ public class SessionCreateRequest
 public class ChatRequest
 {
     public string Message { get; set; } = string.Empty;
+}
+
+public class TitleRequest
+{
+    public List<ChatMessage> Messages { get; set; } = new();
 }

@@ -243,16 +243,28 @@ internal static class TestDataHelper
 
         var codingResponses = new (string Category, string Text)[]
         {
-            ("coding_file_set", "Got it! I'll remember {0} as the current file."),
-            ("coding_file_set", "Setting current file to {0}."),
-            ("coding_file_unknown", "I don't recognise that file name."),
-            ("coding_file_unknown", "Are you sure that file exists?"),
+            ("coding_greeting", "Hello {name}, I'm {bot_name}. How can I help you code?"),
+            ("coding_greeting", "Hi {name}, I'm {bot_name}. Ready to assist with your code."),
+            ("coding_file_set", "Got it, {name}! I'll remember {0} as the current file."),
+            ("coding_file_set", "Setting current file to {0} for you, {name}."),
+            ("coding_file_unknown", "Sorry {name}, I don't recognise that file name."),
+            ("coding_file_unknown", "Are you sure {name} that file exists?"),
             ("coding_current_file", "Current file is {0}."),
             ("coding_current_file", "You're looking at {0}."),
             ("coding_branch_info", "Current branch is {0}."),
             ("coding_branch_info", "You're on branch {0}."),
             ("coding_project_root", "Project root is {0}."),
             ("coding_project_root", "Working directory is {0}."),
+            ("coding_default", "I'm {bot_name}, your coding assistant. How can I help, {name}?"),
+            ("coding_default", "Ready to help with code, {name}! What do you need?"),
+            ("coding_error", "Sorry {name}, I encountered an error: {0}."),
+            ("coding_error", "I couldn't process that, {name}. Details: {0}"),
+            ("coding_clarification", "I'm not sure I understand, {name}. Can you clarify?"),
+            ("coding_clarification", "Could you rephrase that, {name}?"),
+            ("coding_confirmation_prompt", "Are you sure you want to run that command, {name}? (yes/no)"),
+            ("coding_confirmation_prompt", "That could be destructive, {name}. Are you sure? (yes/no)"),
+            ("coding_confirmation_denied", "Cancelled, {name}."),
+            ("coding_confirmation_denied", "Command cancelled as requested, {name}."),
         };
         db.BotResponses.AddRange(codingResponses.Select(r => new BotResponse
         {

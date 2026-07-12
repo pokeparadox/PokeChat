@@ -1617,6 +1617,12 @@ public static class DbSeeder
             ("meta_repeated_complaint", "I'm sorry I keep getting things wrong. Is there something specific I can help with?"),
             ("meta_repeated_complaint", "I know I'm not doing great today. Let's start fresh — what would you like to talk about?"),
             ("meta_repeated_complaint", "I'm really dropping the ball today. How about we try a different topic?"),
+            ("time_result", "It's {0}. {1}! You're in the {2} timezone."),
+            ("time_result", "{0}. {1}! Timezone: {2}."),
+            ("time_result", "The time is {0}. {1}! (Timezone: {2})"),
+            ("timezone_set", "Got it! I'll remember your timezone is {0}."),
+            ("timezone_set", "Thanks! I've set your timezone to {0}."),
+            ("timezone_set", "Okay, I'll use {0} as your timezone going forward."),
         };
 
         context.BotResponses.AddRange(responses.Select(r => new BotResponse
@@ -1628,16 +1634,28 @@ public static class DbSeeder
 
         var codingResponses = new (string Category, string ResponseText)[]
         {
-            ("coding_file_set", "Got it! I'll remember {0} as the current file."),
-            ("coding_file_set", "Setting current file to {0}."),
-            ("coding_file_unknown", "I don't recognise that file name."),
-            ("coding_file_unknown", "Are you sure that file exists?"),
+            ("coding_greeting", "Hello {name}, I'm {bot_name}. How can I help you code?"),
+            ("coding_greeting", "Hi {name}, I'm {bot_name}. Ready to assist with your code."),
+            ("coding_file_set", "Got it, {name}! I'll remember {0} as the current file."),
+            ("coding_file_set", "Setting current file to {0} for you, {name}."),
+            ("coding_file_unknown", "Sorry {name}, I don't recognise that file name."),
+            ("coding_file_unknown", "Are you sure {name} that file exists?"),
             ("coding_current_file", "Current file is {0}."),
             ("coding_current_file", "You're looking at {0}."),
             ("coding_branch_info", "Current branch is {0}."),
             ("coding_branch_info", "You're on branch {0}."),
             ("coding_project_root", "Project root is {0}."),
             ("coding_project_root", "Working directory is {0}."),
+            ("coding_default", "I'm {bot_name}, your coding assistant. How can I help, {name}?"),
+            ("coding_default", "Ready to help with code, {name}! What do you need?"),
+            ("coding_error", "Sorry {name}, I encountered an error: {0}."),
+            ("coding_error", "I couldn't process that, {name}. Details: {0}"),
+            ("coding_clarification", "I'm not sure I understand, {name}. Can you clarify?"),
+            ("coding_clarification", "Could you rephrase that, {name}?"),
+            ("coding_confirmation_prompt", "Are you sure you want to run that command, {name}? (yes/no)"),
+            ("coding_confirmation_prompt", "That could be destructive, {name}. Are you sure? (yes/no)"),
+            ("coding_confirmation_denied", "Cancelled, {name}."),
+            ("coding_confirmation_denied", "Command cancelled as requested, {name}."),
         };
         context.BotResponses.AddRange(codingResponses.Select(r => new BotResponse
         {
