@@ -74,11 +74,11 @@ public class ResponseEngine
 
         // Built-in fallbacks for weather categories to avoid returning empty strings when DB wasn't seeded
         if (category == "weather_no_api_key")
-            return "Sorry, I don't have a weather API key set up yet.";
+            return "I don't have a weather API key. Get a free one at openweathermap.org and set the WEATHER_API_KEY environment variable.";
         if (category == "weather_no_location")
             return "Where are you? Tell me your city and I'll check the weather.";
         if (category == "weather_error")
-            return "Sorry, I couldn't get the weather right now.";
+            return "Sorry, I couldn't get the weather right now. Please check the city name and try again.";
 
         if (category.StartsWith("weather_result"))
         {

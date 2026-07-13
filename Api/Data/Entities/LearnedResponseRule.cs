@@ -10,4 +10,6 @@ public class LearnedResponseRule
     public int Confidence { get; set; } = 5;
     public bool IsActive { get; set; } = true;
     public string CreatedAt { get; set; } = string.Empty;
+    public string? LastAccessed { get; set; }
+    public int AccessCount { get; set; }
 }

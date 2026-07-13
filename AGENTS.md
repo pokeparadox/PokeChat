@@ -79,10 +79,11 @@ Responses/
 - **KnowledgeStore.Save():** Batch save method replaces per-operation SaveChanges; callers call `Save()` at logical boundaries
 - **Rate limiting:** Token bucket per IP (`TokenBucketStore`/`ITokenBucketStore`), configurable costs per request type. `SessionQuotaOptions` controls per-user session cap, per-session turn cap, and per-session upstream LLM call cap. Defaults: 60 tokens/min, 50 max sessions, 10 max sessions per user, 100 turns per session, 20 upstream calls per session.
 - **Database recovery:** `DatabaseInitializer` auto-backs up `pokechat.db` → `pokechat.db.bak` on every startup. On schema mismatch or migration failure, automatically recreates the DB and copies learned data from backup. `--restore-db` CLI flag restores from backup manually. `BackupHelper` uses SQLite ATTACH+INSERT for cross-schema data copy.
+- **Knowledge decay:** Access tracking (`last_accessed`, `access_count`) on facts, learned rules, and word definitions. `DecayCleanup()` auto-runs at session end and via `~cleanup` command. Deletes stale records (>90 days old, never accessed, low confidence) and runs VACUUM when >50 records deleted. Client-side filtering ensures in-memory access tracking is respected.
 
 ## DB Schema
 - `users` — id, name (unique), first_seen, last_seen
-- `facts` — id, user_id (nullable FK→users), subject, verb, object, predicate_type, created_at
+- `facts` — id, user_id (nullable FK→users), subject, verb, object, predicate_type, created_at, **last_accessed, access_count**
 - `conversations` — id, user_id (nullable FK→users), user_input, bot_response, timestamp, session_id, response_category
 - `greetings` — id, text, is_system, created_at
 - `greeting_words` — id, word (unique), learned_from_user_id (nullable FK→users), created_at
@@ -96,9 +97,9 @@ Responses/
 - `misspellings` — id, wrong_word (unique), correction, created_at
 - `bot_responses` — id, category, response_text, created_at
 - `temporal_expressions` — id, expression (unique), days_offset, is_range
-- `learned_response_rules` — id, pattern, response_template, input_type, learned_from_user_id (nullable FK→users), confidence, is_active, created_at
+- `learned_response_rules` — id, pattern, response_template, input_type, learned_from_user_id (nullable FK→users), confidence, is_active, created_at, **last_accessed, access_count**
 - `response_feedback` — id, rule_id, is_learned_rule, user_id (FK→users), feedback, correction_text, created_at
-- `word_definitions` — id, word, definition, defined_by_user_id (nullable FK→users), created_at
+- `word_definitions` — id, word, definition, defined_by_user_id (nullable FK→users), created_at, **last_accessed, access_count**
 - `word_links` — id, source_word, target_word, link_type, created_by_user_id (nullable FK→users), created_at
 - `conversation_metrics` — id, user_id, session_id, turn_count, facts_learned, dominant_sentiment, sentiment_trend, topics_discussed, bot_response_stats, avg_response_length, session_length, started_at, ended_at
 - `response_effectiveness` — id, category (unique), avg_session_length_after, used_count, follow_up_rate, last_used

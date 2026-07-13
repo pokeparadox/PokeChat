@@ -159,6 +159,43 @@ public class ChatSessionTests
     }
 
     [Fact]
+    public void HandleNameInput_GreetingWord_DoesNotDuplicateNameQuestion()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            db.Context.Greetings.Add(new Greeting
+            {
+                Text = "Hiya! I'm PokeChat. Let's get to know each other — what's your name?",
+                IsSystem = true,
+                CreatedAt = DateTime.UtcNow.ToString("o")
+            });
+            db.Context.SaveChanges();
+
+            var response = session.HandleNameInput("hello");
+            var nameQuestionCount = response.Count(c => c == '?');
+            nameQuestionCount.ShouldBe(1, "greeting should only have one question mark");
+            response.ShouldContain("what's your name");
+        }
+    }
+
+    [Fact]
+    public void HandleNameInput_KnownUser_WelcomeBack_DoesNotAskAboutName()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            var user = new User { Name = "Alice", FirstSeen = "2020-01-01T00:00:00Z", LastSeen = "2020-06-01T00:00:00Z" };
+            db.Context.Users.Add(user);
+            db.Context.SaveChanges();
+
+            var response = session.HandleNameInput("my name is Alice");
+            response.Contains("still using").ShouldBeFalse();
+            response.Contains("are you", StringComparison.OrdinalIgnoreCase).ShouldBeFalse();
+        }
+    }
+
+    [Fact]
     public void HandleClarification_NeverMind_DoesNotLearnWord()
     {
         var (session, db) = CreateSessionAndDb();
@@ -3164,7 +3201,7 @@ public class ChatSessionTests
     }
 
     [Fact]
-    public void HandleNameInput_ReturningUser_PromptsIdentityVerification()
+    public void HandleNameInput_ReturningUser_SetsUpDirectly()
     {
         var (session, db) = CreateSessionAndDb();
         using (db)
@@ -3177,14 +3214,14 @@ public class ChatSessionTests
                 LastSeen = now
             });
             db.Context.SaveChanges();
-            session.ProcessInput("my name is Alice");
-            var response = session.ProcessInput("yes");
+            var response = session.HandleNameInput("my name is Alice");
             response.ShouldContain("Alice");
+            response.ShouldNotContain("still using");
         }
     }
 
     [Fact]
-    public void HandleNameInput_ReturningUserDenied_AsksForNewName()
+    public void HandleNameInput_ReturningUser_NoIdentityPrompt()
     {
         var (session, db) = CreateSessionAndDb();
         using (db)
@@ -3197,9 +3234,8 @@ public class ChatSessionTests
                 LastSeen = now
             });
             db.Context.SaveChanges();
-            session.ProcessInput("my name is Alice");
-            var response = session.ProcessInput("no");
-            response.ShouldContain("What should I call");
+            session.HandleNameInput("my name is Alice");
+            session.HandleNameInput("yes");
         }
     }
 

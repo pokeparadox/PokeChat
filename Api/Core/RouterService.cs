@@ -19,7 +19,8 @@ public enum RouteHandler
     AboutMe,
     Reset,
     Help,
-    Weather
+    Weather,
+    Cleanup
 }
 
 public class RouteResult
@@ -53,7 +54,8 @@ public class RouterService
         ["about"] = RouteHandler.AboutMe,
         ["reset"] = RouteHandler.Reset,
         ["help"] = RouteHandler.Help,
-        ["weather"] = RouteHandler.Weather
+        ["weather"] = RouteHandler.Weather,
+        ["cleanup"] = RouteHandler.Cleanup
     };
 
     private static readonly Dictionary<string, RouteHandler> IntentHandlerMap = new(StringComparer.OrdinalIgnoreCase)

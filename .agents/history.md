@@ -1796,3 +1796,19 @@ Dual-persona architecture (chat/coding) with persona-filtered rules, responses, 
 - [x] Fixed `ValidateSchema()` connection leak — now closes connection in both success and error paths
 - [x] 862/862 pass
 
+## Phase 55 — Knowledge Decay (2026-07-13)
+- [x] Added `last_accessed`/`access_count` columns to `facts`, `learned_response_rules`, `word_definitions` tables
+- [x] EF Core migration `KnowledgeDecay` created
+- [x] `TouchFactAccess()` method on KnowledgeStore — updates `LastAccessed` and increments `AccessCount`
+- [x] Wired access tracking into `GetFact()`, `GetFactsByUser()`, `GetRandomUserFact()`, `GetRandomFactFromSession()`, `GetTwoRandomUserFacts()`, `GetRandomFactsForQuiz()`
+- [x] `DecayCleanup()` — deletes stale records (>90 days old, never accessed, low confidence) with client-side filtering
+- [x] VACUUM runs after cleanup when >50 records deleted (reclaims SQLite disk space)
+- [x] Auto-runs at session end (`ChatSession.Dispose` flow)
+- [x] `~cleanup` bot command for manual trigger
+- [x] 11 new tests (10 KnowledgeStore + 1 RouterService), 879/879 pass
+
+## Greeting Fixes (2026-07-13)
+- [x] Removed duplicate "What's your name?" appended after greeting templates that already contain name questions
+- [x] Removed redundant "Are you still using that name?" for returning users — now set up directly
+- [x] Updated 2 existing tests, added 2 new tests, 881/881 pass
+

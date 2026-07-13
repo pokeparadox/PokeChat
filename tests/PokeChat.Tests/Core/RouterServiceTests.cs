@@ -355,4 +355,21 @@ public class RouterServiceTests
         var result = _router.Route("reset everything", classifier);
         result.Handler.ShouldBe(RouteHandler.Reset);
     }
+
+    [Fact]
+    public void Route_CleanupCommand_ReturnsCleanup()
+    {
+        var result = _router.Route("~cleanup");
+        result.Handler.ShouldBe(RouteHandler.Cleanup);
+        result.IsBotCommand.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void Route_WeatherWithCity_ParsesArgument()
+    {
+        var result = _router.Route("~weather barnsley");
+        result.Handler.ShouldBe(RouteHandler.Weather);
+        result.Argument.ShouldBe("barnsley");
+        result.IsBotCommand.ShouldBeTrue();
+    }
 }

@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using PokeChat.Data.Entities;
 using PokeChat.Knowledge;
 using PokeChat.Tests.Helpers;
@@ -1371,6 +1372,139 @@ public class KnowledgeStoreTests
         var result2 = store.MatchError("CS1502: the best overloaded match has some invalid arguments");
         result2.ShouldNotBeNull();
         result2.Suggestion.ShouldBe("Check parameter types");
+    }
+
+    [Fact]
+    public void DecayCleanup_DryRun_DoesNotDelete()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var old = DateTime.UtcNow.AddDays(-100).ToString("o");
+        store.StoreFact(new Fact { Subject = "old", Verb = "is", Object = "stale", PredicateType = "general", CreatedAt = old });
+        store.Save();
+        var report = store.DecayCleanup(dryRun: true);
+        report.DeletedFacts.ShouldBe(1);
+        report.DryRun.ShouldBeTrue();
+        db.Context.Facts.Count().ShouldBe(1);
+    }
+
+    [Fact]
+    public void DecayCleanup_DeleteStaleFacts()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var old = DateTime.UtcNow.AddDays(-100).ToString("o");
+        store.StoreFact(new Fact { Subject = "stale", Verb = "is", Object = "forgotten", PredicateType = "general", CreatedAt = old });
+        store.Save();
+        var report = store.DecayCleanup(dryRun: false);
+        report.DeletedFacts.ShouldBe(1);
+        db.Context.Facts.Count().ShouldBe(0);
+    }
+
+    [Fact]
+    public void DecayCleanup_PreservesRecentFacts()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var fresh = DateTime.UtcNow.ToString("o");
+        store.StoreFact(new Fact { Subject = "new", Verb = "is", Object = "fresh", PredicateType = "general", CreatedAt = fresh });
+        store.Save();
+        var report = store.DecayCleanup(dryRun: false);
+        report.DeletedFacts.ShouldBe(0);
+        db.Context.Facts.Count().ShouldBe(1);
+    }
+
+    [Fact]
+    public void DecayCleanup_PreservesAccessedFacts()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var old = DateTime.UtcNow.AddDays(-100).ToString("o");
+        store.StoreFact(new Fact { Subject = "old", Verb = "but", Object = "accessed", PredicateType = "general", CreatedAt = old });
+        store.Save();
+        var fact = store.GetFact("old", "but", "accessed");
+        fact.ShouldNotBeNull();
+        var report = store.DecayCleanup(dryRun: false);
+        report.DeletedFacts.ShouldBe(0);
+        db.Context.Facts.Count().ShouldBe(1);
+    }
+
+    [Fact]
+    public void DecayCleanup_PreservesHighConfidenceFacts()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        var old = DateTime.UtcNow.AddDays(-100).ToString("o");
+        var entity = new FactEntity
+        {
+            Subject = "trusted", Verb = "is", Object = "important", PredicateType = "general",
+            CreatedAt = old, Confidence = 2.5
+        };
+        db.Context.Facts.Add(entity);
+        db.Context.SaveChanges();
+        var report = store.DecayCleanup(dryRun: false);
+        report.DeletedFacts.ShouldBe(0);
+        db.Context.Facts.Count().ShouldBe(1);
+    }
+
+    [Fact]
+    public void TouchFactAccess_UpdatesCount()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        store.StoreFact(new Fact { Subject = "test", Verb = "is", Object = "counted", PredicateType = "general", CreatedAt = DateTime.UtcNow.ToString("o") });
+        store.Save();
+        var fact = store.GetFact("test", "is", "counted");
+        fact.ShouldNotBeNull();
+        var entity = db.Context.Facts.First(f => f.Subject == "test");
+        entity.AccessCount.ShouldBe(1);
+        entity.LastAccessed.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void DecayCleanup_VACUUM_ReclaimsSpace()
+    {
+        var tmpFile = Path.Combine(Path.GetTempPath(), $"pokechat_test_{Guid.NewGuid():N}.db");
+        try
+        {
+            using var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={tmpFile}");
+            connection.Open();
+            var options = new Microsoft.EntityFrameworkCore.DbContextOptionsBuilder<PokeChat.Data.PokeChatDbContext>()
+                .UseSqlite(connection)
+                .Options;
+            using var context = new PokeChat.Data.PokeChatDbContext(options);
+            context.Database.EnsureCreated();
+            var store = new KnowledgeStore(context);
+            for (int i = 0; i < 60; i++)
+            {
+                store.StoreFact(new Fact { Subject = $"bulk{i}", Verb = "is", Object = $"item{i}", PredicateType = "general", CreatedAt = DateTime.UtcNow.AddDays(-200).ToString("o") });
+            }
+            store.Save();
+            var sizeBefore = new FileInfo(tmpFile).Length;
+            var report = store.DecayCleanup(dryRun: false, vacuumThreshold: 50);
+            report.DeletedFacts.ShouldBe(60);
+            report.ReclaimedBytes.ShouldNotBeNull();
+            report.ReclaimedBytes!.Value.ShouldBeGreaterThanOrEqualTo(0);
+        }
+        finally
+        {
+            if (File.Exists(tmpFile)) File.Delete(tmpFile);
+        }
+    }
+
+    [Fact]
+    public void DecayCleanup_NoVACUUM_BelowThreshold()
+    {
+        using var db = new FreshDbContext();
+        var store = new KnowledgeStore(db.Context);
+        for (int i = 0; i < 5; i++)
+        {
+            store.StoreFact(new Fact { Subject = $"few{i}", Verb = "is", Object = $"item{i}", PredicateType = "general", CreatedAt = DateTime.UtcNow.AddDays(-200).ToString("o") });
+        }
+        store.Save();
+        var report = store.DecayCleanup(dryRun: false, vacuumThreshold: 50);
+        report.DeletedFacts.ShouldBe(5);
+        report.ReclaimedBytes.ShouldBeNull();
     }
 
     private static PokeChat.Responses.ResponseEngine CreateEngine(PokeChat.Data.PokeChatDbContext db, ContextTracker context)

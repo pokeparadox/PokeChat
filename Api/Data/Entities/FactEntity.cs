@@ -14,4 +14,6 @@ public class FactEntity
     public string? MentionedAt { get; set; }
     public string CreatedAt { get; set; } = string.Empty;
     public double Confidence { get; set; } = 1.0;
+    public string? LastAccessed { get; set; }
+    public int AccessCount { get; set; }
 }

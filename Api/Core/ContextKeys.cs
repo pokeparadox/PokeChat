@@ -95,4 +95,5 @@ public static class ContextKeys
     public const string ReminderShownCount = "reminder_shown_count";
     public const string PendingNameConfirmation = "pending_name_confirmation";
     public const string PendingIdentityVerification = "pending_identity_verification";
+    public const string ConsecutiveLlmFailures = "consecutive_llm_failures";
 }

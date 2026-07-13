@@ -1681,7 +1681,8 @@ public static class DbSeeder
             ("weather_error", "Something went wrong getting the weather. Please try again later."),
             ("weather_no_location", "Where are you? Tell me your city and I'll check the weather."),
             ("weather_no_location", "I don't know your location yet. What city are you in?"),
-            ("weather_no_api_key", "I don't have a weather API key set up yet. Set WEATHER_API_KEY to enable weather reports."),
+            ("weather_no_api_key", "I don't have a weather API key set up yet. Get a free key at openweathermap.org and set the WEATHER_API_KEY environment variable (or use dotnet user-secrets set \"Weather:ApiKey\" your_key)."),
+            ("weather_no_api_key", "Weather reports need an API key. Sign up free at openweathermap.org, then set WEATHER_API_KEY in your environment or user-secrets."),
             ("weather_location_saved", "Got it — {0}! I'll remember that for next time."),
             ("weather_location_saved", "I've noted you're in {0}. I'll use that for future weather queries."),
         };

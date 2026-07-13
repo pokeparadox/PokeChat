@@ -107,10 +107,18 @@ public class KnowledgeStore(PokeChatDbContext context)
 
     public List<Fact> GetFactsByUser(int userId)
     {
-        return context.Facts
+        var entities = context.Facts
             .Where(f => f.UserId == userId)
-            .SelectFacet<Fact>()
             .ToList();
+
+        var now = DateTime.UtcNow.ToString("o");
+        foreach (var e in entities)
+        {
+            e.LastAccessed = now;
+            e.AccessCount++;
+        }
+
+        return entities.AsQueryable().SelectFacet<Fact>().ToList();
     }
 
     public string? GetUserFactsFormatted(int userId)
@@ -267,13 +275,17 @@ public class KnowledgeStore(PokeChatDbContext context)
 
     public Fact? GetFact(string subject, string verb, string obj, int? userId = null)
     {
-        var query = context.Facts
+        var entity = context.Facts
             .Where(f => f.Subject == subject && f.Verb == verb && f.Object == obj);
 
         if (userId.HasValue)
-            query = query.Where(f => f.UserId == userId.Value);
+            entity = entity.Where(f => f.UserId == userId.Value);
 
-        return query.SelectFacet<Fact>().FirstOrDefault();
+        var fact = entity.FirstOrDefault();
+        if (fact == null) return null;
+
+        TouchFactAccess(fact);
+        return new[] { fact }.AsQueryable().SelectFacet<Fact>().First();
     }
 
     public List<Fact> GetAllFacts()
@@ -1362,13 +1374,15 @@ public class KnowledgeStore(PokeChatDbContext context)
 
     public Fact? GetRandomUserFact(int userId)
     {
-        var facts = context.Facts
+        var entities = context.Facts
             .Where(f => f.UserId == userId)
-            .SelectFacet<Fact>()
             .ToList();
 
-        if (facts.Count == 0) return null;
-        return facts[Random.Shared.Next(facts.Count)];
+        if (entities.Count == 0) return null;
+
+        var picked = entities[Random.Shared.Next(entities.Count)];
+        TouchFactAccess(picked);
+        return new[] { picked }.AsQueryable().SelectFacet<Fact>().First();
     }
 
     public string? GetRandomName()
@@ -1399,29 +1413,30 @@ public class KnowledgeStore(PokeChatDbContext context)
 
         if (conversations.Count == 0) return null;
 
-        var allUserFacts = context.Facts
+        var allUserFactEntities = context.Facts
             .Where(f => f.UserId == userId)
-            .SelectFacet<Fact>()
             .ToList();
 
-        var sessionFacts = new List<Fact>();
+        var sessionFacts = new List<FactEntity>();
         foreach (var conv in conversations)
         {
             var lowerInput = conv.UserInput.ToLowerInvariant();
-            foreach (var fact in allUserFacts)
+            foreach (var entity in allUserFactEntities)
             {
-                if (!SummaryFilters.IsGarbageFact(fact) &&
-                    lowerInput.Contains(fact.Object.ToLowerInvariant()) &&
-                    (lowerInput.Contains(fact.Subject.ToLowerInvariant()) ||
-                     lowerInput.Contains(fact.Verb.ToLowerInvariant())))
+                if (!SummaryFilters.IsGarbageFact(new[] { entity }.AsQueryable().SelectFacet<Fact>().First()) &&
+                    lowerInput.Contains(entity.Object.ToLowerInvariant()) &&
+                    (lowerInput.Contains(entity.Subject.ToLowerInvariant()) ||
+                     lowerInput.Contains(entity.Verb.ToLowerInvariant())))
                 {
-                    sessionFacts.Add(fact);
+                    sessionFacts.Add(entity);
                 }
             }
         }
 
         if (sessionFacts.Count == 0) return null;
-        return sessionFacts[Random.Shared.Next(sessionFacts.Count)];
+        var picked = sessionFacts[Random.Shared.Next(sessionFacts.Count)];
+        TouchFactAccess(picked);
+        return new[] { picked }.AsQueryable().SelectFacet<Fact>().First();
     }
 
     public MadLibTemplate? GetRandomMadLibTemplate()
@@ -1433,14 +1448,13 @@ public class KnowledgeStore(PokeChatDbContext context)
 
     public (Fact?, Fact?) GetTwoRandomUserFacts(int userId)
     {
-        var facts = context.Facts
+        var entities = context.Facts
             .Where(f => f.UserId == userId)
-            .SelectFacet<Fact>()
             .ToList();
 
-        if (facts.Count < 2) return (null, null);
+        if (entities.Count < 2) return (null, null);
 
-        var distinct = facts
+        var distinct = entities
             .GroupBy(f => f.Object.ToLowerInvariant())
             .Where(g => g.Count() >= 1)
             .Select(g => g.First())
@@ -1452,20 +1466,26 @@ public class KnowledgeStore(PokeChatDbContext context)
         distinct.Remove(first);
         var second = distinct[Random.Shared.Next(distinct.Count)];
 
-        return (first, second);
+        TouchFactAccess(first);
+        TouchFactAccess(second);
+        return (
+            new[] { first }.AsQueryable().SelectFacet<Fact>().First(),
+            new[] { second }.AsQueryable().SelectFacet<Fact>().First()
+        );
     }
 
     public List<Fact> GetRandomFactsForQuiz(int userId, int count)
     {
-        var facts = context.Facts
+        var entities = context.Facts
             .Where(f => f.UserId == userId)
-            .SelectFacet<Fact>()
             .ToList();
 
-        if (facts.Count == 0) return new List<Fact>();
+        if (entities.Count == 0) return new List<Fact>();
 
-        var selected = facts.OrderBy(_ => Random.Shared.Next()).Take(count).ToList();
-        return selected;
+        var selected = entities.OrderBy(_ => Random.Shared.Next()).Take(count).ToList();
+        foreach (var e in selected)
+            TouchFactAccess(e);
+        return selected.AsQueryable().SelectFacet<Fact>().ToList();
     }
 
     public Joke? GetRandomJoke()
@@ -1736,5 +1756,79 @@ public class KnowledgeStore(PokeChatDbContext context)
             .Where(r => !string.IsNullOrEmpty(r) && !r.Contains('{'))
             .Distinct()
             .ToList();
+    }
+
+    public record DecayReport(int DeletedFacts, int DeletedRules, int DeletedDefinitions, bool DryRun, long? ReclaimedBytes);
+
+    public void TouchFactAccess(FactEntity fact)
+    {
+        fact.LastAccessed = DateTime.UtcNow.ToString("o");
+        fact.AccessCount++;
+    }
+
+    public DecayReport DecayCleanup(bool dryRun = false, int vacuumThreshold = 50)
+    {
+        var now = DateTime.UtcNow;
+        var staleCutoff = now.AddDays(-90);
+        var minAge = now.AddHours(-24);
+
+        var deletedFacts = 0;
+        var deletedRules = 0;
+        var deletedDefs = 0;
+
+        var staleFacts = context.Facts
+            .ToList()
+            .Where(f => string.Compare(f.CreatedAt, minAge.ToString("o"), StringComparison.Ordinal) < 0
+                        && f.AccessCount == 0
+                        && f.Confidence < 2.0
+                        && (f.LastAccessed == null || string.Compare(f.LastAccessed, staleCutoff.ToString("o"), StringComparison.Ordinal) < 0))
+            .ToList();
+
+        deletedFacts = staleFacts.Count;
+        if (!dryRun && deletedFacts > 0)
+            context.Facts.RemoveRange(staleFacts);
+
+        var staleRules = context.LearnedResponseRules
+            .ToList()
+            .Where(r => string.Compare(r.CreatedAt, minAge.ToString("o"), StringComparison.Ordinal) < 0
+                        && r.AccessCount == 0
+                        && r.Confidence < 3
+                        && (r.LastAccessed == null || string.Compare(r.LastAccessed, staleCutoff.ToString("o"), StringComparison.Ordinal) < 0))
+            .ToList();
+
+        deletedRules = staleRules.Count;
+        if (!dryRun && deletedRules > 0)
+            context.LearnedResponseRules.RemoveRange(staleRules);
+
+        var staleDefs = context.WordDefinitions
+            .ToList()
+            .Where(d => string.Compare(d.CreatedAt, minAge.ToString("o"), StringComparison.Ordinal) < 0
+                        && d.AccessCount == 0
+                        && (d.LastAccessed == null || string.Compare(d.LastAccessed, staleCutoff.ToString("o"), StringComparison.Ordinal) < 0))
+            .ToList();
+
+        deletedDefs = staleDefs.Count;
+        if (!dryRun && deletedDefs > 0)
+            context.WordDefinitions.RemoveRange(staleDefs);
+
+        var totalDeleted = deletedFacts + deletedRules + deletedDefs;
+
+        if (!dryRun && totalDeleted > 0)
+            context.SaveChanges();
+
+        long? reclaimedBytes = null;
+        if (!dryRun && totalDeleted >= vacuumThreshold)
+        {
+            var dbPath = context.Database.GetDbConnection().DataSource;
+            if (!string.IsNullOrEmpty(dbPath) && File.Exists(dbPath))
+            {
+                var sizeBefore = new FileInfo(dbPath).Length;
+                context.Database.ExecuteSqlRaw("VACUUM");
+                var sizeAfter = new FileInfo(dbPath).Length;
+                reclaimedBytes = sizeBefore - sizeAfter;
+            }
+        }
+
+        return new DecayReport(deletedFacts, deletedRules, deletedDefs, dryRun, reclaimedBytes);
     }
 }

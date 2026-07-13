@@ -126,6 +126,15 @@ public class ChatEngine : IDisposable
         "forget that", "scratch that", "strike that"
     };
 
+    private static readonly HashSet<string> FactNegationPhrases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "no", "nope", "nah", "wrong", "false", "that's wrong", "that is wrong",
+        "that's not right", "that is not right", "not true", "incorrect",
+        "not correct", "that's false", "that is false", "i was wrong",
+        "that's not true", "that isn't true", "not anymore", "has changed",
+        "stopped", "not anymore"
+    };
+
     private static readonly HashSet<string> DontKnowClassificationPhrases = new(StringComparer.OrdinalIgnoreCase)
     {
         "i don't know", "i dont know", "i dunno", "dunno",
@@ -374,7 +383,7 @@ public class ChatEngine : IDisposable
             return HandleIdentityVerification(input, pendingIdentity);
         }
 
-        if ((_currentUserId == null || _currentUserName == "Guest") && _persona != "coding")
+        if ((_currentUserId == null || _currentUserName == "Guest") && _persona != "coding" && !(input.Length > 1 && input[0] == '~'))
         {
             return HandleNameInput(input);
         }
@@ -548,6 +557,9 @@ public class ChatEngine : IDisposable
         if (TryHandleCorrection(input, out var correctionResponse))
             return correctionResponse;
 
+        if (TryHandleFactNegation(input, out var negationResponse))
+            return negationResponse;
+
         if (TryHandleReminderRequest(input, out var reminderResponse))
             return reminderResponse;
 
@@ -614,7 +626,14 @@ public class ChatEngine : IDisposable
         if (_llmOrchestrator?.IsAvailable == true && !_llmOrchestrator.UserDeclined
             && ResponseEngine.IsDeadEndCategory(responseCategory ?? ""))
         {
-            if (_llmOrchestrator.Config.AlwaysOn || _llmOrchestrator.IsAccepted)
+            var failureCountRaw = _context.GetContext(ContextKeys.ConsecutiveLlmFailures);
+            int.TryParse(failureCountRaw, out var consecutiveFailures);
+
+            if (consecutiveFailures >= 2)
+            {
+                _context.SetContext(ContextKeys.ConsecutiveLlmFailures, "0");
+            }
+            else if (_llmOrchestrator.Config.AlwaysOn || _llmOrchestrator.IsAccepted)
             {
                 var llmResult = LlmCallWithIndicator(() => _llmOrchestrator.GenerateResponse(input));
                 if (llmResult != null)
@@ -623,9 +642,12 @@ public class ChatEngine : IDisposable
                     BufferLlmInteraction(input, llmResult);
                     response = llmResult;
                     responseCategory = "llm_response";
+                    _context.SetContext(ContextKeys.ConsecutiveLlmFailures, "0");
                 }
                 else
                 {
+                    consecutiveFailures++;
+                    _context.SetContext(ContextKeys.ConsecutiveLlmFailures, consecutiveFailures.ToString());
                     response = GetLLMResponse("llm_unavailable");
                     responseCategory = "llm_unavailable";
                 }
@@ -1078,6 +1100,25 @@ public class ChatEngine : IDisposable
     internal void Save() => _knowledgeStore.Save();
     internal void LogSystem(string message) => _sessionLogger?.LogSystem(message);
     internal void RecordSessionMetrics() => _knowledgeStore.RecordSessionMetrics(_sessionId);
+
+    internal string RunDecayCleanup(bool dryRun = false)
+    {
+        var report = _knowledgeStore.DecayCleanup(dryRun: dryRun);
+        var parts = new List<string>();
+        if (report.DeletedFacts > 0) parts.Add($"{report.DeletedFacts} fact(s)");
+        if (report.DeletedRules > 0) parts.Add($"{report.DeletedRules} rule(s)");
+        if (report.DeletedDefinitions > 0) parts.Add($"{report.DeletedDefinitions} definition(s)");
+        var total = report.DeletedFacts + report.DeletedRules + report.DeletedDefinitions;
+
+        if (total == 0)
+            return dryRun ? "Nothing to clean up right now." : "Knowledge is looking fresh — nothing to clean up.";
+
+        var verb = dryRun ? "Would delete" : "Cleaned up";
+        var msg = $"{verb} {string.Join(", ", parts)}.";
+        if (report.ReclaimedBytes.HasValue && report.ReclaimedBytes.Value > 0)
+            msg += $" Reclaimed {report.ReclaimedBytes.Value:N0} bytes from VACUUM.";
+        return msg;
+    }
 
     internal void SetLLMOfferState(string originalInput)
     {
@@ -1548,7 +1589,7 @@ public class ChatEngine : IDisposable
                 if (tokens.Count > 0 && tokens.Any(t => _greetingWords.Contains(t.ToLowerInvariant())))
                 {
                     var greeting = GreetingPool.GetRandomGreeting(_knowledgeStore, _botName);
-                    return $"{greeting} What's your name?";
+                    return greeting;
                 }
                 return "I didn't catch your name. Could you tell me again?";
             }
@@ -1568,8 +1609,7 @@ public class ChatEngine : IDisposable
         var existingUser = _dbContext.Users.FirstOrDefault(u => u.Name == normalizedName);
         if (existingUser != null && existingUser.FirstSeen != existingUser.LastSeen)
         {
-            _context.SetContext(ContextKeys.PendingIdentityVerification, name);
-            return $"Welcome back, {name}! Are you still using that name?";
+            return FinalizeNameSetup(name);
         }
 
         return FinalizeNameSetup(name);
@@ -2154,6 +2194,9 @@ public class ChatEngine : IDisposable
             case RouteHandler.Weather:
                 return HandleWeatherRoute(route);
 
+            case RouteHandler.Cleanup:
+                return RunDecayCleanup();
+
             default:
                 return GetLLMResponse("default_response");
         }
@@ -2165,10 +2208,12 @@ public class ChatEngine : IDisposable
         ClearPendingState();
 
         if (_weatherApiClient == null || !_weatherApiClient.IsEnabled)
-            return _responseEngine.GetResponse("weather_no_api_key") ?? "Sorry, I don't have a weather API key set up yet.";
+            return _responseEngine.GetResponse("weather_no_api_key") ?? "I don't have a weather API key. Get a free one at openweathermap.org and set the WEATHER_API_KEY environment variable.";
 
         var input = route.OriginalInput ?? route.Argument ?? "";
-        var city = WeatherApiClient.ExtractCity(input);
+        var city = route.Argument;
+        if (string.IsNullOrWhiteSpace(city))
+            city = WeatherApiClient.ExtractCity(input);
 
         if (string.IsNullOrWhiteSpace(city) && _currentUserId.HasValue)
         {
@@ -2218,21 +2263,22 @@ public class ChatEngine : IDisposable
                 category = "weather_result_wind";
 
             var responseCity = weather.Name ?? city;
+            var emoji = GetWeatherEmoji(mainCondition, weather.Wind?.Speed ?? 0);
 
             if (botResponses.TryGetValue(category, out var templates) && templates.Count > 0)
             {
                 var template = templates[Random.Shared.Next(templates.Count)];
                 return category switch
                 {
-                    "weather_result" => string.Format(template, responseCity, weather.TempCelsius.ToString("F0"), weather.Description, weather.Main?.Humidity ?? 0),
-                    "weather_result_rain" => string.Format(template, responseCity, weather.TempCelsius.ToString("F0"), weather.Description),
-                    "weather_result_snow" => string.Format(template, responseCity, weather.TempCelsius.ToString("F0"), weather.Description),
-                    "weather_result_wind" => string.Format(template, responseCity, weather.TempCelsius.ToString("F0"), weather.Description, weather.Wind?.Speed ?? 0),
-                    _ => string.Format(template, responseCity, weather.TempCelsius.ToString("F0"), weather.Description),
+                    "weather_result" => $"{emoji} {string.Format(template, responseCity, weather.TempCelsius.ToString("F0"), weather.Description, weather.Main?.Humidity ?? 0)}",
+                    "weather_result_rain" => $"{emoji} {string.Format(template, responseCity, weather.TempCelsius.ToString("F0"), weather.Description)}",
+                    "weather_result_snow" => $"{emoji} {string.Format(template, responseCity, weather.TempCelsius.ToString("F0"), weather.Description)}",
+                    "weather_result_wind" => $"{emoji} {string.Format(template, responseCity, weather.TempCelsius.ToString("F0"), weather.Description, weather.Wind?.Speed ?? 0)}",
+                    _ => $"{emoji} {string.Format(template, responseCity, weather.TempCelsius.ToString("F0"), weather.Description)}",
                 };
             }
 
-            return $"{responseCity}: {weather.TempCelsius:F0}°C, {weather.Description}.";
+            return $"{emoji} {responseCity}: {weather.TempCelsius:F0}\u00B0C, {weather.Description}.";
         }
         catch (Exception ex)
         {
@@ -2241,6 +2287,19 @@ public class ChatEngine : IDisposable
             Console.WriteLine(msg + "\n" + ex);
             return GetLLMResponse("weather_error") ?? "Sorry, I couldn't get the weather right now.";
         }
+    }
+
+    private static string GetWeatherEmoji(string mainCondition, double windSpeed)
+    {
+        var c = mainCondition.ToLowerInvariant();
+        if (c.Contains("thunderstorm")) return "\u26C8\uFE0F";
+        if (c.Contains("rain") || c.Contains("drizzle")) return "\uD83C\uDF27\uFE0F";
+        if (c.Contains("snow")) return "\u2744\uFE0F";
+        if (c.Contains("mist") || c.Contains("fog") || c.Contains("haze")) return "\uD83C\uDF2B\uFE0F";
+        if (windSpeed >= 10) return "\uD83D\uDCA8";
+        if (c.Contains("cloud")) return "\u2601\uFE0F";
+        if (c.Contains("clear") || c.Contains("sun")) return "\u2600\uFE0F";
+        return "\uD83C\uDF24\uFE0F";
     }
 
     internal static string GetHelpText()
@@ -2262,6 +2321,7 @@ public class ChatEngine : IDisposable
             + "~about — Tell me what I know about you\n"
             + "~reset — Reset all my memories of you\n"
             + "~weather [city] — Tell me the weather (e.g. ~weather London)\n"
+            + "~cleanup — Clean up old, unused knowledge\n"
             + "~help — Show this help message";
     }
 
@@ -2462,6 +2522,36 @@ public class ChatEngine : IDisposable
 
     private bool AlwaysOnLLmAvailable() =>
         _llmOrchestrator?.Config.AlwaysOn == true && _llmOrchestrator.IsAvailable && !_llmOrchestrator.UserDeclined;
+
+    internal bool TryHandleFactNegation(string input, out string response)
+    {
+        response = string.Empty;
+
+        if (string.IsNullOrEmpty(_context.LastSubject))
+            return false;
+
+        var lower = input.Trim().ToLowerInvariant();
+
+        if (!FactNegationPhrases.Contains(lower))
+            return false;
+
+        var negatedSubject = _context.LastSubject;
+        var negatedObject = _context.LastObject ?? "that";
+
+        _context.UpdateLastSubject(null!);
+        _context.UpdateLastObject(null!);
+        _context.SetContext(ContextKeys.ContextFollowUpCount, "3");
+        _context.SetContext(ContextKeys.TopicReferenceCount, "0");
+
+        if (lower is "no" or "nope" or "nah")
+        {
+            response = $"OK, got it — scratch that about {negatedSubject}. What would you like to talk about?";
+            return true;
+        }
+
+        response = $"Thanks for the correction! I'll forget about {negatedSubject} being {negatedObject}. What else is on your mind?";
+        return true;
+    }
 
     private string? LlmCallWithIndicator(Func<string?> llmCall)
     {

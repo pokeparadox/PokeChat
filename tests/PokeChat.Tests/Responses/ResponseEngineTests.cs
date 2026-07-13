@@ -819,4 +819,25 @@ public class ResponseEngineTests
         response.ShouldNotContain("{0}");
         response.ShouldNotBeNullOrEmpty();
     }
+
+    [Fact]
+    public void GetResponse_WeatherNoApiKey_mentions_openweathermap()
+    {
+        using var db = new FreshDbContext();
+        var context = new ContextTracker();
+        var engine = CreateEngine(db.Context, context);
+        var response = engine.GetResponse("weather_no_api_key");
+        response.ShouldContain("openweathermap.org");
+        response.ShouldContain("WEATHER_API_KEY");
+    }
+
+    [Fact]
+    public void GetResponse_WeatherError_mention_city_check()
+    {
+        using var db = new FreshDbContext();
+        var context = new ContextTracker();
+        var engine = CreateEngine(db.Context, context);
+        var response = engine.GetResponse("weather_error");
+        response.ShouldNotBeNullOrEmpty();
+    }
 }

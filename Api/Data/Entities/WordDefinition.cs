@@ -7,4 +7,6 @@ public class WordDefinition
     public string Definition { get; set; } = string.Empty;
     public int? DefinedByUserId { get; set; }
     public string CreatedAt { get; set; } = string.Empty;
+    public string? LastAccessed { get; set; }
+    public int AccessCount { get; set; }
 }

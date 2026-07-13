@@ -132,6 +132,7 @@ public class ChatSession : IDisposable
                 _engine.RecordSessionMetrics();
                 _engine.TryRetrainClassifier();
                 _engine.Save();
+                _engine.RunDecayCleanup();
                 _engine.RunHomeworkCheck();
                 var sessionSummary = _engine.GenerateSessionEndSummary();
                 if (!string.IsNullOrEmpty(sessionSummary))
