@@ -32,6 +32,7 @@ public static class DbSeeder
         SeedBotResponses(context, now);
         SeedHangmanBotResponses(context, now);
         SeedErrorKnowledgeEntries(context, now);
+        SeedAllowedCommands(context, now);
 
         context.SaveChanges();
     }
@@ -1690,6 +1691,27 @@ public static class DbSeeder
         {
             Category = r.Category,
             ResponseText = r.ResponseText,
+            CreatedAt = now
+        }));
+    }
+
+    private static void SeedAllowedCommands(PokeChatDbContext context, string now)
+    {
+        if (context.AllowedCommands.Any()) return;
+
+        var commands = new[]
+        {
+            "dotnet", "git", "docker", "npm", "npx",
+            "ls", "pwd", "whoami", "date", "uptime", "uname", "echo", "cat", "wc",
+            "du", "df", "which", "env", "grep", "kill", "lsof", "zip", "unzip",
+            "tree", "ip", "free", "pip", "python", "cargo", "rustc", "go", "node",
+            "java", "javac", "ssh", "scp", "rsync", "curl", "wget"
+        };
+
+        context.AllowedCommands.AddRange(commands.Select(c => new AllowedCommand
+        {
+            Command = c,
+            IsPermanent = true,
             CreatedAt = now
         }));
     }

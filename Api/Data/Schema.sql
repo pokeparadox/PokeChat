@@ -269,3 +269,13 @@ CREATE TABLE IF NOT EXISTS reminders (
     created_at TEXT NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
+
+CREATE TABLE IF NOT EXISTS allowed_commands (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    command TEXT NOT NULL UNIQUE,
+    is_permanent INTEGER NOT NULL DEFAULT 0,
+    expires_at TEXT,
+    added_by_user_id INTEGER,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (added_by_user_id) REFERENCES users(id)
+);

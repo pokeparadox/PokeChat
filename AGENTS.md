@@ -103,6 +103,7 @@ Responses/
 - `word_links` — id, source_word, target_word, link_type, created_by_user_id (nullable FK→users), created_at
 - `conversation_metrics` — id, user_id, session_id, turn_count, facts_learned, dominant_sentiment, sentiment_trend, topics_discussed, bot_response_stats, avg_response_length, session_length, started_at, ended_at
 - `response_effectiveness` — id, category (unique), avg_session_length_after, used_count, follow_up_rate, last_used
+- `allowed_commands` — id, command (unique), is_permanent, expires_at, added_by_user_id (nullable FK→users), created_at
 
 
 ## Improvement Plan
@@ -130,6 +131,7 @@ Full history in MemPalace (`wing: pokechat, room: known-fixes`). Essentials only
 - **Bot command prefix:** Changed from `/` → `!` → `~` to avoid clashes with OpenCode (`/`) and shell history expansion (`!`). `~` has no shell conflicts and is familiar from IRC/Discord bots.
 - **Database initialization rewrite:** Removed complex `GetPendingMigrations` → `ValidateSchema` → `RecreateFromBackup` flow that had stale connection state issues. Now just `Migrate()` with wipe-and-retry fallback. `EnsureCreated()` only used as last resort (incompatible with `Migrate()`).
 - **SessionManager DI ambiguity:** Removed convenience constructors that created `new PokeChatDbContext()` internally. Single constructor `(ChatEngineFactory, PokeChatDbContext, SessionQuotaOptions)` registered via DI.
+- **Riddle/game answer interception:** Stale `PendingLLMOffer` context flag sat above game state checks in `ProcessInput`, intercepting answers before riddle/hangman/quiz/WYR/madlibs/joke handlers. Fixed by calling `ClearPendingState()` in `ExecuteBotRoute` and all game start handlers.
 
 ## Routines
 - **Code review after every change:** After each modification, review the changed code for bugs and duplicate code — refactor any duplication found.

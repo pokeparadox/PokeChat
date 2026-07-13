@@ -13,4 +13,6 @@ public class ToolResult
     public string Output { get; set; } = string.Empty;
     public TimeSpan ExecutionTime { get; set; }
     public string ErrorMessage { get; set; } = string.Empty;
+    public bool IsBlocked { get; set; }
+    public string? BlockedCommand { get; set; }
 }

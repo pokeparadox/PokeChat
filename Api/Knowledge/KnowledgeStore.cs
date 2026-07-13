@@ -1831,4 +1831,31 @@ public class KnowledgeStore(PokeChatDbContext context)
 
         return new DecayReport(deletedFacts, deletedRules, deletedDefs, dryRun, reclaimedBytes);
     }
+
+    public List<AllowedCommand> GetActiveAllowedCommands(string now)
+    {
+        return context.AllowedCommands
+            .Where(c => c.IsPermanent || (c.ExpiresAt != null && c.ExpiresAt.CompareTo(now) > 0))
+            .ToList();
+    }
+
+    public void SaveAllowedCommand(string command, bool isPermanent, string now)
+    {
+        var existing = context.AllowedCommands.FirstOrDefault(c => c.Command == command);
+        if (existing != null)
+        {
+            existing.IsPermanent = isPermanent;
+            if (!isPermanent)
+                existing.ExpiresAt = DateTime.UtcNow.AddMinutes(5).ToString("o");
+            return;
+        }
+
+        context.AllowedCommands.Add(new AllowedCommand
+        {
+            Command = command,
+            IsPermanent = isPermanent,
+            ExpiresAt = isPermanent ? null : DateTime.UtcNow.AddMinutes(5).ToString("o"),
+            CreatedAt = now
+        });
+    }
 }

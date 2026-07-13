@@ -52,6 +52,7 @@ public class ChatEngine : IDisposable
     private const int RetrainThreshold = 25;
     private string _persona = "chat";
     private readonly WeatherApiClient? _weatherApiClient;
+    private ToolRegistry? _toolRegistry;
 
     private static readonly HashSet<string> PersonaTriggers = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -265,6 +266,8 @@ public class ChatEngine : IDisposable
         _nounCategoriser = new NounCategoriser(_knowledgeStore);
         _mcpRegistry = new McpRegistry();
         var toolRegistry = new ToolRegistry(mcpRegistry: _mcpRegistry);
+        _toolRegistry = toolRegistry;
+        LoadDynamicAllowedCommands(toolRegistry);
         var toolTriggers = _mcpRegistry.GetToolTriggers();
         _intentClassifier = new ML.IntentClassifier();
         _intentClassifier.LoadOrCreate(ML.SeedTrainingData.Examples);
@@ -341,6 +344,9 @@ public class ChatEngine : IDisposable
         _persona = persona;
         _context.SetContext(ContextKeys.CurrentPersona, persona);
         _weatherApiClient = null;
+        _toolRegistry = toolRegistry;
+        if (toolRegistry != null)
+            LoadDynamicAllowedCommands(toolRegistry);
     }
 
     private void AutoSeedPosDictionary(McpRegistry registry)
@@ -395,6 +401,10 @@ public class ChatEngine : IDisposable
         var confirmResult = TryHandleConfirmation(input);
         if (confirmResult != null)
             return confirmResult;
+
+        var toolPermResult = TryHandleToolPermission(input);
+        if (toolPermResult != null)
+            return toolPermResult;
 
         var routeResult = _router.Route(input, _intentClassifier);
         if (routeResult.Handler != RouteHandler.None)
@@ -510,6 +520,19 @@ public class ChatEngine : IDisposable
         if (riddleActive != null)
             return HandleRiddleTurn(input);
 
+        var riddleContinue = _context.GetContext(ContextKeys.PendingRiddleContinue);
+        if (riddleContinue != null)
+        {
+            var lower = input.Trim().ToLowerInvariant();
+            _context.SetContext(ContextKeys.PendingRiddleContinue, null);
+            if (Affirmations.Contains(lower))
+            {
+                if (TryHandleRiddleStart("tell me a riddle", out var nextRiddle))
+                    return nextRiddle;
+            }
+            return "No more riddles available!";
+        }
+
         var wyrActive = _context.GetContext(ContextKeys.WyrActive);
         if (wyrActive != null)
             return HandleWouldYouRatherAnswer(input);
@@ -615,12 +638,24 @@ public class ChatEngine : IDisposable
         {
             _context.SetContext(ContextKeys.PendingConfirmation, "true");
             _context.SetContext(ContextKeys.PendingConfirmationCommand, input);
-            return GetLLMResponse("coding_confirmation_prompt");
+            var preview = PreviewShellCommand(input);
+            return $"⚠️ This will run: `{preview}`\nThis may have lasting effects. Are you sure? (yes/no)";
         }
 
         var hadTriples = _context.GetContext(ContextKeys.ContextFollowUpCount) == "0";
 
         var response = _responseEngine.GenerateResponse(input, _currentUserId);
+
+        if (_responseEngine.LastToolBlockedCommand != null)
+        {
+            var blockedCmd = _responseEngine.LastToolBlockedCommand;
+            _responseEngine.ClearLastBlockedCommand();
+            _context.SetContext(ContextKeys.PendingToolPermission, blockedCmd);
+            _context.SetContext(ContextKeys.PendingToolPermissionCommand, blockedCmd);
+            _context.SetContext(ContextKeys.PendingToolPermissionInput, input);
+            return $"I need to run `{blockedCmd}` but it's not in my allowed list. Allow it temporarily, permanently, or deny? (temp/perm/no)";
+        }
+
         var responseCategory = _context.GetContext(ContextKeys.CurrentResponseCategory);
 
         if (_llmOrchestrator?.IsAvailable == true && !_llmOrchestrator.UserDeclined
@@ -706,6 +741,98 @@ public class ChatEngine : IDisposable
         }
 
         return "Please answer yes or no. Are you sure?";
+    }
+
+    private void LoadDynamicAllowedCommands(ToolRegistry toolRegistry)
+    {
+        var shellTool = toolRegistry.GetTool("shell_command") as ShellCommandTool;
+        if (shellTool == null) return;
+
+        var now = DateTime.UtcNow.ToString("o");
+        var commands = _knowledgeStore.GetActiveAllowedCommands(now);
+        foreach (var cmd in commands)
+        {
+            if (cmd.IsPermanent)
+                shellTool.PermAllow(cmd.Command);
+            else if (!string.IsNullOrEmpty(cmd.ExpiresAt) &&
+                     DateTime.TryParse(cmd.ExpiresAt, out var expires) && expires > DateTime.UtcNow)
+                shellTool.TempAllow(cmd.Command, expires - DateTime.UtcNow);
+        }
+    }
+
+    private string? TryHandleToolPermission(string input)
+    {
+        var pendingCmd = _context.GetContext(ContextKeys.PendingToolPermission);
+        if (pendingCmd == null) return null;
+
+        var lower = input.Trim().ToLowerInvariant();
+        var originalInput = _context.GetContext(ContextKeys.PendingToolPermissionInput);
+
+        _context.SetContext(ContextKeys.PendingToolPermission, null);
+        _context.SetContext(ContextKeys.PendingToolPermissionCommand, null);
+        _context.SetContext(ContextKeys.PendingToolPermissionInput, null);
+
+        if (lower is "temp" or "temporary" or "temporarily" or "yes" or "yep" or "yeah" or "sure")
+        {
+            AllowCommandTemporarily(pendingCmd);
+            if (!string.IsNullOrEmpty(originalInput))
+                return _responseEngine.GenerateResponse(originalInput, _currentUserId);
+            return null;
+        }
+
+        if (lower is "perm" or "permanent" or "permanently" or "always")
+        {
+            AllowCommandPermanently(pendingCmd);
+            if (!string.IsNullOrEmpty(originalInput))
+                return _responseEngine.GenerateResponse(originalInput, _currentUserId);
+            return null;
+        }
+
+        if (Denials.Contains(lower))
+            return $"Okay, not running `{pendingCmd}`.";
+
+        return $"Allow `{pendingCmd}` temporarily, permanently, or deny? (temp/perm/no)";
+    }
+
+    private void AllowCommandTemporarily(string command)
+    {
+        var shellTool = _toolRegistry?.GetTool("shell_command") as ShellCommandTool;
+        shellTool?.TempAllow(command, TimeSpan.FromMinutes(5));
+    }
+
+    private void AllowCommandPermanently(string command)
+    {
+        var shellTool = _toolRegistry?.GetTool("shell_command") as ShellCommandTool;
+        shellTool?.PermAllow(command);
+
+        var now = DateTime.UtcNow.ToString("o");
+        _knowledgeStore.SaveAllowedCommand(command, isPermanent: true, now);
+    }
+
+    private static string PreviewShellCommand(string input)
+    {
+        var lower = input.Trim().ToLowerInvariant();
+
+        if (Regex.IsMatch(lower, @"^(git\s+)?push\b"))
+            return "git push";
+        if (Regex.IsMatch(lower, @"^(git\s+)?push\s+.*--force"))
+            return "git push --force";
+        if (Regex.IsMatch(lower, @"deploy"))
+            return "deploy";
+        if (Regex.IsMatch(lower, @"publish"))
+            return "dotnet publish";
+        if (Regex.IsMatch(lower, @"drop\s+\w+"))
+            return input.Trim();
+        if (Regex.IsMatch(lower, @"rm\s+-rf"))
+            return input.Trim();
+        if (Regex.IsMatch(lower, @"destroy"))
+            return input.Trim();
+        if (Regex.IsMatch(lower, @"remove\s+\w+"))
+            return input.Trim();
+        if (Regex.IsMatch(lower, @"delete\s+\w+"))
+            return input.Trim();
+
+        return input.Trim();
     }
 
     private string? TryHandlePersonaSwitch(string input)
@@ -2107,6 +2234,8 @@ public class ChatEngine : IDisposable
 
     private string ExecuteBotRoute(RouteResult route)
     {
+        ClearPendingState();
+
         switch (route.Handler)
         {
             case RouteHandler.Math:
@@ -2738,6 +2867,8 @@ public class ChatEngine : IDisposable
         {
             if (lowerInput.Contains(phrase))
             {
+                ClearPendingState();
+
                 var existingGame = _context.GetContext(ContextKeys.GameModeActive);
                 if (existingGame != null)
                 {
@@ -3021,6 +3152,8 @@ public class ChatEngine : IDisposable
         {
             if (lowerInput.Contains(phrase))
             {
+                ClearPendingState();
+
                 var existing = _context.GetContext(ContextKeys.MadLibsActive);
                 if (existing != null)
                 {
@@ -3257,6 +3390,8 @@ public class ChatEngine : IDisposable
         {
             if (lowerInput.Contains(phrase))
             {
+                ClearPendingState();
+
                 var joke = _knowledgeStore.GetRandomJoke();
                 if (joke == null)
                 {
@@ -3290,6 +3425,8 @@ public class ChatEngine : IDisposable
         {
             if (lowerInput.Contains(phrase))
             {
+                ClearPendingState();
+
                 var existing = _context.GetContext(ContextKeys.RiddleActive);
                 if (existing != null)
                 {
@@ -3330,7 +3467,12 @@ public class ChatEngine : IDisposable
         {
             if (lowerInput.Contains(phrase))
             {
-                ClearRiddleState();
+                _context.SetContext(ContextKeys.RiddleActive, null);
+                _context.SetContext(ContextKeys.PendingRiddleQuestion, null);
+                _context.SetContext(ContextKeys.PendingRiddleAnswer, null);
+                _context.SetContext(ContextKeys.PendingRiddleHint, null);
+                _context.SetContext(ContextKeys.PendingRiddleAttempts, null);
+                _context.SetContext(ContextKeys.PendingRiddleContinue, "true");
                 return GetRiddleResponse("riddle_give_up", answer);
             }
         }
@@ -3343,8 +3485,13 @@ public class ChatEngine : IDisposable
 
         if (lowerInput.Contains(answer.ToLowerInvariant()) || IsCorrectGuess(lowerInput, answer))
         {
-            ClearRiddleState();
-            return GetRiddleResponse("riddle_correct");
+            _context.SetContext(ContextKeys.RiddleActive, null);
+            _context.SetContext(ContextKeys.PendingRiddleQuestion, null);
+            _context.SetContext(ContextKeys.PendingRiddleAnswer, null);
+            _context.SetContext(ContextKeys.PendingRiddleHint, null);
+            _context.SetContext(ContextKeys.PendingRiddleAttempts, null);
+            _context.SetContext(ContextKeys.PendingRiddleContinue, "true");
+            return GetRiddleResponse("riddle_correct") + " Fancy trying another?";
         }
 
         attempts++;
@@ -3352,7 +3499,12 @@ public class ChatEngine : IDisposable
 
         if (attempts >= 3)
         {
-            ClearRiddleState();
+            _context.SetContext(ContextKeys.RiddleActive, null);
+            _context.SetContext(ContextKeys.PendingRiddleQuestion, null);
+            _context.SetContext(ContextKeys.PendingRiddleAnswer, null);
+            _context.SetContext(ContextKeys.PendingRiddleHint, null);
+            _context.SetContext(ContextKeys.PendingRiddleAttempts, null);
+            _context.SetContext(ContextKeys.PendingRiddleContinue, "true");
             return GetRiddleResponse("riddle_give_up", answer);
         }
 
@@ -3373,15 +3525,6 @@ public class ChatEngine : IDisposable
         if (lowerInput.Trim() == cleanAnswer)
             return true;
         return false;
-    }
-
-    private void ClearRiddleState()
-    {
-        _context.SetContext(ContextKeys.RiddleActive, null);
-        _context.SetContext(ContextKeys.PendingRiddleQuestion, null);
-        _context.SetContext(ContextKeys.PendingRiddleAnswer, null);
-        _context.SetContext(ContextKeys.PendingRiddleHint, null);
-        _context.SetContext(ContextKeys.PendingRiddleAttempts, null);
     }
 
     private string GetJokeResponse(string category, params object[] args)
@@ -3443,6 +3586,8 @@ public class ChatEngine : IDisposable
         {
             if (lowerInput.Contains(phrase))
             {
+                ClearPendingState();
+
                 var question = _responseEngine.BuildWyrQuestion(_currentUserId);
                 if (question == null)
                 {
@@ -3494,6 +3639,8 @@ public class ChatEngine : IDisposable
         {
             if (lowerInput.Contains(phrase))
             {
+                ClearPendingState();
+
                 var existing = _context.GetContext(ContextKeys.HangmanActive);
                 if (existing != null)
                 {
@@ -3858,6 +4005,8 @@ public class ChatEngine : IDisposable
             response = string.Empty;
             return false;
         }
+
+        ClearPendingState();
 
         var existing = _context.GetContext(ContextKeys.QuizActive);
         if (existing != null)

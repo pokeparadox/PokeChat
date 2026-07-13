@@ -146,4 +146,9 @@ public class ToolRegistry
     {
         return _configs.TryGetValue(toolName, out var config) ? config : null;
     }
+
+    public ITool? GetTool(string toolName)
+    {
+        return _tools.TryGetValue(toolName, out var tool) ? tool : null;
+    }
 }

@@ -64,6 +64,7 @@ public sealed class PokeChatDbContext : DbContext
     public DbSet<ErrorKnowledgeEntry> ErrorKnowledgeEntries => Set<ErrorKnowledgeEntry>();
     public DbSet<Reminder> Reminders => Set<Reminder>();
     public DbSet<FactEndorsement> FactEndorsements => Set<FactEndorsement>();
+    public DbSet<AllowedCommand> AllowedCommands => Set<AllowedCommand>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -440,6 +441,19 @@ public sealed class PokeChatDbContext : DbContext
             entity.HasOne<User>()
                 .WithMany()
                 .HasForeignKey(e => e.UserId);
+        });
+
+        modelBuilder.Entity<AllowedCommand>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.Command).IsUnique();
+            entity.Property(e => e.Command).IsRequired();
+            entity.Property(e => e.IsPermanent).IsRequired();
+            entity.Property(e => e.ExpiresAt);
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => e.AddedByUserId);
         });
     }
 }

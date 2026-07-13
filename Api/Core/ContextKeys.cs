@@ -57,6 +57,7 @@ public static class ContextKeys
     public const string PendingRiddleAnswer = "pending_riddle_answer";
     public const string PendingRiddleHint = "pending_riddle_hint";
     public const string PendingRiddleAttempts = "pending_riddle_attempts";
+    public const string PendingRiddleContinue = "pending_riddle_continue";
     public const string RiddleActive = "riddle_active";
     public const string RecallAttempted = "recall_attempted";
     public const string WyrActive = "wyr_active";
@@ -89,6 +90,9 @@ public static class ContextKeys
     public const string PendingConfirmation = "pending_confirmation";
     public const string PendingConfirmationCommand = "pending_confirmation_command";
     public const string PendingConfirmationArgs = "pending_confirmation_args";
+    public const string PendingToolPermission = "pending_tool_permission";
+    public const string PendingToolPermissionCommand = "pending_tool_permission_command";
+    public const string PendingToolPermissionInput = "pending_tool_permission_input";
     public const string LastComplaint = "last_complaint";
     public const string PendingReminderTask = "pending_reminder_task";
     public const string PendingReminderTime = "pending_reminder_time";

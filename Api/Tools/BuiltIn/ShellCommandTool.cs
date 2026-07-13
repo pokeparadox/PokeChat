@@ -10,12 +10,18 @@ public class ShellCommandTool : ITool
 
     private static readonly HashSet<string> DefaultAllowedCommands = new(StringComparer.OrdinalIgnoreCase)
     {
-        "ls", "pwd", "whoami", "date", "uptime", "uname", "echo", "cat", "wc", "du", "df", "which", "env"
+        "ls", "pwd", "whoami", "date", "uptime", "uname", "echo", "cat", "wc", "du", "df", "which", "env",
+        "dotnet", "git", "docker", "npm", "npx",
+        "grep", "kill", "lsof", "zip", "unzip", "tree", "ip", "free",
+        "pip", "python", "cargo", "rustc", "go", "node", "java", "javac",
+        "ssh", "scp", "rsync", "curl", "wget"
     };
 
     private static readonly Regex DangerousChars = new(@"[;&|`$()<>\n\r]", RegexOptions.Compiled);
 
     private readonly HashSet<string> _allowedCommands;
+    private readonly HashSet<string> _tempAllowed = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, DateTime> _tempExpiry = new(StringComparer.OrdinalIgnoreCase);
 
     public ShellCommandTool(IEnumerable<string>? allowedCommands = null)
     {
@@ -24,14 +30,53 @@ public class ShellCommandTool : ITool
             : new HashSet<string>(DefaultAllowedCommands, StringComparer.OrdinalIgnoreCase);
     }
 
+    public bool IsCommandAllowed(string command)
+    {
+        return _allowedCommands.Contains(command) || _tempAllowed.Contains(command);
+    }
+
+    public void TempAllow(string command, TimeSpan duration)
+    {
+        _tempAllowed.Add(command);
+        _tempExpiry[command] = DateTime.UtcNow + duration;
+    }
+
+    public void PermAllow(string command)
+    {
+        _allowedCommands.Add(command);
+        _tempAllowed.Remove(command);
+        _tempExpiry.Remove(command);
+    }
+
+    private void PruneExpiredTemp()
+    {
+        var now = DateTime.UtcNow;
+        var expired = _tempExpiry.Where(kvp => kvp.Value <= now).Select(kvp => kvp.Key).ToList();
+        foreach (var cmd in expired)
+        {
+            _tempAllowed.Remove(cmd);
+            _tempExpiry.Remove(cmd);
+        }
+    }
+
     public ToolResult Execute(string[] args)
     {
         if (args.Length == 0 || string.IsNullOrWhiteSpace(args[0]))
             return new ToolResult { Success = false, ErrorMessage = "No command provided." };
 
+        PruneExpiredTemp();
+
         var command = args[0].Trim();
-        if (!_allowedCommands.Contains(command))
-            return new ToolResult { Success = false, ErrorMessage = $"Command '{command}' is not in the allowed list." };
+        if (!IsCommandAllowed(command))
+        {
+            return new ToolResult
+            {
+                Success = false,
+                ErrorMessage = $"Command '{command}' is not in the allowed list.",
+                IsBlocked = true,
+                BlockedCommand = command
+            };
+        }
 
         var commandArgs = args.Length > 1 ? string.Join(" ", args.Skip(1)) : "";
 

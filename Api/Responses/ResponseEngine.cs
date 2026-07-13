@@ -35,6 +35,9 @@ public class ResponseEngine
     private string? _currentUserInput;
     private string _persona = "chat";
     private readonly PokeChat.Api.Services.WeatherApiClient? _weatherApiClient;
+    internal string? LastToolBlockedCommand { get; private set; }
+
+    internal void ClearLastBlockedCommand() => LastToolBlockedCommand = null;
 
     private static readonly HashSet<string> ObjectPronouns = new(StringComparer.OrdinalIgnoreCase)
         { "you", "me", "him", "her", "them", "it", "us", "this", "that" };
@@ -1425,8 +1428,26 @@ public class ResponseEngine
 
     private static readonly Regex ToolMarkerRegex = new(@"\{tool:(\w+)(?::([^}]+))?\}", RegexOptions.Compiled);
 
+    private string SubstituteVariables(string response)
+    {
+        var file = _context.GetContext(ContextKeys.CurrentFile);
+        var branch = _context.GetContext(ContextKeys.CurrentBranch);
+        var project = _context.GetContext(ContextKeys.ProjectRoot);
+
+        if (!string.IsNullOrEmpty(file))
+            response = response.Replace("{file}", file);
+        if (!string.IsNullOrEmpty(branch))
+            response = response.Replace("{branch}", branch);
+        if (!string.IsNullOrEmpty(project))
+            response = response.Replace("{project}", project);
+
+        return response;
+    }
+
     private string ProcessToolMarkers(string response)
     {
+        response = SubstituteVariables(response);
+
         if (_toolRegistry == null)
             return ToolMarkerRegex.Replace(response, "");
 
@@ -1434,11 +1455,16 @@ public class ResponseEngine
         {
             var toolName = match.Groups[1].Value;
             var argsRaw = match.Groups[2].Success ? match.Groups[2].Value : "";
-            var args = string.IsNullOrEmpty(argsRaw) ? Array.Empty<string>() : new[] { argsRaw };
+            var args = string.IsNullOrEmpty(argsRaw) ? Array.Empty<string>() : argsRaw.Split(':');
 
             var result = _toolRegistry.TryExecute(toolName, args);
             if (result == null || !result.Success)
             {
+                if (result?.IsBlocked == true)
+                {
+                    LastToolBlockedCommand = result.BlockedCommand;
+                    return $"BLOCKED:{result.BlockedCommand}";
+                }
                 if (result?.ErrorMessage == "timeout")
                     return GetRandomResponse("tool_timeout");
                 return GetRandomResponse("tool_unavailable");
