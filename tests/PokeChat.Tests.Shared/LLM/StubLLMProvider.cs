@@ -1,6 +1,6 @@
 using PokeChat.LLM;
 
-namespace PokeChat.Tests.LLM;
+namespace PokeChat.Tests.Shared.LLM;
 
 public class StubLLMProvider : ILLMProvider
 {

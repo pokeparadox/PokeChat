@@ -1,7 +1,7 @@
 using PokeChat.Data;
 using PokeChat.Data.Entities;
 
-namespace PokeChat.Tests.Helpers;
+namespace PokeChat.Tests.Shared.Helpers;
 
 internal static class TestDataHelper
 {

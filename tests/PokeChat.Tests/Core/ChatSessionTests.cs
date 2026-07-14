@@ -4,7 +4,7 @@ using PokeChat.Knowledge;
 using PokeChat.ML;
 using PokeChat.NLP;
 using PokeChat.Responses;
-using PokeChat.Tests.Helpers;
+using PokeChat.Tests.Shared.Helpers;
 using Shouldly;
 
 namespace PokeChat.Tests.Core;

@@ -1,5 +1,13 @@
 <Solution>
   <Project Path="PokeChat.csproj" />
-  <Project Path="tests/PokeChat.Tests/PokeChat.Tests.csproj" />
   <Project Path="Api/PokeChat.Api.csproj" />
+  <Project Path="tests/PokeChat.Tests/PokeChat.Tests.csproj" />
+  <Project Path="tests/PokeChat.Tests.Shared/PokeChat.Tests.Shared.csproj" />
+  <Project Path="tests/PokeChat.Tests.NLP/PokeChat.Tests.NLP.csproj" />
+  <Project Path="tests/PokeChat.Tests.Knowledge/PokeChat.Tests.Knowledge.csproj" />
+  <Project Path="tests/PokeChat.Tests.Responses/PokeChat.Tests.Responses.csproj" />
+  <Project Path="tests/PokeChat.Tests.ML/PokeChat.Tests.ML.csproj" />
+  <Project Path="tests/PokeChat.Tests.Stories/PokeChat.Tests.Stories.csproj" />
+  <Project Path="tests/PokeChat.Tests.Tools/PokeChat.Tests.Tools.csproj" />
+  <Project Path="tests/PokeChat.Tests.Api/PokeChat.Tests.Api.csproj" />
 </Solution>

@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using PokeChat.Data.Entities;
 using PokeChat.Knowledge;
-using PokeChat.Tests.Helpers;
+using PokeChat.Tests.Shared.Helpers;
 using Shouldly;
 
 namespace PokeChat.Tests.Knowledge;

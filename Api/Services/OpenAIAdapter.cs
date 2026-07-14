@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using PokeChat.Api.Models;
@@ -7,6 +9,9 @@ namespace PokeChat.Api.Services;
 
 public class OpenAIAdapter
 {
+    private const int DefaultHistoryTurnCap = 10;
+    private static readonly HashSet<string> RebuildSkipRoles = new(StringComparer.OrdinalIgnoreCase) { "system", "tool", "tool_call" };
+
     private readonly SessionManager _sessionManager;
     private readonly UpstreamLLMClient? _upstream;
     private readonly ITokenBucketStore _tokenBucket;
@@ -25,6 +30,12 @@ public class OpenAIAdapter
     public async Task<ChatCompletionResponse> ProcessAsync(ChatCompletionRequest request, string sessionId, string persona = "chat", string? rateLimitKey = null)
     {
         var engine = _sessionManager.GetOrCreate(sessionId, userName: request.User, messages: request.Messages, persona: persona);
+
+        var systemMessage = request.Messages.FirstOrDefault(m => m.Role == "system");
+        if (systemMessage?.Content != null)
+            SystemPromptMapper.Apply(engine, systemMessage.Content);
+
+        RebuildHistory(engine, request.Messages);
 
         var userMessage = request.Messages.LastOrDefault(m => m.Role == "user");
         var input = userMessage?.Content ?? "";
@@ -137,6 +148,12 @@ public class OpenAIAdapter
         string persona = "chat", string? rateLimitKey = null, CancellationToken ct = default)
     {
         var engine = _sessionManager.GetOrCreate(sessionId, userName: request.User, messages: request.Messages, persona: persona);
+
+        var systemMessage = request.Messages.FirstOrDefault(m => m.Role == "system");
+        if (systemMessage?.Content != null)
+            SystemPromptMapper.Apply(engine, systemMessage.Content);
+
+        RebuildHistory(engine, request.Messages);
 
         var userMessage = request.Messages.LastOrDefault(m => m.Role == "user");
         var input = userMessage?.Content ?? "";
@@ -308,6 +325,62 @@ public class OpenAIAdapter
             chunks.Add(text);
 
         return chunks;
+    }
+
+    internal static void RebuildHistory(ChatEngine engine, List<ChatMessage> messages)
+    {
+        var userMessages = new List<ChatMessage>();
+        foreach (var msg in messages)
+        {
+            if (msg.Role == "user" && !RebuildSkipRoles.Contains(msg.Role))
+                userMessages.Add(msg);
+        }
+
+        if (userMessages.Count <= 1)
+            return;
+
+        var priorMessages = userMessages.Take(userMessages.Count - 1).ToList();
+
+        var historyHash = ComputeHistoryHash(priorMessages);
+        var lastHash = engine.GetContextValue(ContextKeys.LastProcessedHistoryHash);
+
+        if (lastHash == historyHash)
+            return;
+
+        var turnCap = DefaultHistoryTurnCap;
+        var turnCapRaw = engine.GetContextValue(ContextKeys.RebuildHistoryTurnCap);
+        if (int.TryParse(turnCapRaw, out var parsed) && parsed > 0)
+            turnCap = parsed;
+
+        if (priorMessages.Count > turnCap)
+            priorMessages = priorMessages.Skip(priorMessages.Count - turnCap).ToList();
+
+        engine.RebuildMode = true;
+        try
+        {
+            foreach (var msg in priorMessages)
+            {
+                if (string.IsNullOrWhiteSpace(msg.Content))
+                    continue;
+                engine.ProcessInput(msg.Content);
+            }
+        }
+        finally
+        {
+            engine.RebuildMode = false;
+        }
+
+        engine.SetContext(ContextKeys.LastProcessedHistoryHash, historyHash);
+    }
+
+    private static string ComputeHistoryHash(List<ChatMessage> priorMessages)
+    {
+        var sb = new StringBuilder();
+        foreach (var msg in priorMessages)
+            sb.Append(msg.Content ?? "");
+        var bytes = Encoding.UTF8.GetBytes(sb.ToString());
+        var hash = SHA256.HashData(bytes);
+        return Convert.ToHexString(hash[..16]);
     }
 
     private ChatCompletionResponse RateLimitedResponse(ChatCompletionRequest request, int needed, string rateKey)

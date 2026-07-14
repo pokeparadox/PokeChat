@@ -1826,3 +1826,35 @@ Dual-persona architecture (chat/coding) with persona-filtered rules, responses, 
 - [x] **17 new tests:** 10 ContextTracker serialization, 4 riddle exclude, 3 Save/RestoreContextState
 - [x] 899/899 pass
 
+---
+
+## Phase A1 — System Prompt → Persona/Config Mapping (2026-07-14)
+- [x] New `SystemPromptMapper` — parses system prompt for persona keywords (coding/chat) and config directives (concise/detailed)
+- [x] New `ContextKeys.SystemPrompt` and `ContextKeys.ResponseLength` constants
+- [x] New `ChatEngine.ApplySystemConfig()` method for setting config from system prompt
+- [x] Integrated into `OpenAIAdapter.ProcessAsync` and `StreamResponseAsync` — extracts `messages[0].role == "system"` and applies
+- [x] **33 new tests:** persona detection, config detection, case insensitivity, precedence, edge cases
+- [x] 932/932 pass, 0 warnings
+
+---
+
+## Phase A2 — Message History Rebuild (2026-07-14)
+- [x] `OpenAIAdapter.RebuildHistory()` — replays prior user messages through engine to rebuild context (pronouns, topics, facts)
+- [x] SHA-256 hash dedup — skips rebuild when message history unchanged between calls
+- [x] `ChatEngine.RebuildMode` flag — prevents storing duplicate conversations and facts during replay
+- [x] `ContextKeys.LastProcessedHistoryHash` and `ContextKeys.RebuildHistoryTurnCap` for dedup and configurable cap (default 10)
+- [x] Integrated into both `ProcessAsync` and `StreamResponseAsync`
+- [x] Guards on `StoreConversation`, `StoreFact`, `UpdateResponseEffectiveness`, and `SessionLogger` during rebuild
+- [x] **10 new tests:** single/multi message, system/tool skip, dedup, different hash, whitespace, rebuild mode flag
+- [x] 942/942 pass, 0 warnings
+
+---
+
+## Test Suite Reorganisation ✅ (2026-07-14)
+- [x] 7-layer test split: NLP, Knowledge, Responses, ML, Stories, Tools, Api — each in its own project
+- [x] `PokeChat.Tests.Shared` project: `FreshDbContext`, `TestDataHelper`, `StubLLMProvider` (single source of truth for test helpers)
+- [x] `AssemblyInfo.cs` updated with `InternalsVisibleTo` for all 8 new test projects
+- [x] Original `PokeChat.Tests` slimmed from 942 → 336 core tests (ChatEngine, ChatSession, GreetingPool, Interview, NounCategoriser, Router, SessionLogger)
+- [x] 942/942 pass across 8 projects, 0 failures, 0 warnings
+- [x] `AGENTS.md` updated with per-project test commands
+

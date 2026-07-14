@@ -2,7 +2,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using PokeChat.Data;
 
-namespace PokeChat.Tests.Helpers;
+namespace PokeChat.Tests.Shared.Helpers;
 
 public class FreshDbContext : IDisposable
 {

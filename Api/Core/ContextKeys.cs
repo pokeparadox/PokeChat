@@ -101,4 +101,8 @@ public static class ContextKeys
     public const string PendingNameConfirmation = "pending_name_confirmation";
     public const string PendingIdentityVerification = "pending_identity_verification";
     public const string ConsecutiveLlmFailures = "consecutive_llm_failures";
+    public const string SystemPrompt = "system_prompt";
+    public const string ResponseLength = "response_length";
+    public const string LastProcessedHistoryHash = "last_processed_history_hash";
+    public const string RebuildHistoryTurnCap = "rebuild_history_turn_cap";
 }

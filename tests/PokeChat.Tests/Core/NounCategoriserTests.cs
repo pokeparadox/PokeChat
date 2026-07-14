@@ -1,6 +1,6 @@
 using PokeChat.Core;
 using PokeChat.Knowledge;
-using PokeChat.Tests.Helpers;
+using PokeChat.Tests.Shared.Helpers;
 using Shouldly;
 
 namespace PokeChat.Tests.Core;

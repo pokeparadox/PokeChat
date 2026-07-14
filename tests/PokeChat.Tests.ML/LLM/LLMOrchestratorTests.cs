@@ -1,7 +1,8 @@
 using PokeChat.LLM;
+using PokeChat.Tests.Shared.LLM;
 using Shouldly;
 
-namespace PokeChat.Tests.LLM;
+namespace PokeChat.Tests.ML;
 
 public class LLMOrchestratorTests
 {

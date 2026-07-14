@@ -695,17 +695,21 @@ public class ChatEngine : IDisposable
         }
 
         LastResponseCategory = responseCategory;
-        _knowledgeStore.StoreConversation(_currentUserId!.Value, input, response, _sessionId, responseCategory);
-        _knowledgeStore.Save();
+
+        if (!RebuildMode)
+        {
+            _knowledgeStore.StoreConversation(_currentUserId!.Value, input, response, _sessionId, responseCategory);
+            _knowledgeStore.Save();
+        }
 
         _context.SetContext(ContextKeys.LastResponseHadSvo, hadTriples ? "true" : "false");
 
-        if (prevCategory != null)
+        if (!RebuildMode && prevCategory != null)
         {
             _knowledgeStore.UpdateResponseEffectiveness(prevCategory, hadTriples);
         }
 
-        if (_sessionLogger != null)
+        if (!RebuildMode && _sessionLogger != null)
         {
             var contextData = _sessionLogger.Verbose ? BuildLogContext() : null;
             _sessionLogger.LogTurn(input, response, contextData);
@@ -868,6 +872,12 @@ public class ChatEngine : IDisposable
         }
 
         _responseEngine.SetBotName(_botName);
+    }
+
+    internal void ApplySystemConfig(string? responseLength = null)
+    {
+        if (responseLength != null)
+            _context.SetContext(ContextKeys.ResponseLength, responseLength);
     }
 
     internal void ClearPendingState()
@@ -1130,7 +1140,8 @@ public class ChatEngine : IDisposable
                 }
                 else
                 {
-                    _knowledgeStore.StoreFact(fact);
+                    if (!RebuildMode)
+                        _knowledgeStore.StoreFact(fact);
                     anyTripleProcessed = true;
                 }
             }
@@ -1206,6 +1217,7 @@ public class ChatEngine : IDisposable
 
     public string? LastResponseCategory { get; set; }
     public bool LastResponseIsDeadEnd => LastResponseCategory != null && ResponseEngine.IsDeadEndCategory(LastResponseCategory);
+    public bool RebuildMode { get; set; }
 
     internal string? LastSubject => _context.LastSubject;
     internal string? LastObject => _context.LastObject;

@@ -1,7 +1,7 @@
 # PokeChat — Agent Notes
 
 ## Project
-- C# .NET 10 (`net10.0`), two-project solution (`PokeChat.slnx`)
+- C# .NET 10 (`net10.0`), multi-project solution (`PokeChat.slnx`)
 - **`Api/PokeChat.Api.csproj`** — core library (Web SDK): ChatEngine, NLP, Knowledge, Data, Responses, Math, LLM, ML, MCP, Tools, Stories, Migrations
 - **`PokeChat.csproj`** — thin console HTTP client (~70 lines), calls the REST API
 - SQLite via **`Microsoft.EntityFrameworkCore.Sqlite`** (EF Core, not raw `Microsoft.Data.Sqlite`)
@@ -12,7 +12,15 @@
 dotnet build                              # build all projects
 dotnet run --project Api/                 # start the REST API (default http://localhost:5000)
 dotnet run                                # start the console HTTP client (connects to API)
-dotnet test                               # run all tests
+dotnet test                               # run all tests (942 across 8 projects)
+dotnet test --project tests/PokeChat.Tests.NLP/      # run NLP tests only (67)
+dotnet test --project tests/PokeChat.Tests.Knowledge/ # run Knowledge tests only (132)
+dotnet test --project tests/PokeChat.Tests.Responses/ # run Responses tests only (67)
+dotnet test --project tests/PokeChat.Tests.ML/        # run ML tests only (73)
+dotnet test --project tests/PokeChat.Tests.Stories/   # run Stories tests only (98)
+dotnet test --project tests/PokeChat.Tests.Tools/     # run Tools tests only (69)
+dotnet test --project tests/PokeChat.Tests.Api/       # run Api tests only (100)
+dotnet test --project tests/PokeChat.Tests/           # run Core tests only (336)
 dotnet ef migrations add <Name> --project Api/  # add a new schema migration
 dotnet ef migrations remove --project Api/      # undo last migration (if unapplied)
 ```
@@ -21,34 +29,35 @@ dotnet ef migrations remove --project Api/      # undo last migration (if unappl
 Terminal chat bot with custom NLP parser (no LLMs). Learns facts from conversations and stores them in SQLite via EF Core. All conversational data (greetings, response rules, POS dictionary, name patterns, bot commands, bot responses) is stored in DB — the bot learns and grows its vocabulary over time.
 
 ```
-Program.cs                    → entry point, creates ChatSession
-Core/
-  ChatSession.cs              → main loop: greet → parse → respond → store
-  GreetingPool.cs             → loads random greeting from DB via KnowledgeStore
-  ContextKeys.cs              → constants for context tracker keys
-  PredicateType.cs            → enum for predicate classification
-NLP/
-  Tokeniser.cs                → British English spelling, whitespace + punctuation tokenisation (implements ITokeniser)
-  PosTagger.cs                → DB-loaded dictionary (pos_dictionary table) + heuristics (implements IPosTagger)
-  SvoExtractor.cs             → Subject-Verb-Object triple extraction (implements ISvoExtractor)
-  SentenceSplitter.cs         → multi-sentence splitting on `.`, `!`, `?` (implements ISentenceSplitter)
-  PunctuationHelper.cs        → shared IsPunctuation utility
-  SpellChecker.cs             → Levenshtein-based spell correction with misspellings table
-  Pluraliser.cs               → singularise English plural nouns
-  Interfaces (IPosTagger, ITokeniser, ISentenceSplitter, ISvoExtractor)
-Math/
-  IMathEngine.cs              → interface for math expression evaluation
-  SimpleMath.cs               → regex-based binary expression engine (+, -, *, /, ^)
+Api/
+  Program.cs                    → entry point, creates ChatSession
   Core/
-    INounCategoriser.cs         → interface for noun categorisation
-    NounCategoriser.cs          → DB lookup + heuristics (person/place/thing), auto-learns
-  Knowledge/
-    KnowledgeStore.cs           → EF Core repository layer over PokeChatDbContext
-    Fact.cs                     → Facet model mapping to FactEntity
-    ContextTracker.cs           → conversation context, pronoun resolution
-Responses/
-  ResponseEngine.cs           → rule-based response generation (math, dictionary/thesaurus, rules, facts, follow-ups)
-  ResponseRules.cs            → loads rules from DB (response_rules table), regex matching
+    ChatSession.cs              → main loop: greet → parse → respond → store
+    GreetingPool.cs             → loads random greeting from DB via KnowledgeStore
+    ContextKeys.cs              → constants for context tracker keys
+    PredicateType.cs            → enum for predicate classification
+  NLP/
+    Tokeniser.cs                → British English spelling, whitespace + punctuation tokenisation (implements ITokeniser)
+    PosTagger.cs                → DB-loaded dictionary (pos_dictionary table) + heuristics (implements IPosTagger)
+    SvoExtractor.cs             → Subject-Verb-Object triple extraction (implements ISvoExtractor)
+    SentenceSplitter.cs         → multi-sentence splitting on `.`, `!`, `?` (implements ISentenceSplitter)
+    PunctuationHelper.cs        → shared IsPunctuation utility
+    SpellChecker.cs             → Levenshtein-based spell correction with misspellings table
+    Pluraliser.cs               → singularise English plural nouns
+    Interfaces (IPosTagger, ITokeniser, ISentenceSplitter, ISvoExtractor)
+  Math/
+    IMathEngine.cs              → interface for math expression evaluation
+    SimpleMath.cs               → regex-based binary expression engine (+, -, *, /, ^)
+    Core/
+      INounCategoriser.cs         → interface for noun categorisation
+      NounCategoriser.cs          → DB lookup + heuristics (person/place/thing), auto-learns
+    Knowledge/
+      KnowledgeStore.cs           → EF Core repository layer over PokeChatDbContext
+      Fact.cs                     → Facet model mapping to FactEntity
+      ContextTracker.cs           → conversation context, pronoun resolution
+  Responses/
+    ResponseEngine.cs           → rule-based response generation (math, dictionary/thesaurus, rules, facts, follow-ups)
+    ResponseRules.cs            → loads rules from DB (response_rules table), regex matching
   Data/
     PokeChatDbContext.cs        → EF Core DbContext with DbSets for all entities
     DbSeeder.cs                 → seeds initial data (greetings, rules, POS dictionary, bot responses, etc.)
@@ -58,6 +67,20 @@ Responses/
                                   ResponseRule, ResponseRuleResponse, PosDictionaryEntry, NamePattern,
                                   BotCommand, Misspelling, BotResponse, WordDefinition, WordLink, NounCategory,
                                   ConversationMetric, ResponseEffectiveness
+```
+
+### Test Projects (942 tests across 8 projects)
+```
+tests/
+  PokeChat.Tests/              → Core tests (336): ChatEngine, ChatSession, GreetingPool, Interview, NounCategoriser, Router, SessionLogger
+  PokeChat.Tests.NLP/          → NLP tests (67): Tokeniser, PosTagger, SvoExtractor, SentenceSplitter, SpellChecker, Pluraliser, ContractionExpander
+  PokeChat.Tests.Knowledge/    → Knowledge tests (132): KnowledgeStore, ContextTracker
+  PokeChat.Tests.Responses/    → Response tests (67): ResponseEngine, ResponseRules
+  PokeChat.Tests.ML/           → ML + LLM tests (73): NeuralNet, IntentClassifier, NeuralResponsePipeline, LLMOrchestrator
+  PokeChat.Tests.Stories/      → Stories tests (98): StoryGenerator, PoetryGenerator, RhymeMatcher, SyllableCounter
+  PokeChat.Tests.Tools/        → Tools tests (69): ToolRegistry, McpRegistry, McpToolAdapter, FileOpsTool
+  PokeChat.Tests.Api/          → API tests (100): SessionManager, OpenAIAdapter, SystemPromptMapper, TitleGenerator
+  PokeChat.Tests.Shared/       → Shared helpers: FreshDbContext, TestDataHelper, StubLLMProvider (not a test project)
 ```
 
 ## Key Details
