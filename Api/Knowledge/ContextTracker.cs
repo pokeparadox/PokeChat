@@ -161,4 +161,96 @@ public class ContextTracker
         _topicStack.Clear();
         _turnCounter = 0;
     }
+
+    public string SerializeState()
+    {
+        var state = new
+        {
+            context = _context,
+            lastSubject = _lastSubject,
+            lastObject = _lastObject,
+            topicStack = _topicStack,
+            turnCounter = _turnCounter
+        };
+        return JsonSerializer.Serialize(state);
+    }
+
+    public void DeserializeState(string json)
+    {
+        if (string.IsNullOrEmpty(json))
+            return;
+
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        _context.Clear();
+        _lastSubject = null;
+        _lastObject = null;
+        _topicStack.Clear();
+        _turnCounter = 0;
+
+        if (root.TryGetProperty("context", out var contextEl) && contextEl.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var prop in contextEl.EnumerateObject())
+            {
+                _context[prop.Name] = prop.Value.ValueKind == JsonValueKind.Null ? null : prop.Value.GetString();
+            }
+        }
+
+        if (root.TryGetProperty("lastSubject", out var lsEl) && lsEl.ValueKind != JsonValueKind.Null)
+            _lastSubject = lsEl.GetString();
+
+        if (root.TryGetProperty("lastObject", out var loEl) && loEl.ValueKind != JsonValueKind.Null)
+            _lastObject = loEl.GetString();
+
+        if (root.TryGetProperty("turnCounter", out var tcEl) && tcEl.ValueKind == JsonValueKind.Number)
+            _turnCounter = tcEl.GetInt32();
+
+        if (root.TryGetProperty("topicStack", out var tsEl) && tsEl.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in tsEl.EnumerateArray())
+            {
+                PredicateType pt;
+                if (item.TryGetProperty("PredicateType", out var ptEl))
+                {
+                    if (ptEl.ValueKind == JsonValueKind.Number)
+                        pt = (PredicateType)ptEl.GetInt32();
+                    else if (ptEl.ValueKind == JsonValueKind.String && Enum.TryParse<PredicateType>(ptEl.GetString(), out var parsed))
+                        pt = parsed;
+                    else
+                        pt = PredicateType.General;
+                }
+                else
+                {
+                    pt = PredicateType.General;
+                }
+
+                var topic = new TopicEntry
+                {
+                    Subject = GetString(item, "Subject") ?? string.Empty,
+                    Verb = GetString(item, "Verb") ?? string.Empty,
+                    Object = GetString(item, "Object") ?? string.Empty,
+                    Category = GetString(item, "Category"),
+                    PredicateType = pt,
+                    TurnNumber = GetInt(item, "TurnNumber"),
+                    MentionCount = GetInt(item, "MentionCount")
+                };
+                _topicStack.Add(topic);
+            }
+        }
+    }
+
+    private static string? GetString(JsonElement el, string name)
+    {
+        if (el.TryGetProperty(name, out var p) && p.ValueKind != JsonValueKind.Null)
+            return p.GetString();
+        return null;
+    }
+
+    private static int GetInt(JsonElement el, string name)
+    {
+        if (el.TryGetProperty(name, out var p) && p.ValueKind == JsonValueKind.Number)
+            return p.GetInt32();
+        return 0;
+    }
 }

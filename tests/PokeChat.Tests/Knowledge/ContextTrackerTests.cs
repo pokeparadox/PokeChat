@@ -241,4 +241,122 @@ public class ContextTrackerTests
         var tracker = new ContextTracker();
         tracker.ResolveFilePronoun("fix that error").ShouldBeNull();
     }
+
+    [Fact]
+    public void SerializeState_IncludesContextKeys()
+    {
+        var tracker = new ContextTracker();
+        tracker.SetContext("key1", "value1");
+        tracker.SetContext("key2", "value2");
+        var json = tracker.SerializeState();
+        json.ShouldContain("key1");
+        json.ShouldContain("value1");
+    }
+
+    [Fact]
+    public void SerializeState_IncludesLastSubjectAndObject()
+    {
+        var tracker = new ContextTracker();
+        tracker.UpdateLastSubject("Alice");
+        tracker.UpdateLastObject("pizza");
+        var json = tracker.SerializeState();
+        json.ShouldContain("Alice");
+        json.ShouldContain("pizza");
+    }
+
+    [Fact]
+    public void SerializeState_IncludesTopicStack()
+    {
+        var tracker = new ContextTracker();
+        tracker.PushTopic("Alice", "like", "pizza", "thing", PredicateType.Preference);
+        var json = tracker.SerializeState();
+        json.ShouldContain("Alice");
+        json.ShouldContain("pizza");
+    }
+
+    [Fact]
+    public void DeserializeState_RestoresContextKeys()
+    {
+        var original = new ContextTracker();
+        original.SetContext("key1", "value1");
+        original.SetContext("key2", "value2");
+        var json = original.SerializeState();
+
+        var restored = new ContextTracker();
+        restored.DeserializeState(json);
+        restored.GetContext("key1").ShouldBe("value1");
+        restored.GetContext("key2").ShouldBe("value2");
+    }
+
+    [Fact]
+    public void DeserializeState_RestoresLastSubjectAndObject()
+    {
+        var original = new ContextTracker();
+        original.UpdateLastSubject("Alice");
+        original.UpdateLastObject("pizza");
+        var json = original.SerializeState();
+
+        var restored = new ContextTracker();
+        restored.DeserializeState(json);
+        restored.LastSubject.ShouldBe("Alice");
+        restored.LastObject.ShouldBe("pizza");
+    }
+
+    [Fact]
+    public void DeserializeState_RestoresTopicStack()
+    {
+        var original = new ContextTracker();
+        original.PushTopic("Alice", "like", "pizza", "thing", PredicateType.Preference);
+        original.PushTopic("Bob", "has", "car", "thing", PredicateType.Possession);
+        var json = original.SerializeState();
+
+        var restored = new ContextTracker();
+        restored.DeserializeState(json);
+        restored.TopicStack.Count.ShouldBe(2);
+        restored.TopicStack[0].Subject.ShouldBe("Alice");
+        restored.TopicStack[0].Object.ShouldBe("pizza");
+        restored.TopicStack[1].Subject.ShouldBe("Bob");
+        restored.TopicStack[1].Object.ShouldBe("car");
+    }
+
+    [Fact]
+    public void DeserializeState_EmptyOrNull_DoesNotThrow()
+    {
+        var tracker = new ContextTracker();
+        tracker.DeserializeState("");
+        tracker.DeserializeState(null!);
+    }
+
+    [Fact]
+    public void DeserializeState_ClearsExistingStateBeforeRestore()
+    {
+        var tracker = new ContextTracker();
+        tracker.SetContext("old_key", "old_value");
+        tracker.UpdateLastSubject("OldSubject");
+
+        var newTracker = new ContextTracker();
+        newTracker.SetContext("new_key", "new_value");
+        newTracker.UpdateLastSubject("NewSubject");
+        var json = newTracker.SerializeState();
+
+        tracker.DeserializeState(json);
+        tracker.GetContext("old_key").ShouldBeNull();
+        tracker.GetContext("new_key").ShouldBe("new_value");
+        tracker.LastSubject.ShouldBe("NewSubject");
+    }
+
+    [Fact]
+    public void RoundTrip_PreservesTurnCounter()
+    {
+        var original = new ContextTracker();
+        original.PushTopic("A", "is", "A", null, PredicateType.General);
+        original.PushTopic("B", "is", "B", null, PredicateType.General);
+        var json = original.SerializeState();
+
+        var restored = new ContextTracker();
+        restored.DeserializeState(json);
+        restored.TopicStack.Count.ShouldBe(2);
+        restored.TopicStack[0].TurnNumber.ShouldBe(1);
+        restored.TopicStack[1].TurnNumber.ShouldBe(2);
+    }
 }

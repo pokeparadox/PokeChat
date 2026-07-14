@@ -11,4 +11,5 @@ public class ConversationSession
     public string? LastActiveAt { get; set; }
     public string? BotName { get; set; }
     public string? Persona { get; set; }
+    public string? ContextStateJson { get; set; }
 }

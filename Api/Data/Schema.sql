@@ -167,7 +167,8 @@ CREATE TABLE IF NOT EXISTS conversation_sessions (
     started_at TEXT NOT NULL,
     ended_at TEXT,
     turn_count INTEGER NOT NULL DEFAULT 0,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    context_state_json TEXT
 );
 
 CREATE TABLE IF NOT EXISTS learned_response_rules (

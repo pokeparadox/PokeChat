@@ -1224,7 +1224,35 @@ public class ChatEngine : IDisposable
     internal int FollowUpCount { get => _followUpCount; set => _followUpCount = value; }
     internal string? LastInterviewQuestion { get => _lastInterviewQuestion; set => _lastInterviewQuestion = value; }
     internal IInterviewEngine? InterviewEngine => _interviewEngine;
-    internal void Save() => _knowledgeStore.Save();
+    internal void Save()
+    {
+        _knowledgeStore.Save();
+        
+        var dbSession = _dbContext.ConversationSessions.FirstOrDefault(s => s.SessionGuid == _sessionId);
+        if (dbSession != null)
+        {
+            dbSession.ContextStateJson = _context.SerializeState();
+            _dbContext.SaveChanges();
+        }
+    }
+
+    internal void RestoreContextState()
+    {
+        var dbSession = _dbContext.ConversationSessions.FirstOrDefault(s => s.SessionGuid == _sessionId);
+        if (dbSession?.ContextStateJson != null)
+        {
+            _context.DeserializeState(dbSession.ContextStateJson);
+        }
+    }
+
+    public void InitializeSession()
+    {
+        if (!string.IsNullOrEmpty(_sessionId))
+        {
+            RestoreContextState();
+            _knowledgeStore.UpdateSessionActivity(_sessionId);
+        }
+    }
     internal void LogSystem(string message) => _sessionLogger?.LogSystem(message);
     internal void RecordSessionMetrics() => _knowledgeStore.RecordSessionMetrics(_sessionId);
 
@@ -3434,12 +3462,27 @@ public class ChatEngine : IDisposable
                     return true;
                 }
 
-                var riddle = _knowledgeStore.GetRandomRiddle();
+                var recentRaw = _context.GetContext(ContextKeys.RecentRiddles);
+                var recent = string.IsNullOrEmpty(recentRaw)
+                    ? new HashSet<string>()
+                    : JsonSerializer.Deserialize<HashSet<string>>(recentRaw) ?? new();
+
+                var riddle = _knowledgeStore.GetRandomRiddle(recent);
                 if (riddle == null)
                 {
-                    response = "I don't have any riddles yet!";
-                    return true;
+                    _context.SetContext(ContextKeys.RecentRiddles, null);
+                    riddle = _knowledgeStore.GetRandomRiddle();
+                    if (riddle == null)
+                    {
+                        response = "I don't have any riddles yet!";
+                        return true;
+                    }
                 }
+
+                recent.Add(riddle.Question);
+                if (recent.Count > 5)
+                    recent.Remove(recent.First());
+                _context.SetContext(ContextKeys.RecentRiddles, JsonSerializer.Serialize(recent));
 
                 _context.SetContext(ContextKeys.RiddleActive, "true");
                 _context.SetContext(ContextKeys.PendingRiddleQuestion, riddle.Question);

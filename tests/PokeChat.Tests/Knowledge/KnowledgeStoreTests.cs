@@ -1507,6 +1507,52 @@ public class KnowledgeStoreTests
         report.ReclaimedBytes.ShouldBeNull();
     }
 
+    [Fact]
+    public void GetRandomRiddle_ReturnsRiddle_WhenNoExclusions()
+    {
+        using var db = new FreshDbContext();
+        TestDataHelper.SeedRiddles(db.Context);
+        var store = new KnowledgeStore(db.Context);
+        var riddle = store.GetRandomRiddle();
+        riddle.ShouldNotBeNull();
+        riddle.Question.ShouldNotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public void GetRandomRiddle_ExcludesRecentQuestions()
+    {
+        using var db = new FreshDbContext();
+        TestDataHelper.SeedRiddles(db.Context);
+        var store = new KnowledgeStore(db.Context);
+        var allRiddles = db.Context.Riddles.ToList();
+        var exclude = new HashSet<string>(allRiddles.Take(4).Select(r => r.Question));
+        var riddle = store.GetRandomRiddle(exclude);
+        riddle.ShouldNotBeNull();
+        exclude.ShouldNotContain(riddle.Question);
+    }
+
+    [Fact]
+    public void GetRandomRiddle_AllExcluded_ReturnsUnfiltered()
+    {
+        using var db = new FreshDbContext();
+        TestDataHelper.SeedRiddles(db.Context);
+        var store = new KnowledgeStore(db.Context);
+        var allRiddles = db.Context.Riddles.ToList();
+        var exclude = new HashSet<string>(allRiddles.Select(r => r.Question));
+        var riddle = store.GetRandomRiddle(exclude);
+        riddle.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void GetRandomRiddle_EmptyExclusionSet_Works()
+    {
+        using var db = new FreshDbContext();
+        TestDataHelper.SeedRiddles(db.Context);
+        var store = new KnowledgeStore(db.Context);
+        var riddle = store.GetRandomRiddle(new HashSet<string>());
+        riddle.ShouldNotBeNull();
+    }
+
     private static PokeChat.Responses.ResponseEngine CreateEngine(PokeChat.Data.PokeChatDbContext db, ContextTracker context)
     {
         TestDataHelper.SeedBotResponses(db);

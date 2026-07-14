@@ -216,6 +216,8 @@ public class ChatSession : IDisposable
     public string GetInitialGreeting() => _engine.GetInitialGreeting();
 
     internal string ProcessInput(string input) => _engine.ProcessInput(input);
+    internal void Save() => _engine.Save();
+    internal void RestoreContextState() => _engine.RestoreContextState();
     internal string HandleNameInput(string input) => _engine.HandleNameInput(input);
     internal bool ShouldExit(string input) => _engine.ShouldExit(input);
     internal string ExtractName(string input, List<string> tokens) => _engine.ExtractName(input, tokens);

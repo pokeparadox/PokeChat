@@ -11,6 +11,7 @@ public class ChatEngineFactory
             engine.SessionId = sessionId;
         if (persona != "chat")
             engine.SwitchPersona(persona);
+        engine.InitializeSession();
         return engine;
     }
 }

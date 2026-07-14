@@ -3322,4 +3322,126 @@ public class ChatSessionTests
             response.ShouldNotBeNullOrEmpty();
         }
     }
+
+    [Fact]
+    public void Save_StoresContextState_InSession()
+    {
+        var db = new FreshDbContext();
+        TestDataHelper.SeedBotResponses(db.Context);
+        TestDataHelper.SeedPosDictionary(db.Context);
+        var store = new KnowledgeStore(db.Context);
+        var user = new User { Name = "TestUser", FirstSeen = DateTime.UtcNow.ToString("o"), LastSeen = DateTime.UtcNow.ToString("o") };
+        db.Context.Users.Add(user);
+        db.Context.SaveChanges();
+
+        var contextTracker = new ContextTracker();
+        var spellChecker = new SpellChecker();
+        var posEntries = store.GetPosDictionary();
+        var posTagger = new PosTagger(posEntries);
+        spellChecker.Initialise(new HashSet<string>(posEntries.Select(e => e.Word), StringComparer.OrdinalIgnoreCase), store.GetMisspellings());
+        var tokeniser = new Tokeniser();
+        var svoExtractor = new SvoExtractor();
+        var nounCategoriser = new NounCategoriser(store);
+        var responseEngine = new ResponseEngine(store, contextTracker, spellChecker, posTagger, tokeniser, svoExtractor);
+
+        var sessionId = Guid.NewGuid().ToString();
+        store.CreateConversationSession(sessionId, user.Id);
+        store.Save();
+
+        var session = new ChatSession(
+            db.Context, store, responseEngine, spellChecker, posTagger, tokeniser,
+            new SentenceSplitter(), svoExtractor, contextTracker, nounCategoriser,
+            new List<string> { "my name is" },
+            new HashSet<string> { "quit" }.ToHashSet(StringComparer.OrdinalIgnoreCase),
+            new HashSet<string> { "hi" }.ToHashSet(StringComparer.OrdinalIgnoreCase),
+            sessionId: sessionId
+        );
+
+        contextTracker.SetContext("test_key", "test_value");
+        contextTracker.UpdateLastSubject("Alice");
+        session.Save();
+
+        var dbSession = db.Context.ConversationSessions.First(s => s.SessionGuid == sessionId);
+        dbSession.ContextStateJson.ShouldNotBeNullOrEmpty();
+        dbSession.ContextStateJson.ShouldContain("test_key");
+        dbSession.ContextStateJson.ShouldContain("Alice");
+    }
+
+    [Fact]
+    public void RestoreContextState_RestoresFromSession()
+    {
+        var db = new FreshDbContext();
+        TestDataHelper.SeedBotResponses(db.Context);
+        TestDataHelper.SeedPosDictionary(db.Context);
+        var store = new KnowledgeStore(db.Context);
+        var user = new User { Name = "TestUser", FirstSeen = DateTime.UtcNow.ToString("o"), LastSeen = DateTime.UtcNow.ToString("o") };
+        db.Context.Users.Add(user);
+        db.Context.SaveChanges();
+
+        var sessionId = Guid.NewGuid().ToString();
+        store.CreateConversationSession(sessionId, user.Id);
+        store.Save();
+
+        var contextTracker1 = new ContextTracker();
+        contextTracker1.SetContext("restored_key", "restored_value");
+        contextTracker1.UpdateLastSubject("Bob");
+        var json = contextTracker1.SerializeState();
+
+        var dbSession = db.Context.ConversationSessions.First(s => s.SessionGuid == sessionId);
+        dbSession.ContextStateJson = json;
+        db.Context.SaveChanges();
+
+        var spellChecker = new SpellChecker();
+        var posEntries = store.GetPosDictionary();
+        var posTagger = new PosTagger(posEntries);
+        spellChecker.Initialise(new HashSet<string>(posEntries.Select(e => e.Word), StringComparer.OrdinalIgnoreCase), store.GetMisspellings());
+        var tokeniser = new Tokeniser();
+        var svoExtractor = new SvoExtractor();
+        var nounCategoriser = new NounCategoriser(store);
+        var contextTracker2 = new ContextTracker();
+        var responseEngine = new ResponseEngine(store, contextTracker2, spellChecker, posTagger, tokeniser, svoExtractor);
+
+        var session = new ChatSession(
+            db.Context, store, responseEngine, spellChecker, posTagger, tokeniser,
+            new SentenceSplitter(), svoExtractor, contextTracker2, nounCategoriser,
+            new List<string> { "my name is" },
+            new HashSet<string> { "quit" }.ToHashSet(StringComparer.OrdinalIgnoreCase),
+            new HashSet<string> { "hi" }.ToHashSet(StringComparer.OrdinalIgnoreCase),
+            sessionId: sessionId
+        );
+
+        session.RestoreContextState();
+        session.GetContextValue("restored_key").ShouldBe("restored_value");
+        contextTracker2.LastSubject.ShouldBe("Bob");
+    }
+
+    [Fact]
+    public void RestoreContextState_NoSessionData_DoesNotThrow()
+    {
+        var db = new FreshDbContext();
+        TestDataHelper.SeedBotResponses(db.Context);
+        TestDataHelper.SeedPosDictionary(db.Context);
+        var store = new KnowledgeStore(db.Context);
+        var contextTracker = new ContextTracker();
+        var spellChecker = new SpellChecker();
+        var posEntries = store.GetPosDictionary();
+        var posTagger = new PosTagger(posEntries);
+        spellChecker.Initialise(new HashSet<string>(posEntries.Select(e => e.Word), StringComparer.OrdinalIgnoreCase), store.GetMisspellings());
+        var tokeniser = new Tokeniser();
+        var svoExtractor = new SvoExtractor();
+        var nounCategoriser = new NounCategoriser(store);
+        var responseEngine = new ResponseEngine(store, contextTracker, spellChecker, posTagger, tokeniser, svoExtractor);
+
+        var session = new ChatSession(
+            db.Context, store, responseEngine, spellChecker, posTagger, tokeniser,
+            new SentenceSplitter(), svoExtractor, contextTracker, nounCategoriser,
+            new List<string> { "my name is" },
+            new HashSet<string> { "quit" }.ToHashSet(StringComparer.OrdinalIgnoreCase),
+            new HashSet<string> { "hi" }.ToHashSet(StringComparer.OrdinalIgnoreCase),
+            sessionId: Guid.NewGuid().ToString()
+        );
+
+        session.RestoreContextState();
+        contextTracker.GetContext("any_key").ShouldBeNull();
+    }
 }

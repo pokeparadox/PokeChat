@@ -1812,3 +1812,17 @@ Dual-persona architecture (chat/coding) with persona-filtered rules, responses, 
 - [x] Removed redundant "Are you still using that name?" for returning users — now set up directly
 - [x] Updated 2 existing tests, added 2 new tests, 881/881 pass
 
+---
+
+## Context State Persistence (2026-07-14)
+- [x] `ContextTracker.SerializeState()` / `DeserializeState()` — JSON roundtrip for context, lastSubject, lastObject, topicStack, turnCounter
+- [x] `ConversationSession.ContextStateJson` column + EF migration `AddContextStateJson`
+- [x] `ChatEngine.Save()` persists context state to DB session row
+- [x] `ChatEngine.RestoreContextState()` restores context from DB on session load
+- [x] `ChatEngine.InitializeSession()` — public method called by `ChatEngineFactory` after setting session ID
+- [x] Recent riddle deduplication via `RecentRiddles` context key + `GetRandomRiddle(exclude)` overload
+- [x] `DbSeeder` defensive error handling + `EnsureCreated` fallback for schema probe
+- [x] **4 bugs fixed:** ConversationSession namespace removal, RestoreContextState timing (called before factory set sessionId), PredicateType enum-as-integer deserialization, FK constraint in tests (userId must exist)
+- [x] **17 new tests:** 10 ContextTracker serialization, 4 riddle exclude, 3 Save/RestoreContextState
+- [x] 899/899 pass
+

@@ -1495,10 +1495,18 @@ public class KnowledgeStore(PokeChatDbContext context)
         return jokes[Random.Shared.Next(jokes.Count)];
     }
 
-    public Riddle? GetRandomRiddle()
+    public Riddle? GetRandomRiddle(HashSet<string>? excludeQuestions = null)
     {
         var riddles = context.Riddles.ToList();
         if (riddles.Count == 0) return null;
+
+        if (excludeQuestions != null && excludeQuestions.Count > 0)
+        {
+            var available = riddles.Where(r => !excludeQuestions.Contains(r.Question)).ToList();
+            if (available.Count > 0)
+                return available[Random.Shared.Next(available.Count)];
+        }
+
         return riddles[Random.Shared.Next(riddles.Count)];
     }
 

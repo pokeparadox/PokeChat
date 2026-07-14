@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Data;
+using Microsoft.EntityFrameworkCore;
 using PokeChat.Data.Entities;
 
 namespace PokeChat.Data;
@@ -9,32 +11,63 @@ public static class DbSeeder
     {
         var now = DateTime.UtcNow.ToString("o");
 
-        SeedGreetings(context, now);
-        SeedGreetingWords(context, now);
-        SeedResponseRules(context, now);
-        SeedCodingResponseRules(context, now);
-        SeedPosDictionary(context, now);
-        SeedNamePatterns(context, now);
-        SeedBotCommands(context, now);
-        SeedMisspellings(context, now);
-        SeedNounCategories(context, now);
-        SeedBotRenamePatterns(context, now);
-        SeedEmotionKeywords(context, now);
-        SeedContractions(context, now);
-        SeedTemporalExpressions(context);
-        SeedInferenceWordLinks(context, now);
-        SeedStoryTemplates(context, now);
-        SeedMadLibTemplates(context, now);
-        SeedJokes(context, now);
-        SeedRiddles(context, now);
-        SeedRhymeGroups(context, now);
-        SeedPoemTemplates(context, now);
-        SeedBotResponses(context, now);
-        SeedHangmanBotResponses(context, now);
-        SeedErrorKnowledgeEntries(context, now);
-        SeedAllowedCommands(context, now);
+        // Ensure the database schema exists. In some failure modes migrations/ensure may not
+        // have created tables yet; attempt a light probe and call EnsureCreated as a fallback.
+        try
+        {
+            var conn = context.Database.GetDbConnection();
+            if (conn.State != System.Data.ConnectionState.Open)
+                conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name='Greetings'";
+            var exists = cmd.ExecuteScalar() != null;
+            if (!exists)
+            {
+                context.Database.EnsureCreated();
+            }
+        }
+        catch
+        {
+            try { context.Database.EnsureCreated(); } catch { }
+        }
 
-        context.SaveChanges();
+        try
+        {
+            SeedGreetings(context, now);
+            SeedGreetingWords(context, now);
+            SeedResponseRules(context, now);
+            SeedCodingResponseRules(context, now);
+            SeedPosDictionary(context, now);
+            SeedNamePatterns(context, now);
+            SeedBotCommands(context, now);
+            SeedMisspellings(context, now);
+            SeedNounCategories(context, now);
+            SeedBotRenamePatterns(context, now);
+            SeedEmotionKeywords(context, now);
+            SeedContractions(context, now);
+            SeedTemporalExpressions(context);
+            SeedInferenceWordLinks(context, now);
+            SeedStoryTemplates(context, now);
+            SeedMadLibTemplates(context, now);
+            SeedJokes(context, now);
+            SeedRiddles(context, now);
+            SeedRhymeGroups(context, now);
+            SeedPoemTemplates(context, now);
+            SeedBotResponses(context, now);
+            SeedHangmanBotResponses(context, now);
+            SeedErrorKnowledgeEntries(context, now);
+            SeedAllowedCommands(context, now);
+
+            context.SaveChanges();
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException ex)
+        {
+            Console.WriteLine($"[DbSeeder] Skipping seeding due to DB error: {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DbSeeder] Seed failed: {ex.Message}");
+        }
     }
 
     private static void SeedGreetings(PokeChatDbContext context, string now)
