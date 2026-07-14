@@ -21,14 +21,7 @@ public class UpstreamLLMClient
         if (!_options.Enabled)
             return null;
 
-        var upstreamRequest = new
-        {
-            model = _options.Model,
-            messages = request.Messages,
-            temperature = request.Temperature,
-            max_tokens = request.MaxTokens ?? request.MaxCompletionTokens,
-            stream = false
-        };
+        var upstreamRequest = BuildUpstreamBody(request, stream: false);
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, _options.Endpoint)
         {
@@ -74,14 +67,7 @@ public class UpstreamLLMClient
         if (!_options.Enabled)
             return false;
 
-        var upstreamRequest = new
-        {
-            model = _options.Model,
-            messages = request.Messages,
-            temperature = request.Temperature,
-            max_tokens = request.MaxTokens ?? request.MaxCompletionTokens,
-            stream = true
-        };
+        var upstreamRequest = BuildUpstreamBody(request, stream: true);
 
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, _options.Endpoint)
         {
@@ -148,5 +134,29 @@ public class UpstreamLLMClient
         {
             return false;
         }
+    }
+
+    private object BuildUpstreamBody(ChatCompletionRequest request, bool stream)
+    {
+        var body = new Dictionary<string, object?>
+        {
+            ["model"] = _options.Model,
+            ["messages"] = request.Messages,
+            ["temperature"] = request.Temperature,
+            ["stream"] = stream
+        };
+
+        var effectiveMaxTokens = request.MaxTokens ?? request.MaxCompletionTokens;
+        if (effectiveMaxTokens != null)
+            body["max_tokens"] = effectiveMaxTokens;
+
+        if (request.Seed != null)
+            body["seed"] = request.Seed;
+
+        var stops = OpenAIAdapter.NormalizeStopArray(request.Stop);
+        if (stops.Length > 0)
+            body["stop"] = stops.Length == 1 ? stops[0] : stops;
+
+        return body;
     }
 }

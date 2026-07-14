@@ -72,14 +72,15 @@ public class OpenAIAdapter
             };
         }
 
-        var responseText = engine.ProcessInput(input);
+        var rawResponseText = engine.ProcessInput(input);
 
         var engineHandled = !engine.LastResponseIsDeadEnd;
         var routeInfo = new RouteInfo
         {
             Category = engine.LastResponseCategory,
             EngineHandled = engineHandled,
-            Description = DescribeRoute(engine.LastResponseCategory)
+            Description = DescribeRoute(engine.LastResponseCategory),
+            UserId = request.User
         };
 
         if (!engineHandled && _upstream != null)
@@ -107,7 +108,8 @@ public class OpenAIAdapter
                         {
                             Category = "upstream_llm",
                             EngineHandled = false,
-                            Description = $"routed to upstream LLM"
+                            Description = "routed to upstream LLM",
+                            UserId = request.User
                         };
                         AddRateLimitHeaders(upstreamResult, rateKey);
                         return upstreamResult;
@@ -116,6 +118,20 @@ public class OpenAIAdapter
                     routeInfo.Description = "engine dead-end, upstream unavailable (returning engine fallback)";
                 }
             }
+        }
+
+        var responseText = rawResponseText;
+        var finishReason = "stop";
+
+        var (stopText, stopTruncated) = ApplyStopSequences(responseText, request.Stop);
+        if (stopTruncated)
+            responseText = stopText;
+
+        var (maxText, maxTruncated) = ApplyMaxTokens(responseText, request.MaxTokens ?? request.MaxCompletionTokens);
+        if (maxTruncated)
+        {
+            responseText = maxText;
+            finishReason = "length";
         }
 
         var response = new ChatCompletionResponse
@@ -127,7 +143,7 @@ public class OpenAIAdapter
                 {
                     Index = 0,
                     Message = new ChatMessage { Role = "assistant", Content = responseText },
-                    FinishReason = "stop"
+                    FinishReason = finishReason
                 }
             ],
             Usage = new Usage
@@ -278,6 +294,19 @@ public class OpenAIAdapter
             }
         }
 
+        var finishReason = "stop";
+
+        var (stopText, stopTruncated) = ApplyStopSequences(responseText, request.Stop);
+        if (stopTruncated)
+            responseText = stopText;
+
+        var (maxText, maxTruncated) = ApplyMaxTokens(responseText, request.MaxTokens ?? request.MaxCompletionTokens);
+        if (maxTruncated)
+        {
+            responseText = maxText;
+            finishReason = "length";
+        }
+
         if (responseText.Length > 0)
         {
             var sentences = ChunkBySentences(responseText);
@@ -294,7 +323,7 @@ public class OpenAIAdapter
         await onChunk(new ChatCompletionChunk
         {
             Id = chunkId, Created = created, Model = request.Model,
-            Choices = [new ChunkChoice { Index = 0, Delta = new Delta(), FinishReason = "stop" }],
+            Choices = [new ChunkChoice { Index = 0, Delta = new Delta(), FinishReason = finishReason }],
             Usage = new Usage
             {
                 PromptTokens = request.Messages.Sum(m => m.Content?.Length ?? 0) / 4,
@@ -325,6 +354,71 @@ public class OpenAIAdapter
             chunks.Add(text);
 
         return chunks;
+    }
+
+    internal static (string Text, bool WasTruncated) ApplyStopSequences(string text, object? stop)
+    {
+        if (string.IsNullOrEmpty(text) || stop == null)
+            return (text, false);
+
+        var stops = NormalizeStopArray(stop);
+        if (stops.Length == 0)
+            return (text, false);
+
+        var earliestIndex = int.MaxValue;
+        foreach (var s in stops)
+        {
+            if (string.IsNullOrEmpty(s))
+                continue;
+            var idx = text.IndexOf(s, StringComparison.Ordinal);
+            if (idx >= 0 && idx < earliestIndex)
+                earliestIndex = idx;
+        }
+
+        if (earliestIndex == int.MaxValue)
+            return (text, false);
+
+        return (text[..earliestIndex].TrimEnd(), true);
+    }
+
+    internal static (string Text, bool WasTruncated) ApplyMaxTokens(string text, int? maxTokens)
+    {
+        if (string.IsNullOrEmpty(text) || maxTokens == null || maxTokens <= 0)
+            return (text, false);
+
+        var estimatedTokens = text.Length / 4;
+        if (estimatedTokens <= maxTokens)
+            return (text, false);
+
+        var targetChars = maxTokens.Value * 4;
+        if (targetChars >= text.Length)
+            return (text, false);
+
+        var truncated = text[..targetChars];
+        var lastSpace = truncated.LastIndexOf(' ');
+        if (lastSpace > targetChars / 2)
+            truncated = truncated[..lastSpace];
+
+        return (truncated.TrimEnd(), true);
+    }
+
+    internal static string[] NormalizeStopArray(object? stop)
+    {
+        if (stop == null)
+            return [];
+
+        return stop switch
+        {
+            string s => [s],
+            System.Text.Json.JsonElement e when e.ValueKind == System.Text.Json.JsonValueKind.String => [e.GetString()!],
+            System.Text.Json.JsonElement e when e.ValueKind == System.Text.Json.JsonValueKind.Array => e.EnumerateArray()
+                .Where(x => x.ValueKind == System.Text.Json.JsonValueKind.String)
+                .Select(x => x.GetString()!)
+                .ToArray(),
+            string[] arr => arr,
+            object[] arr => arr.OfType<string>().ToArray(),
+            _ => []
+        };
     }
 
     internal static void RebuildHistory(ChatEngine engine, List<ChatMessage> messages)

@@ -1858,3 +1858,15 @@ Dual-persona architecture (chat/coding) with persona-filtered rules, responses, 
 - [x] 942/942 pass across 8 projects, 0 failures, 0 warnings
 - [x] `AGENTS.md` updated with per-project test commands
 
+---
+
+## Phase 54.1 — OpenAI Spec Completeness (2026-07-14)
+- [x] `ApplyStopSequences(text, stop)` — truncates NLP engine response at first matching stop token; handles string, string[], JsonElement stop types
+- [x] `ApplyMaxTokens(text, maxTokens)` — truncates response when estimated tokens exceed budget; sets `finish_reason: "length"`
+- [x] `NormalizeStopArray(stop)` — shared helper for stop type normalization (used by both adapter and upstream client)
+- [x] Integrated into `ProcessAsync` (non-streaming) and `StreamResponseAsync` (streaming) — stop applied first, then max_tokens
+- [x] `UpstreamLLMClient.BuildUpstreamBody()` — extracted shared method; forwards `stop` and `seed` to upstream LLM
+- [x] `RouteInfo.UserId` — added for request user identity debugging
+- [x] 25 new tests in `OpenAIAdapterSpecTests.cs` — stop truncation, max_tokens, NormalizeStopArray, Tier 2 field deserialization, seed forwarding, user in RouteInfo
+- [x] 967/967 pass (125 in Api project), 0 warnings
+
