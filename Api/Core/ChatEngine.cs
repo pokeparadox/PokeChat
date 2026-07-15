@@ -103,6 +103,31 @@ public class ChatEngine : IDisposable
         "stop mocking",
     };
 
+    private static readonly HashSet<string> PositiveFeedbackTriggers = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "that was helpful", "that was useful", "that helped",
+        "great answer", "good answer", "nice answer", "perfect answer",
+        "well done", "good job", "great job", "nice job",
+        "thanks", "thank you", "cheers",
+        "awesome", "brilliant", "excellent", "fantastic", "wonderful",
+        "you're great", "you are great", "you're smart", "you are smart",
+        "that was good", "that was great", "that was nice", "that was perfect",
+        "love it", "love this", "spot on", "nailed it",
+        "very helpful", "very useful", "really helpful", "really useful",
+        "so helpful", "so useful",
+    };
+
+    private static readonly HashSet<string> NegativeFeedbackTriggers = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "that was bad", "that was terrible", "that was awful", "that was useless",
+        "bad response", "terrible response", "awful response",
+        "you're wrong", "you are wrong", "you're bad", "you are bad",
+        "stupid", "dumb", "useless",
+        "that didn't help", "that did not help", "didn't help at all",
+        "not useful", "wasn't useful", "was not useful",
+        "waste of time", "total waste",
+    };
+
     private static readonly HashSet<string> FunctionWords = new(StringComparer.OrdinalIgnoreCase)
         { "not", "never", "no", "and", "or", "any", "all", "some", "the",
           "a", "an", "this", "that", "these", "those", "it", "its",
@@ -449,8 +474,9 @@ public class ChatEngine : IDisposable
                     {
                         LearnFromLLMResponse(originalInput ?? input, llmResult);
                         BufferLlmInteraction(originalInput ?? input, llmResult);
-                        _knowledgeStore.StoreConversation(_currentUserId!.Value, originalInput ?? input, llmResult, _sessionId, "llm_response");
+                        var conversation = _knowledgeStore.StoreConversation(_currentUserId!.Value, originalInput ?? input, llmResult, _sessionId, "llm_response");
                         _knowledgeStore.Save();
+                        _context.SetContext(ContextKeys.LastConversationId, conversation.Id.ToString());
                         return llmResult;
                     }
                     return GetLLMResponse("llm_unavailable");
@@ -589,6 +615,9 @@ public class ChatEngine : IDisposable
         if (TryHandleMetaCommentary(input, out var metaResponse))
             return metaResponse!;
 
+        if (TryHandleFeedbackRating(input, out var feedbackResponse))
+            return feedbackResponse!;
+
         LearnGreetingWords(input);
 
         var (sentiment, intensity) = _knowledgeStore.AnalyseSentiment(input);
@@ -698,8 +727,9 @@ public class ChatEngine : IDisposable
 
         if (!RebuildMode)
         {
-            _knowledgeStore.StoreConversation(_currentUserId!.Value, input, response, _sessionId, responseCategory);
+            var conversation = _knowledgeStore.StoreConversation(_currentUserId!.Value, input, response, _sessionId, responseCategory);
             _knowledgeStore.Save();
+            _context.SetContext(ContextKeys.LastConversationId, conversation.Id.ToString());
         }
 
         _context.SetContext(ContextKeys.LastResponseHadSvo, hadTriples ? "true" : "false");
@@ -2366,9 +2396,48 @@ public class ChatEngine : IDisposable
             case RouteHandler.Cleanup:
                 return RunDecayCleanup();
 
+            case RouteHandler.Rate:
+                return HandleRateCommand(route.Argument);
+
             default:
                 return GetLLMResponse("default_response");
         }
+    }
+
+    private string HandleRateCommand(string? argument)
+    {
+        if (_currentUserId == null)
+            return "Tell me your name first so I know who's rating me!";
+
+        var lastConvIdStr = _context.GetContext(ContextKeys.LastConversationId);
+        if (string.IsNullOrEmpty(lastConvIdStr) || !int.TryParse(lastConvIdStr, out var conversationId))
+            return "Nothing to rate yet — try talking to me first!";
+
+        int rating;
+        if (!string.IsNullOrWhiteSpace(argument))
+        {
+            var arg = argument.Trim().ToLowerInvariant();
+            if (arg is "+1" or "1" or "up")
+                rating = 1;
+            else if (arg is "-1" or "down")
+                rating = -1;
+            else
+                return "Usage: ~rate +1 or ~rate -1";
+        }
+        else
+        {
+            return "Usage: ~rate +1 or ~rate -1";
+        }
+
+        if (_knowledgeStore.HasUserRatedConversation(conversationId, _currentUserId.Value))
+            return "You already rated that one!";
+
+        _knowledgeStore.RecordTurnRating(conversationId, _currentUserId.Value, rating);
+        _knowledgeStore.Save();
+
+        return rating > 0
+            ? "Glad you liked it!"
+            : "Noted — I'll try to do better.";
     }
 
     private string HandleWeatherRoute(RouteResult route)
@@ -2491,6 +2560,7 @@ public class ChatEngine : IDisposable
             + "~reset — Reset all my memories of you\n"
             + "~weather [city] — Tell me the weather (e.g. ~weather London)\n"
             + "~cleanup — Clean up old, unused knowledge\n"
+            + "~rate <+/-> — Rate my last response (+1 or -1), or just say thanks!\n"
             + "~help — Show this help message";
     }
 
@@ -2525,8 +2595,9 @@ public class ChatEngine : IDisposable
                 BufferLlmInteraction(input, llmResult);
                 _context.SetContext(ContextKeys.CurrentResponseCategory, "llm_response");
                 LastResponseCategory = "llm_response";
-                _knowledgeStore.StoreConversation(_currentUserId.Value, input, llmResult, _sessionId, "llm_response");
+                var conversation = _knowledgeStore.StoreConversation(_currentUserId.Value, input, llmResult, _sessionId, "llm_response");
                 _knowledgeStore.Save();
+                _context.SetContext(ContextKeys.LastConversationId, conversation.Id.ToString());
                 return llmResult;
             }
             return GetLLMResponse("llm_unavailable");
@@ -2823,6 +2894,8 @@ public class ChatEngine : IDisposable
         if (complaintCount >= 3)
             category = "meta_repeated_complaint";
 
+        AutoRateLastResponse(-1);
+
         var botResponses = GetCachedBotResponses();
         if (botResponses.TryGetValue(category, out var responses) && responses.Count > 0)
         {
@@ -2833,6 +2906,57 @@ public class ChatEngine : IDisposable
         response = category == "meta_repeated_complaint"
             ? "I'm sorry I keep getting things wrong. Let's start fresh — what would you like to discuss?"
             : "I'm sorry, that wasn't helpful. Let me try again.";
+        return true;
+    }
+
+    private void AutoRateLastResponse(int rating)
+    {
+        if (_currentUserId == null) return;
+        var lastConvIdStr = _context.GetContext(ContextKeys.LastConversationId);
+        if (string.IsNullOrEmpty(lastConvIdStr) || !int.TryParse(lastConvIdStr, out var conversationId)) return;
+        if (_knowledgeStore.HasUserRatedConversation(conversationId, _currentUserId.Value)) return;
+
+        _knowledgeStore.RecordTurnRating(conversationId, _currentUserId.Value, rating);
+        _knowledgeStore.Save();
+    }
+
+    internal bool TryHandleFeedbackRating(string input, out string? response)
+    {
+        response = null;
+        var lower = input.Trim().ToLowerInvariant();
+
+        if (lower.Length < 4)
+            return false;
+
+        int rating;
+        if (PositiveFeedbackTriggers.Any(t => lower.Contains(t)))
+            rating = 1;
+        else if (NegativeFeedbackTriggers.Any(t => lower.Contains(t)))
+            rating = -1;
+        else
+            return false;
+
+        if (_currentUserId == null)
+            return false;
+
+        var lastConvIdStr = _context.GetContext(ContextKeys.LastConversationId);
+        if (string.IsNullOrEmpty(lastConvIdStr) || !int.TryParse(lastConvIdStr, out var conversationId))
+            return false;
+
+        if (_knowledgeStore.HasUserRatedConversation(conversationId, _currentUserId.Value))
+        {
+            response = rating > 0
+                ? "Glad you liked it! You've already rated this one though."
+                : "Noted — you've already rated this one though.";
+            return true;
+        }
+
+        _knowledgeStore.RecordTurnRating(conversationId, _currentUserId.Value, rating);
+        _knowledgeStore.Save();
+
+        response = rating > 0
+            ? "Glad you liked it!"
+            : "Noted — I'll try to do better.";
         return true;
     }
 

@@ -245,6 +245,7 @@ public class ChatSession : IDisposable
     internal string? GetContextValue(string key) => _engine.GetContextValue(key);
     public string? GetSessionStartReminderMessage() => _engine.GetSessionStartReminderMessage();
     internal bool TryHandleMetaCommentary(string input, out string? response) => _engine.TryHandleMetaCommentary(input, out response);
+    internal bool TryHandleFeedbackRating(string input, out string? response) => _engine.TryHandleFeedbackRating(input, out response);
     internal IReadOnlyList<TopicEntry> TopicStack => _engine.TopicStack;
     internal string? LastSubject => _engine.LastSubject;
     internal string? LastObject => _engine.LastObject;

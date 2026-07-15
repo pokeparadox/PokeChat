@@ -131,6 +131,13 @@ Type `quit` or `exit` to leave.
 | `what did we talk about` / `summarise our conversation` | Summarise the session |
 | `compliment me` / `say something nice` | Give a compliment based on your facts |
 
+### Feedback & Ratings
+| If you say… | The bot will… |
+|---|---|
+| `~rate +1` / `~rate -1` / `~rate up` / `~rate down` | Rate the last response (+1 or -1) |
+| `thanks` / `that was helpful` / `great answer` | Auto-rate +1 for the last response |
+| `that didn't help` / `not helpful` / `bad answer` | Auto-rate -1 for the last response |
+
 ### Error Knowledge
 | If you say… | The bot will… |
 |---|---|

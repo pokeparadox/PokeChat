@@ -1870,3 +1870,22 @@ Dual-persona architecture (chat/coding) with persona-filtered rules, responses, 
 - [x] 25 new tests in `OpenAIAdapterSpecTests.cs` — stop truncation, max_tokens, NormalizeStopArray, Tier 2 field deserialization, seed forwarding, user in RouteInfo
 - [x] 967/967 pass (125 in Api project), 0 warnings
 
+---
+
+## Phase — Rate Command & Natural Language Feedback (2026-07-15)
+- [x] `TurnRating` entity — `Id`, `ConversationId` (FK cascade), `UserId` (FK nullable), `Rating` (int), `CreatedAt`
+- [x] EF Core migration `AddTurnRating` created
+- [x] `KnowledgeStore.StoreConversation` changed from `void` to returning `Conversation` entity
+- [x] All 3 `StoreConversation` call sites store `ConversationId` via new `ContextKeys.LastConversationId`
+- [x] `RouterService` — `Rate` added to `RouteHandler` enum + `BotCommandMap`
+- [x] `HandleRateCommand` — parses +1/-1/1/-1/up/down, validates user/conversation/duplicate
+- [x] `KnowledgeStore.RecordTurnRating` and `HasUserRatedConversation` methods
+- [x] `PositiveFeedbackTriggers` and `NegativeFeedbackTriggers` phrase sets for natural language detection
+- [x] `TryHandleFeedbackRating` — detects phrases like "thanks", "that was helpful", "that didn't help"; auto-rates +1/-1
+- [x] `AutoRateLastResponse` helper shared by feedback rating and meta-commentary complaints
+- [x] `TryHandleFeedbackRating` wired into `ProcessInput` after `TryHandleMetaCommentary`
+- [x] Help text updated: `~rate <+/-> — Rate my last response (+1 or -1), or just say thanks!`
+- [x] `ResetAllUserData` clears `TurnRates`
+- [x] 29 new tests (16 `~rate` command + 13 natural language feedback), all passing
+- [x] 996/996 pass across 9 projects, 0 warnings
+

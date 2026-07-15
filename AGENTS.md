@@ -12,15 +12,15 @@
 dotnet build                              # build all projects
 dotnet run --project Api/                 # start the REST API (default http://localhost:5000)
 dotnet run                                # start the console HTTP client (connects to API)
-dotnet test                               # run all tests (942 across 8 projects)
+dotnet test                               # run all tests (996 across 8 projects)
 dotnet test --project tests/PokeChat.Tests.NLP/      # run NLP tests only (67)
 dotnet test --project tests/PokeChat.Tests.Knowledge/ # run Knowledge tests only (132)
 dotnet test --project tests/PokeChat.Tests.Responses/ # run Responses tests only (67)
 dotnet test --project tests/PokeChat.Tests.ML/        # run ML tests only (73)
 dotnet test --project tests/PokeChat.Tests.Stories/   # run Stories tests only (98)
 dotnet test --project tests/PokeChat.Tests.Tools/     # run Tools tests only (69)
-dotnet test --project tests/PokeChat.Tests.Api/       # run Api tests only (100)
-dotnet test --project tests/PokeChat.Tests/           # run Core tests only (336)
+dotnet test --project tests/PokeChat.Tests.Api/       # run Api tests only (125)
+dotnet test --project tests/PokeChat.Tests/           # run Core tests only (365)
 dotnet ef migrations add <Name> --project Api/  # add a new schema migration
 dotnet ef migrations remove --project Api/      # undo last migration (if unapplied)
 ```
@@ -66,20 +66,20 @@ Api/
     Entities/                   → entity classes: User, FactEntity, Conversation, Greeting, GreetingWord,
                                   ResponseRule, ResponseRuleResponse, PosDictionaryEntry, NamePattern,
                                   BotCommand, Misspelling, BotResponse, WordDefinition, WordLink, NounCategory,
-                                  ConversationMetric, ResponseEffectiveness
+                                  ConversationMetric, ResponseEffectiveness, TurnRating
 ```
 
-### Test Projects (942 tests across 8 projects)
+### Test Projects (996 tests across 8 projects)
 ```
 tests/
-  PokeChat.Tests/              → Core tests (336): ChatEngine, ChatSession, GreetingPool, Interview, NounCategoriser, Router, SessionLogger
+  PokeChat.Tests/              → Core tests (365): ChatEngine, ChatSession, GreetingPool, Interview, NounCategoriser, Router, SessionLogger
   PokeChat.Tests.NLP/          → NLP tests (67): Tokeniser, PosTagger, SvoExtractor, SentenceSplitter, SpellChecker, Pluraliser, ContractionExpander
   PokeChat.Tests.Knowledge/    → Knowledge tests (132): KnowledgeStore, ContextTracker
   PokeChat.Tests.Responses/    → Response tests (67): ResponseEngine, ResponseRules
   PokeChat.Tests.ML/           → ML + LLM tests (73): NeuralNet, IntentClassifier, NeuralResponsePipeline, LLMOrchestrator
   PokeChat.Tests.Stories/      → Stories tests (98): StoryGenerator, PoetryGenerator, RhymeMatcher, SyllableCounter
   PokeChat.Tests.Tools/        → Tools tests (69): ToolRegistry, McpRegistry, McpToolAdapter, FileOpsTool
-  PokeChat.Tests.Api/          → API tests (100): SessionManager, OpenAIAdapter, SystemPromptMapper, TitleGenerator
+  PokeChat.Tests.Api/          → API tests (125): SessionManager, OpenAIAdapter, SystemPromptMapper, TitleGenerator
   PokeChat.Tests.Shared/       → Shared helpers: FreshDbContext, TestDataHelper, StubLLMProvider (not a test project)
 ```
 
@@ -103,6 +103,7 @@ tests/
 - **Rate limiting:** Token bucket per IP (`TokenBucketStore`/`ITokenBucketStore`), configurable costs per request type. `SessionQuotaOptions` controls per-user session cap, per-session turn cap, and per-session upstream LLM call cap. Defaults: 60 tokens/min, 50 max sessions, 10 max sessions per user, 100 turns per session, 20 upstream calls per session.
 - **Database recovery:** `DatabaseInitializer` auto-backs up `pokechat.db` → `pokechat.db.bak` on every startup. On schema mismatch or migration failure, automatically recreates the DB and copies learned data from backup. `--restore-db` CLI flag restores from backup manually. `BackupHelper` uses SQLite ATTACH+INSERT for cross-schema data copy.
 - **Knowledge decay:** Access tracking (`last_accessed`, `access_count`) on facts, learned rules, and word definitions. `DecayCleanup()` auto-runs at session end and via `~cleanup` command. Deletes stale records (>90 days old, never accessed, low confidence) and runs VACUUM when >50 records deleted. Client-side filtering ensures in-memory access tracking is respected.
+- **Response ratings:** `~rate +1`/`~rate -1` rates the last response. Natural language feedback ("thanks", "that didn't help") auto-rates. Ratings stored in `turn_ratings` table, linked to `conversations` and `users`.
 
 ## DB Schema
 - `users` — id, name (unique), first_seen, last_seen
@@ -127,6 +128,7 @@ tests/
 - `conversation_metrics` — id, user_id, session_id, turn_count, facts_learned, dominant_sentiment, sentiment_trend, topics_discussed, bot_response_stats, avg_response_length, session_length, started_at, ended_at
 - `response_effectiveness` — id, category (unique), avg_session_length_after, used_count, follow_up_rate, last_used
 - `allowed_commands` — id, command (unique), is_permanent, expires_at, added_by_user_id (nullable FK→users), created_at
+- `turn_ratings` — id, conversation_id (FK→conversations, CASCADE), user_id (nullable FK→users), rating, created_at
 
 
 ## Improvement Plan

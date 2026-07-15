@@ -317,7 +317,7 @@ public class KnowledgeStore(PokeChatDbContext context)
         return newUser.Id;
     }
 
-    public void StoreConversation(int userId, string userInput, string botResponse, string? sessionId = null)
+    public Conversation StoreConversation(int userId, string userInput, string botResponse, string? sessionId = null)
     {
         var conversation = new Conversation
         {
@@ -329,9 +329,10 @@ public class KnowledgeStore(PokeChatDbContext context)
         };
 
         context.Conversations.Add(conversation);
+        return conversation;
     }
 
-    public void StoreConversation(int userId, string userInput, string botResponse, string? sessionId, string? responseCategory)
+    public Conversation StoreConversation(int userId, string userInput, string botResponse, string? sessionId, string? responseCategory)
     {
         var conversation = new Conversation
         {
@@ -344,6 +345,7 @@ public class KnowledgeStore(PokeChatDbContext context)
         };
 
         context.Conversations.Add(conversation);
+        return conversation;
     }
 
     public List<Greeting> GetGreetings(string? persona = null)
@@ -503,6 +505,7 @@ public class KnowledgeStore(PokeChatDbContext context)
 
     public void ResetAllUserData()
     {
+        context.Database.ExecuteSqlRaw("DELETE FROM TurnRates");
         context.Database.ExecuteSqlRaw("DELETE FROM ResponseFeedbacks");
         context.Database.ExecuteSqlRaw("DELETE FROM LearnedResponseRules");
         context.Database.ExecuteSqlRaw("DELETE FROM ConversationMetrics");
@@ -1201,6 +1204,23 @@ public class KnowledgeStore(PokeChatDbContext context)
             CreatedAt = DateTime.UtcNow.ToString("o")
         };
         context.ResponseFeedbacks.Add(entry);
+    }
+
+    public void RecordTurnRating(int conversationId, int userId, int rating)
+    {
+        var entry = new TurnRating
+        {
+            ConversationId = conversationId,
+            UserId = userId,
+            Rating = rating,
+            CreatedAt = DateTime.UtcNow.ToString("o")
+        };
+        context.TurnRates.Add(entry);
+    }
+
+    public bool HasUserRatedConversation(int conversationId, int userId)
+    {
+        return context.TurnRates.Any(t => t.ConversationId == conversationId && t.UserId == userId);
     }
 
     public void RecordSessionMetrics(string sessionId)

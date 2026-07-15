@@ -53,6 +53,7 @@ public sealed class PokeChatDbContext : DbContext
     public DbSet<ConversationSession> ConversationSessions => Set<ConversationSession>();
     public DbSet<LearnedResponseRule> LearnedResponseRules => Set<LearnedResponseRule>();
     public DbSet<ResponseFeedback> ResponseFeedbacks => Set<ResponseFeedback>();
+    public DbSet<TurnRating> TurnRates => Set<TurnRating>();
     public DbSet<ConversationMetric> ConversationMetrics => Set<ConversationMetric>();
     public DbSet<ResponseEffectiveness> ResponseEffectiveness => Set<ResponseEffectiveness>();
     public DbSet<StoryTemplate> StoryTemplates => Set<StoryTemplate>();
@@ -317,6 +318,19 @@ public sealed class PokeChatDbContext : DbContext
             entity.Property(e => e.Feedback).IsRequired();
             entity.Property(e => e.CorrectionText);
             entity.Property(e => e.CreatedAt).IsRequired();
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => e.UserId);
+        });
+
+        modelBuilder.Entity<TurnRating>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Rating).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.HasOne<Conversation>()
+                .WithMany()
+                .HasForeignKey(e => e.ConversationId);
             entity.HasOne<User>()
                 .WithMany()
                 .HasForeignKey(e => e.UserId);
