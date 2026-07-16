@@ -12,13 +12,13 @@
 dotnet build                              # build all projects
 dotnet run --project Api/                 # start the REST API (default http://localhost:5000)
 dotnet run                                # start the console HTTP client (connects to API)
-dotnet test                               # run all tests (996 across 8 projects)
+dotnet test                               # run all tests (1014 across 8 projects)
 dotnet test --project tests/PokeChat.Tests.NLP/      # run NLP tests only (67)
 dotnet test --project tests/PokeChat.Tests.Knowledge/ # run Knowledge tests only (132)
 dotnet test --project tests/PokeChat.Tests.Responses/ # run Responses tests only (67)
 dotnet test --project tests/PokeChat.Tests.ML/        # run ML tests only (73)
 dotnet test --project tests/PokeChat.Tests.Stories/   # run Stories tests only (98)
-dotnet test --project tests/PokeChat.Tests.Tools/     # run Tools tests only (69)
+dotnet test --project tests/PokeChat.Tests.Tools/     # run Tools tests only (87)
 dotnet test --project tests/PokeChat.Tests.Api/       # run Api tests only (125)
 dotnet test --project tests/PokeChat.Tests/           # run Core tests only (365)
 dotnet ef migrations add <Name> --project Api/  # add a new schema migration
@@ -58,6 +58,12 @@ Api/
   Responses/
     ResponseEngine.cs           → rule-based response generation (math, dictionary/thesaurus, rules, facts, follow-ups)
     ResponseRules.cs            → loads rules from DB (response_rules table), regex matching
+  Enrichment/
+    IKnowledgeEnricher.cs       → enrichment interface + FactRecord/DefinitionRecord records
+    NullEnricher.cs             → no-op default (used when MemPalace disabled)
+    MemPalaceEnricher.cs        → MCP-backed enrichment (deterministic SHA256 drawer IDs, circuit breaker, retry)
+    EnrichmentQueue.cs          → bounded Channel<T> background processor (capacity 1000, DropOldest, single reader)
+    MemPalaceOptions.cs         → config (Enabled, Wing, EnrichFacts, EnrichDefinitions, MaxRetries, RetryDelayMs, TimeoutMs)
   Data/
     PokeChatDbContext.cs        → EF Core DbContext with DbSets for all entities
     DbSeeder.cs                 → seeds initial data (greetings, rules, POS dictionary, bot responses, etc.)
@@ -69,7 +75,7 @@ Api/
                                   ConversationMetric, ResponseEffectiveness, TurnRating
 ```
 
-### Test Projects (996 tests across 8 projects)
+### Test Projects (1014 tests across 8 projects)
 ```
 tests/
   PokeChat.Tests/              → Core tests (365): ChatEngine, ChatSession, GreetingPool, Interview, NounCategoriser, Router, SessionLogger
@@ -78,7 +84,7 @@ tests/
   PokeChat.Tests.Responses/    → Response tests (67): ResponseEngine, ResponseRules
   PokeChat.Tests.ML/           → ML + LLM tests (73): NeuralNet, IntentClassifier, NeuralResponsePipeline, LLMOrchestrator
   PokeChat.Tests.Stories/      → Stories tests (98): StoryGenerator, PoetryGenerator, RhymeMatcher, SyllableCounter
-  PokeChat.Tests.Tools/        → Tools tests (69): ToolRegistry, McpRegistry, McpToolAdapter, FileOpsTool
+  PokeChat.Tests.Tools/        → Tools tests (87): ToolRegistry, McpRegistry, McpToolAdapter, FileOpsTool, Enrichment (NullEnricher, MemPalaceEnricher, EnrichmentQueue)
   PokeChat.Tests.Api/          → API tests (125): SessionManager, OpenAIAdapter, SystemPromptMapper, TitleGenerator
   PokeChat.Tests.Shared/       → Shared helpers: FreshDbContext, TestDataHelper, StubLLMProvider (not a test project)
 ```

@@ -5,7 +5,10 @@ using Microsoft.AspNetCore.RateLimiting;
 using PokeChat.Api.Models;
 using PokeChat.Api.Services;
 using PokeChat.Data;
+using PokeChat.Enrichment;
 using PokeChat.Math;
+using PokeChat.Mcp;
+using PokeChat.Tools;
 
 var jsonOptions = new JsonSerializerOptions
 {
@@ -23,7 +26,19 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 });
 
 builder.Services.AddSingleton<PokeChatDbContext>();
-builder.Services.AddSingleton<ChatEngineFactory>();
+builder.Services.AddSingleton(sp =>
+    new ChatEngineFactory(sp.GetService<EnrichmentQueue>()));
+
+var memPalaceOptions = new MemPalaceOptions();
+builder.Configuration.GetSection("MemPalace").Bind(memPalaceOptions);
+builder.Services.AddSingleton(memPalaceOptions);
+
+var enrichmentMcp = new McpRegistry();
+var enrichmentTools = new ToolRegistry(mcpRegistry: enrichmentMcp);
+var enrichmentEnricher = new MemPalaceEnricher(enrichmentTools, memPalaceOptions);
+builder.Services.AddSingleton<IKnowledgeEnricher>(enrichmentEnricher);
+builder.Services.AddSingleton(
+    new EnrichmentQueue(enrichmentEnricher));
 
 var upstreamOptions = new UpstreamOptions();
 builder.Configuration.GetSection("Upstream").Bind(upstreamOptions);

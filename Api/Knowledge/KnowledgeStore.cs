@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using PokeChat.Data;
 using PokeChat.Data.Entities;
 using PokeChat.Core;
+using PokeChat.Enrichment;
 using PokeChat.Responses;
 using PokeChat.Stories;
 using PokeChat.ML;
@@ -26,8 +27,11 @@ internal static class SummaryFilters
     }
 }
 
-public class KnowledgeStore(PokeChatDbContext context)
+public class KnowledgeStore(PokeChatDbContext context, EnrichmentQueue? enrichmentQueue = null)
 {
+    private readonly List<FactRecord> _pendingFacts = new();
+    private readonly List<DefinitionRecord> _pendingDefinitions = new();
+
     public void StoreFact(Fact fact)
     {
         var entity = new FactEntity
@@ -46,6 +50,11 @@ public class KnowledgeStore(PokeChatDbContext context)
         };
 
         context.Facts.Add(entity);
+
+        _pendingFacts.Add(new FactRecord(
+            fact.UserId, fact.Subject, fact.Verb, fact.Object, fact.PredicateType,
+            fact.Sentiment, fact.EmotionIntensity, fact.TimeContext, fact.MentionedAt,
+            entity.Confidence, fact.CreatedAt));
     }
 
     public bool TryEndorseFact(string subject, string verb, string obj, int endorsingUserId)
@@ -524,6 +533,17 @@ public class KnowledgeStore(PokeChatDbContext context)
     public void Save()
     {
         context.SaveChanges();
+
+        if (enrichmentQueue != null)
+        {
+            foreach (var fact in _pendingFacts)
+                enrichmentQueue.EnqueueFact(fact);
+            foreach (var def in _pendingDefinitions)
+                enrichmentQueue.EnqueueDefinition(def);
+        }
+
+        _pendingFacts.Clear();
+        _pendingDefinitions.Clear();
     }
 
     public Dictionary<string, List<string>> GetBotResponses(string? persona = null)
@@ -593,6 +613,9 @@ public class KnowledgeStore(PokeChatDbContext context)
         };
 
         context.WordDefinitions.Add(entry);
+
+        _pendingDefinitions.Add(new DefinitionRecord(
+            entry.Word, entry.Definition, entry.DefinedByUserId, entry.CreatedAt));
     }
 
     public void AddWordLink(string sourceWord, string targetWord, string linkType, int? userId = null)

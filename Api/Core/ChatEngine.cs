@@ -8,6 +8,7 @@ using PokeChat.Math;
 using PokeChat.Mcp;
 using PokeChat.NLP;
 using PokeChat.Responses;
+using PokeChat.Enrichment;
 using PokeChat.Tools;
 
 namespace PokeChat.Core;
@@ -269,13 +270,13 @@ public class ChatEngine : IDisposable
 
     private static readonly Regex MadLibSlotRegex = new(@"\{(\w+)\}", RegexOptions.Compiled);
 
-    public ChatEngine()
+    public ChatEngine(EnrichmentQueue? enrichmentQueue = null)
     {
         _dbContext = new PokeChatDbContext();
         new DatabaseInitializer(_dbContext).Initialize();
         _sessionLogger = new SessionLogger(_sessionId);
 
-        _knowledgeStore = new KnowledgeStore(_dbContext);
+        _knowledgeStore = new KnowledgeStore(_dbContext, enrichmentQueue);
         _context = new ContextTracker();
         _spellChecker = new SpellChecker();
 
