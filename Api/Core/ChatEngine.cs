@@ -2793,7 +2793,7 @@ public class ChatEngine : IDisposable
     {
         try
         {
-            var mempalacePath = Which("mempalace");
+            var mempalacePath = Which("mempalace", workingDir);
             if (mempalacePath == null)
             {
                 return "**MemPalace:** Not installed. Install with `pip install mempalace`, then run `mempalace init .` and `mempalace mine` in your project directory.";
@@ -2839,10 +2839,23 @@ public class ChatEngine : IDisposable
         }
     }
 
-    private static string? Which(string command)
+    private static string? Which(string command, string workingDir)
     {
         try
         {
+            // Check if executable exists directly in workingDir
+            var targetPath = Path.Combine(workingDir, command);
+            if (File.Exists(targetPath)) return targetPath;
+            
+            // Check if executable exists in common subdirectories
+            var commonExeDirs = new[] { "bin", "executable", "meme-shell" };
+            foreach (var dir in commonExeDirs)
+            {
+                var exePath = Path.Combine(workingDir, dir, command);
+                if (File.Exists(exePath)) return exePath;
+            }
+            
+            // Fallback: check PATH only for standard commands in workingDir context
             var psi = new System.Diagnostics.ProcessStartInfo("which", command)
             {
                 RedirectStandardOutput = true,

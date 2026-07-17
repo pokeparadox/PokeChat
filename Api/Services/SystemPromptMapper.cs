@@ -31,7 +31,7 @@ public static class SystemPromptMapper
     };
 
     private static readonly Regex WorkingDirectoryPattern = new(
-        @"Working directory:\s*(.+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        @"Working directory:\s*(.+?)(?:\s*$|\s+\S+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     public static SystemPromptResult Parse(string? systemPrompt)
     {
