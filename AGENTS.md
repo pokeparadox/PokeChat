@@ -12,15 +12,15 @@
 dotnet build                              # build all projects
 dotnet run --project Api/                 # start the REST API (default http://localhost:5000)
 dotnet run                                # start the console HTTP client (connects to API)
-dotnet test                               # run all tests (1014 across 8 projects)
+dotnet test                               # run all tests (1058 across 8 projects)
 dotnet test --project tests/PokeChat.Tests.NLP/      # run NLP tests only (67)
 dotnet test --project tests/PokeChat.Tests.Knowledge/ # run Knowledge tests only (132)
 dotnet test --project tests/PokeChat.Tests.Responses/ # run Responses tests only (67)
 dotnet test --project tests/PokeChat.Tests.ML/        # run ML tests only (73)
 dotnet test --project tests/PokeChat.Tests.Stories/   # run Stories tests only (98)
-dotnet test --project tests/PokeChat.Tests.Tools/     # run Tools tests only (87)
+dotnet test --project tests/PokeChat.Tests.Tools/     # run Tools tests only (126)
 dotnet test --project tests/PokeChat.Tests.Api/       # run Api tests only (125)
-dotnet test --project tests/PokeChat.Tests/           # run Core tests only (365)
+dotnet test --project tests/PokeChat.Tests/           # run Core tests only (370)
 dotnet ef migrations add <Name> --project Api/  # add a new schema migration
 dotnet ef migrations remove --project Api/      # undo last migration (if unapplied)
 ```
@@ -75,18 +75,18 @@ Api/
                                   ConversationMetric, ResponseEffectiveness, TurnRating
 ```
 
-### Test Projects (1014 tests across 8 projects)
+### Test Projects (1058 tests across 8 projects)
 ```
 tests/
-  PokeChat.Tests/              → Core tests (365): ChatEngine, ChatSession, GreetingPool, Interview, NounCategoriser, Router, SessionLogger
+  PokeChat.Tests/              → Core tests (370): ChatEngine, ChatSession, GreetingPool, Interview, NounCategoriser, Router, SessionLogger
   PokeChat.Tests.NLP/          → NLP tests (67): Tokeniser, PosTagger, SvoExtractor, SentenceSplitter, SpellChecker, Pluraliser, ContractionExpander
   PokeChat.Tests.Knowledge/    → Knowledge tests (132): KnowledgeStore, ContextTracker
   PokeChat.Tests.Responses/    → Response tests (67): ResponseEngine, ResponseRules
   PokeChat.Tests.ML/           → ML + LLM tests (73): NeuralNet, IntentClassifier, NeuralResponsePipeline, LLMOrchestrator
   PokeChat.Tests.Stories/      → Stories tests (98): StoryGenerator, PoetryGenerator, RhymeMatcher, SyllableCounter
-  PokeChat.Tests.Tools/        → Tools tests (87): ToolRegistry, McpRegistry, McpToolAdapter, FileOpsTool, Enrichment (NullEnricher, MemPalaceEnricher, EnrichmentQueue)
+  PokeChat.Tests.Tools/        → Tools tests (126): ToolRegistry, McpRegistry, McpToolAdapter, FileOpsTool, Enrichment (NullEnricher, MemPalaceEnricher, EnrichmentQueue)
   PokeChat.Tests.Api/          → API tests (125): SessionManager, OpenAIAdapter, SystemPromptMapper, TitleGenerator
-  PokeChat.Tests.Shared/       → Shared helpers: FreshDbContext, TestDataHelper, StubLLMProvider (not a test project)
+  PokeChat.Tests.Shared/       → Shared helpers: FreshDbContext, TestDbContextFactory, TestDataHelper, StubLLMProvider (not a test project)
 ```
 
 ## Key Details
@@ -107,6 +107,7 @@ tests/
 - **SpellChecker:** Levenshtein-based spell correction with `misspellings` table for known errors; `pos_dictionary` as known word dictionary
 - **KnowledgeStore.Save():** Batch save method replaces per-operation SaveChanges; callers call `Save()` at logical boundaries
 - **Rate limiting:** Token bucket per IP (`TokenBucketStore`/`ITokenBucketStore`), configurable costs per request type. `SessionQuotaOptions` controls per-user session cap, per-session turn cap, and per-session upstream LLM call cap. Defaults: 60 tokens/min, 50 max sessions, 10 max sessions per user, 100 turns per session, 20 upstream calls per session.
+- **DbContext pooling:** `SessionManager` uses `IDbContextFactory<PokeChatDbContext>` — each DB operation creates its own short-lived context. Registered via `AddDbContextPool<PokeChatDbContext>` in Program.cs. Test helper `TestDbContextFactory` in PokeChat.Tests.Shared creates contexts from a shared in-memory SQLite connection.
 - **Database recovery:** `DatabaseInitializer` auto-backs up `pokechat.db` → `pokechat.db.bak` on every startup. On schema mismatch or migration failure, automatically recreates the DB and copies learned data from backup. `--restore-db` CLI flag restores from backup manually. `BackupHelper` uses SQLite ATTACH+INSERT for cross-schema data copy.
 - **Knowledge decay:** Access tracking (`last_accessed`, `access_count`) on facts, learned rules, and word definitions. `DecayCleanup()` auto-runs at session end and via `~cleanup` command. Deletes stale records (>90 days old, never accessed, low confidence) and runs VACUUM when >50 records deleted. Client-side filtering ensures in-memory access tracking is respected.
 - **Response ratings:** `~rate +1`/`~rate -1` rates the last response. Natural language feedback ("thanks", "that didn't help") auto-rates. Ratings stored in `turn_ratings` table, linked to `conversations` and `users`.
@@ -161,6 +162,7 @@ Full history in MemPalace (`wing: pokechat, room: known-fixes`). Essentials only
 - **Guest name bug:** `SessionManager.GetOrCreate` called `EstablishDefaultUser("Guest")` which set `_currentUserId`, permanently blocking `HandleNameInput`. Gate now also checks `_currentUserName == "Guest"`.
 - **Bot command prefix:** Changed from `/` → `!` → `~` to avoid clashes with OpenCode (`/`) and shell history expansion (`!`). `~` has no shell conflicts and is familiar from IRC/Discord bots.
 - **Database initialization rewrite:** Removed complex `GetPendingMigrations` → `ValidateSchema` → `RecreateFromBackup` flow that had stale connection state issues. Now just `Migrate()` with wipe-and-retry fallback. `EnsureCreated()` only used as last resort (incompatible with `Migrate()`).
+- **SessionManager DI ambiguity:** Removed convenience constructors that created `new PokeChatDbContext()` internally. Single constructor `(ChatEngineFactory, PokeChatDbContext, SessionQuotaOptions)` registered via DI.
 - **SessionManager DI ambiguity:** Removed convenience constructors that created `new PokeChatDbContext()` internally. Single constructor `(ChatEngineFactory, PokeChatDbContext, SessionQuotaOptions)` registered via DI.
 - **Riddle/game answer interception:** Stale `PendingLLMOffer` context flag sat above game state checks in `ProcessInput`, intercepting answers before riddle/hangman/quiz/WYR/madlibs/joke handlers. Fixed by calling `ClearPendingState()` in `ExecuteBotRoute` and all game start handlers.
 

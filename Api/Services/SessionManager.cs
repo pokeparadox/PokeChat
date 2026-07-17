@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
+using Microsoft.EntityFrameworkCore;
 using PokeChat.Api.Models;
 using PokeChat.Core;
 using PokeChat.Data;
@@ -12,13 +13,11 @@ public sealed class SessionManager : IDisposable
     private sealed class CacheEntry
     {
         public ChatEngine Engine { get; }
-        public ConversationSession DbSession { get; set; }
         public DateTime LastAccessed { get; set; }
 
-        public CacheEntry(ChatEngine engine, ConversationSession dbSession)
+        public CacheEntry(ChatEngine engine)
         {
             Engine = engine;
-            DbSession = dbSession;
             LastAccessed = DateTime.UtcNow;
         }
     }
@@ -26,15 +25,15 @@ public sealed class SessionManager : IDisposable
     private readonly ConcurrentDictionary<string, CacheEntry> _cache = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, int> _upstreamCallsPerSession = new(StringComparer.OrdinalIgnoreCase);
     private readonly ChatEngineFactory _factory;
-    private readonly PokeChatDbContext _dbContext;
+    private readonly IDbContextFactory<PokeChatDbContext> _factoryDb;
     private readonly int _maxSessions;
     private readonly TimeSpan _sessionTtl;
     private readonly SessionQuotaOptions _quotas;
 
-    public SessionManager(ChatEngineFactory factory, PokeChatDbContext dbContext, SessionQuotaOptions quotas)
+    public SessionManager(ChatEngineFactory factory, IDbContextFactory<PokeChatDbContext> factoryDb, SessionQuotaOptions quotas)
     {
         _factory = factory;
-        _dbContext = dbContext;
+        _factoryDb = factoryDb;
         _quotas = quotas;
         _maxSessions = quotas.MaxSessions;
         _sessionTtl = TimeSpan.FromMinutes(quotas.SessionTtlMinutes);
@@ -46,7 +45,9 @@ public sealed class SessionManager : IDisposable
 
         var entry = _cache.GetOrAdd(sessionId, id =>
         {
-            var dbSession = _dbContext.ConversationSessions.FirstOrDefault(s => s.SessionGuid == id);
+            using var ctx = _factoryDb.CreateDbContext();
+
+            var dbSession = ctx.ConversationSessions.FirstOrDefault(s => s.SessionGuid == id);
 
             if (dbSession == null)
             {
@@ -57,8 +58,8 @@ public sealed class SessionManager : IDisposable
                     LastActiveAt = DateTime.UtcNow.ToString("o"),
                     TurnCount = 0
                 };
-                _dbContext.ConversationSessions.Add(dbSession);
-                _dbContext.SaveChanges();
+                ctx.ConversationSessions.Add(dbSession);
+                ctx.SaveChanges();
             }
 
             var resolvedPersona = persona ?? dbSession.Persona ?? "chat";
@@ -66,7 +67,7 @@ public sealed class SessionManager : IDisposable
 
             if (dbSession.UserId.HasValue)
             {
-                var user = _dbContext.Users.Find(dbSession.UserId.Value);
+                var user = ctx.Users.Find(dbSession.UserId.Value);
                 if (user != null)
                 {
                     engine.RestoreUser(user.Id, user.Name);
@@ -87,14 +88,15 @@ public sealed class SessionManager : IDisposable
             {
                 dbSession.Persona = resolvedPersona;
                 dbSession.BotName = engine.BotName;
+                ctx.SaveChanges();
             }
 
-            return new CacheEntry(engine, dbSession);
+            return new CacheEntry(engine);
         });
 
         entry.LastAccessed = DateTime.UtcNow;
 
-        SyncUserId(entry.Engine, entry.DbSession);
+        SyncUserId(entry.Engine, sessionId);
 
         if (_cache.Count > _maxSessions)
             EvictLru(entry.Engine.CurrentUserId);
@@ -104,7 +106,8 @@ public sealed class SessionManager : IDisposable
 
     public ConversationSession? GetSessionMetadata(string sessionId)
     {
-        var dbSession = _dbContext.ConversationSessions.FirstOrDefault(s => s.SessionGuid == sessionId);
+        using var ctx = _factoryDb.CreateDbContext();
+        var dbSession = ctx.ConversationSessions.FirstOrDefault(s => s.SessionGuid == sessionId);
         if (dbSession == null) return null;
 
         if (_cache.TryGetValue(sessionId, out var entry))
@@ -115,7 +118,8 @@ public sealed class SessionManager : IDisposable
 
     public List<ConversationSession> ListActiveSessions()
     {
-        return _dbContext.ConversationSessions
+        using var ctx = _factoryDb.CreateDbContext();
+        return ctx.ConversationSessions
             .Where(s => s.EndedAt == null)
             .OrderByDescending(s => s.LastActiveAt ?? s.StartedAt)
             .ToList();
@@ -123,24 +127,26 @@ public sealed class SessionManager : IDisposable
 
     public void EndSession(string sessionId)
     {
+        _upstreamCallsPerSession.TryRemove(sessionId, out _);
+
         if (_cache.TryRemove(sessionId, out var entry))
         {
+            using (var ctx = _factoryDb.CreateDbContext())
+            {
+                var dbSession = ctx.ConversationSessions.FirstOrDefault(s => s.SessionGuid == sessionId);
+                if (dbSession != null)
+                {
+                    dbSession.EndedAt = DateTime.UtcNow.ToString("o");
+                    dbSession.LastActiveAt = DateTime.UtcNow.ToString("o");
+                    SyncUserId(entry.Engine, sessionId, ctx);
+                    ctx.SaveChanges();
+                }
+            }
+
             entry.Engine.RecordSessionMetrics();
             entry.Engine.TryRetrainClassifier();
             entry.Engine.Save();
             entry.Engine.Dispose();
-        }
-
-        _upstreamCallsPerSession.TryRemove(sessionId, out _);
-
-        var dbSession = _dbContext.ConversationSessions.FirstOrDefault(s => s.SessionGuid == sessionId);
-        if (dbSession != null)
-        {
-            dbSession.EndedAt = DateTime.UtcNow.ToString("o");
-            dbSession.LastActiveAt = DateTime.UtcNow.ToString("o");
-            if (entry != null)
-                SyncUserId(entry.Engine, dbSession);
-            _dbContext.SaveChanges();
         }
     }
 
@@ -149,20 +155,17 @@ public sealed class SessionManager : IDisposable
         if (_cache.TryGetValue(sessionId, out var entry))
         {
             entry.LastAccessed = DateTime.UtcNow;
-            entry.DbSession.LastActiveAt = DateTime.UtcNow.ToString("o");
-            entry.DbSession.TurnCount++;
-            SyncUserId(entry.Engine, entry.DbSession);
-            _dbContext.SaveChanges();
         }
-        else
+
+        using var ctx = _factoryDb.CreateDbContext();
+        var dbSession = ctx.ConversationSessions.FirstOrDefault(s => s.SessionGuid == sessionId);
+        if (dbSession != null)
         {
-            var dbSession = _dbContext.ConversationSessions.FirstOrDefault(s => s.SessionGuid == sessionId);
-            if (dbSession != null)
-            {
-                dbSession.LastActiveAt = DateTime.UtcNow.ToString("o");
-                dbSession.TurnCount++;
-                _dbContext.SaveChanges();
-            }
+            dbSession.LastActiveAt = DateTime.UtcNow.ToString("o");
+            dbSession.TurnCount++;
+            if (entry != null)
+                SyncUserId(entry.Engine, sessionId, ctx);
+            ctx.SaveChanges();
         }
     }
 
@@ -173,7 +176,8 @@ public sealed class SessionManager : IDisposable
 
     public bool IsTurnQuotaExceeded(string sessionId)
     {
-        var dbSession = _dbContext.ConversationSessions.FirstOrDefault(s => s.SessionGuid == sessionId);
+        using var ctx = _factoryDb.CreateDbContext();
+        var dbSession = ctx.ConversationSessions.FirstOrDefault(s => s.SessionGuid == sessionId);
         if (dbSession == null) return false;
         return dbSession.TurnCount >= _quotas.MaxTurnsPerSession;
     }
@@ -191,8 +195,9 @@ public sealed class SessionManager : IDisposable
 
     public bool SessionExists(string sessionId)
     {
-        return _cache.ContainsKey(sessionId) ||
-               _dbContext.ConversationSessions.Any(s => s.SessionGuid == sessionId && s.EndedAt == null);
+        if (_cache.ContainsKey(sessionId)) return true;
+        using var ctx = _factoryDb.CreateDbContext();
+        return ctx.ConversationSessions.Any(s => s.SessionGuid == sessionId && s.EndedAt == null);
     }
 
     private void EvictExpired()
@@ -204,21 +209,26 @@ public sealed class SessionManager : IDisposable
             {
                 if (_cache.TryRemove(kvp.Key, out var entry))
                 {
+                    using (var ctx = _factoryDb.CreateDbContext())
+                    {
+                        var dbSession = ctx.ConversationSessions.FirstOrDefault(s => s.SessionGuid == kvp.Key);
+                        if (dbSession != null)
+                        {
+                            dbSession.EndedAt = DateTime.UtcNow.ToString("o");
+                            dbSession.LastActiveAt = DateTime.UtcNow.ToString("o");
+                            SyncUserId(entry.Engine, kvp.Key, ctx);
+                            ctx.SaveChanges();
+                        }
+                    }
+
                     entry.Engine.RecordSessionMetrics();
                     entry.Engine.Save();
                     entry.Engine.Dispose();
-
-                    entry.DbSession.EndedAt = DateTime.UtcNow.ToString("o");
-                    entry.DbSession.LastActiveAt = DateTime.UtcNow.ToString("o");
-                    SyncUserId(entry.Engine, entry.DbSession);
                 }
 
                 _upstreamCallsPerSession.TryRemove(kvp.Key, out _);
             }
         }
-
-        if (_dbContext.ChangeTracker.HasChanges())
-            _dbContext.SaveChanges();
     }
 
     private void EvictLru(int? currentUserId = null)
@@ -226,7 +236,6 @@ public sealed class SessionManager : IDisposable
         var overage = _cache.Count - _maxSessions;
         if (overage <= 0) return;
 
-        // Prefer evicting sessions belonging to the same user (likely the caller)
         List<KeyValuePair<string, CacheEntry>> toEvict;
 
         if (currentUserId.HasValue)
@@ -257,20 +266,25 @@ public sealed class SessionManager : IDisposable
         {
             if (_cache.TryRemove(kvp.Key, out var entry))
             {
+                using (var ctx = _factoryDb.CreateDbContext())
+                {
+                    var dbSession = ctx.ConversationSessions.FirstOrDefault(s => s.SessionGuid == kvp.Key);
+                    if (dbSession != null)
+                    {
+                        dbSession.EndedAt = DateTime.UtcNow.ToString("o");
+                        dbSession.LastActiveAt = DateTime.UtcNow.ToString("o");
+                        SyncUserId(entry.Engine, kvp.Key, ctx);
+                        ctx.SaveChanges();
+                    }
+                }
+
                 entry.Engine.RecordSessionMetrics();
                 entry.Engine.Save();
                 entry.Engine.Dispose();
-
-                entry.DbSession.EndedAt = DateTime.UtcNow.ToString("o");
-                entry.DbSession.LastActiveAt = DateTime.UtcNow.ToString("o");
-                SyncUserId(entry.Engine, entry.DbSession);
             }
 
             _upstreamCallsPerSession.TryRemove(kvp.Key, out _);
         }
-
-        if (_dbContext.ChangeTracker.HasChanges())
-            _dbContext.SaveChanges();
     }
 
     private static readonly Regex NameFromUserPattern = new(
@@ -315,7 +329,8 @@ public sealed class SessionManager : IDisposable
         if (string.IsNullOrEmpty(foundName) || foundName.Length < 2 || foundName.Length > 30)
             return false;
 
-        var user = _dbContext.Users.FirstOrDefault(u =>
+        using var ctx = _factoryDb.CreateDbContext();
+        var user = ctx.Users.FirstOrDefault(u =>
             u.Name.ToLower() == foundName.ToLower());
         if (user == null)
             return false;
@@ -324,25 +339,37 @@ public sealed class SessionManager : IDisposable
         return true;
     }
 
-    private void SyncUserId(ChatEngine engine, ConversationSession dbSession)
+    private void SyncUserId(ChatEngine engine, string sessionId, PokeChatDbContext? sharedCtx = null)
     {
-        if (!engine.CurrentUserId.HasValue || dbSession.UserId.HasValue) return;
+        if (!engine.CurrentUserId.HasValue) return;
 
-        var userId = engine.CurrentUserId.Value;
-        var user = _dbContext.Users.Find(userId);
-        if (user == null)
+        var ownsCtx = sharedCtx == null;
+        var ctx = sharedCtx ?? _factoryDb.CreateDbContext();
+        try
         {
-            user = new Data.Entities.User
+            var dbSession = ctx.ConversationSessions.FirstOrDefault(s => s.SessionGuid == sessionId);
+            if (dbSession == null || dbSession.UserId.HasValue) return;
+
+            var userId = engine.CurrentUserId.Value;
+            var user = ctx.Users.Find(userId);
+            if (user == null)
             {
-                Id = userId,
-                Name = engine.CurrentUserName,
-                FirstSeen = DateTime.UtcNow.ToString("o"),
-                LastSeen = DateTime.UtcNow.ToString("o")
-            };
-            _dbContext.Users.Add(user);
+                user = new Data.Entities.User
+                {
+                    Id = userId,
+                    Name = engine.CurrentUserName,
+                    FirstSeen = DateTime.UtcNow.ToString("o"),
+                    LastSeen = DateTime.UtcNow.ToString("o")
+                };
+                ctx.Users.Add(user);
+            }
+            dbSession.UserId = userId;
+            ctx.SaveChanges();
         }
-        dbSession.UserId = userId;
-        _dbContext.SaveChanges();
+        finally
+        {
+            if (ownsCtx) ctx.Dispose();
+        }
     }
 
     public void Dispose()
@@ -352,6 +379,5 @@ public sealed class SessionManager : IDisposable
             kvp.Value.Engine.Dispose();
         }
         _cache.Clear();
-        _dbContext.Dispose();
     }
 }

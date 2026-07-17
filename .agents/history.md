@@ -1889,3 +1889,16 @@ Dual-persona architecture (chat/coding) with persona-filtered rules, responses, 
 - [x] 29 new tests (16 `~rate` command + 13 natural language feedback), all passing
 - [x] 996/996 pass across 9 projects, 0 warnings
 
+---
+
+### DbContext Pooling Refactor
+- [x] Replaced singleton `PokeChatDbContext` in `SessionManager` with `IDbContextFactory<PokeChatDbContext>` (EF Core context pooling)
+- [x] Each DB operation now creates its own short-lived context via `_factoryDb.CreateDbContext()`
+- [x] Fixed use-after-dispose bugs: engine disposal moved after all DB work in `EndSession`, `EvictExpired`, `EvictLru`
+- [x] `SyncUserId` accepts optional shared context parameter to avoid redundant context creation
+- [x] `AddDbContextPool<PokeChatDbContext>` registered in `Program.cs`
+- [x] Created `TestDbContextFactory` in PokeChat.Tests.Shared — wraps shared in-memory SQLite connection, creates new context per call
+- [x] Deleted `Api/Services/DbContextFactory.cs` (stale wrapper class)
+- [x] Deleted `tests/PokeChat.Tests.Api/DbContextFactoryWrapper.cs` (stale test file)
+- [x] 1058/1058 pass across 8 projects, 0 warnings
+

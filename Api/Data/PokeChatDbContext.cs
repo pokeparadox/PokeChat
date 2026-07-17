@@ -5,29 +5,8 @@ namespace PokeChat.Data;
 
 public sealed class PokeChatDbContext : DbContext
 {
-    private readonly string? _dbPath;
-
-    public PokeChatDbContext(string? dbPath = null)
-    {
-        _dbPath = dbPath ?? ResolveDbPath();
-    }
-
     public PokeChatDbContext(DbContextOptions<PokeChatDbContext> options) : base(options)
     {
-    }
-
-    private static string ResolveDbPath()
-    {
-        var envPath = Environment.GetEnvironmentVariable("POKECHAT_DB_PATH");
-        if (!string.IsNullOrEmpty(envPath))
-            return envPath;
-
-        var baseDir = AppContext.BaseDirectory;
-        var root = ProjectPathHelper.FindProjectRoot(baseDir);
-        if (root != null)
-            return Path.Combine(root, "pokechat.db");
-
-        return Path.Combine(baseDir, "pokechat.db");
     }
 
     public DbSet<User> Users => Set<User>();
@@ -66,14 +45,6 @@ public sealed class PokeChatDbContext : DbContext
     public DbSet<Reminder> Reminders => Set<Reminder>();
     public DbSet<FactEndorsement> FactEndorsements => Set<FactEndorsement>();
     public DbSet<AllowedCommand> AllowedCommands => Set<AllowedCommand>();
-
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        if (!optionsBuilder.IsConfigured)
-        {
-            optionsBuilder.UseSqlite($"Data Source={_dbPath}");
-        }
-    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

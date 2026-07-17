@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.EntityFrameworkCore;
 using PokeChat.Api.Services;
 using PokeChat.Data;
 using PokeChat.Knowledge;
@@ -239,6 +240,23 @@ public class ChatEngine : IDisposable
         "quit", "exit", "q"
     };
 
+    private static readonly HashSet<string> ProjectStartPhrases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "setup my project", "set up my project", "setup my project folder",
+        "set up my project folder", "scaffold my project", "configure my project",
+        "initialise my project", "initialize my project",
+        "setup my c# project", "set up my c# project",
+        "setup my csharp project", "set up my csharp project",
+        "setup my dotnet project", "set up my dotnet project",
+        "setup my rust project", "set up my rust project",
+        "setup my python project", "set up my python project",
+        "setup my node project", "set up my node project",
+        "setup my go project", "set up my go project",
+        "setup my java project", "set up my java project",
+        "setup my ruby project", "set up my ruby project",
+        "setup my php project", "set up my php project"
+    };
+
     private static readonly HashSet<string> HangmanStartPhrases = new(StringComparer.OrdinalIgnoreCase)
     {
         "let's play hangman", "play hangman", "hangman", "let's play hang man",
@@ -270,9 +288,9 @@ public class ChatEngine : IDisposable
 
     private static readonly Regex MadLibSlotRegex = new(@"\{(\w+)\}", RegexOptions.Compiled);
 
-    public ChatEngine(EnrichmentQueue? enrichmentQueue = null)
+    public ChatEngine(IDbContextFactory<PokeChatDbContext> dbContextFactory, EnrichmentQueue? enrichmentQueue = null)
     {
-        _dbContext = new PokeChatDbContext();
+        _dbContext = dbContextFactory.CreateDbContext();
         new DatabaseInitializer(_dbContext).Initialize();
         _sessionLogger = new SessionLogger(_sessionId);
 
@@ -600,6 +618,9 @@ public class ChatEngine : IDisposable
 
         if (TryHandleQuizStart(input, out var quizResponse))
             return quizResponse;
+
+        if (TryHandleProjectStart(input, out var projectResponse))
+            return projectResponse;
 
         if (TryHandleErrorKnowledge(input, out var errorResponse))
             return errorResponse;
@@ -2400,6 +2421,9 @@ public class ChatEngine : IDisposable
             case RouteHandler.Rate:
                 return HandleRateCommand(route.Argument);
 
+            case RouteHandler.Project:
+                return HandleProjectCommand(route.Argument);
+
             default:
                 return GetLLMResponse("default_response");
         }
@@ -2439,6 +2463,268 @@ public class ChatEngine : IDisposable
         return rating > 0
             ? "Glad you liked it!"
             : "Noted — I'll try to do better.";
+    }
+
+    private void Status(string message) => OnStatusUpdate?.Invoke(message);
+
+    private string HandleProjectCommand(string? argument)
+    {
+        var detector = new ProjectDetector();
+        var gitignoreService = new GitignoreService(status: Status);
+        var agentsGen = new AgentsMdGenerator();
+
+        var workingDir = Environment.CurrentDirectory;
+        var results = new List<string>();
+        var detectedProjects = new List<ProjectMatch>();
+
+        Status("Detecting project type...");
+
+        if (!string.IsNullOrWhiteSpace(argument))
+        {
+            var lang = argument.Trim();
+            if (!HasProjectFiles(workingDir))
+            {
+                return "This doesn't look like a project folder — I can't find any programming files here. Navigate to a project directory first, then try again.";
+            }
+            var gitignoreName = ProjectDetector.GetGitignoreName(lang);
+            detectedProjects.Add(new ProjectMatch(lang, gitignoreName, 1.0, "specified by user"));
+        }
+        else
+        {
+            detectedProjects = detector.Detect(workingDir);
+            if (detectedProjects.Count == 0)
+            {
+                return "I couldn't detect any programming project here. This folder doesn't contain project or source files. Try navigating to a project directory first.";
+            }
+        }
+
+        results.Add("**Detected project:** " + string.Join(", ", detectedProjects.Select(p => $"{p.Language} ({p.Reason})")));
+
+        Status("Fetching .gitignore templates...");
+
+        var templateNames = detectedProjects.Select(p => p.GitignoreName).Distinct().ToList();
+        var gitignoreContent = gitignoreService.BuildGitignoreAsync(templateNames).GetAwaiter().GetResult();
+
+        var gitignorePath = Path.Combine(workingDir, ".gitignore");
+        if (!string.IsNullOrWhiteSpace(gitignoreContent))
+        {
+            var action = GitignoreService.ShouldMerge(gitignorePath);
+            switch (action)
+            {
+                case MergeAction.Create:
+                    File.WriteAllText(gitignorePath, gitignoreContent);
+                    results.Add("**.gitignore:** Created with " + string.Join(" + ", templateNames));
+                    break;
+                case MergeAction.Merge:
+                    var existing = File.ReadAllText(gitignorePath);
+                    var merged = GitignoreService.MergeGitignore(existing, gitignoreContent);
+                    File.WriteAllText(gitignorePath, merged);
+                    results.Add("**.gitignore:** Merged " + string.Join(" + ", templateNames) + " into existing");
+                    break;
+                case MergeAction.Overwrite:
+                    File.WriteAllText(gitignorePath, gitignoreContent);
+                    results.Add("**.gitignore:** Overwritten with " + string.Join(" + ", templateNames));
+                    break;
+            }
+        }
+        else if (File.Exists(gitignorePath))
+        {
+            results.Add("**.gitignore:** Already exists, skipped fetch");
+        }
+        else
+        {
+            results.Add("**.gitignore:** Could not fetch from GitHub (rate limited or offline). Create manually or run `curl -o .gitignore https://raw.githubusercontent.com/github/gitignore/main/VisualStudio.gitignore`");
+        }
+
+        Status("Initializing MemPalace...");
+
+        var mempalaceCheck = RunMempalaceInitAsync(workingDir).GetAwaiter().GetResult();
+        if (mempalaceCheck != null)
+            results.Add(mempalaceCheck);
+
+        Status("Generating AGENTS.md...");
+
+        var agentsContent = agentsGen.Generate(workingDir, detectedProjects);
+        var agentsPath = Path.Combine(workingDir, "AGENTS.md");
+        if (!File.Exists(agentsPath))
+        {
+            File.WriteAllText(agentsPath, agentsContent);
+            results.Add("**AGENTS.md:** Created");
+        }
+        else
+        {
+            results.Add("**AGENTS.md:** Already exists (not overwritten)");
+        }
+
+        results.Add("");
+        results.Add("Done! Run `~project` again or edit AGENTS.md as needed.");
+
+        return string.Join("\n", results);
+    }
+
+    internal bool TryHandleProjectStart(string input, out string response)
+    {
+        var lowerInput = input.ToLowerInvariant().Trim();
+        foreach (var phrase in ProjectStartPhrases)
+        {
+            if (lowerInput.Contains(phrase))
+            {
+                ClearPendingState();
+
+                var argument = ExtractLanguageFromInput(lowerInput);
+                response = HandleProjectCommand(argument);
+                return true;
+            }
+        }
+
+        response = string.Empty;
+        return false;
+    }
+
+    private static string? ExtractLanguageFromInput(string input)
+    {
+        var languages = new[] { "c#", "csharp", "dotnet", "rust", "python", "node", "go", "java", "ruby", "php" };
+        foreach (var lang in languages)
+        {
+            if (input.Contains(lang))
+                return lang;
+        }
+        return null;
+    }
+
+    private static bool HasProjectFiles(string directory)
+    {
+        if (!Directory.Exists(directory))
+            return false;
+
+        var manifestExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ".csproj", ".sln", ".slnx", ".fsproj", ".vbproj",
+            ".json", ".toml", ".yaml", ".yml", ".lock",
+            ".mod", ".sum", ".gemspec", ".cabal"
+        };
+
+        var sourceExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ".cs", ".razor", ".fs", ".vb",
+            ".js", ".ts", ".jsx", ".tsx", ".mjs", ".cjs",
+            ".rs", ".go", ".py", ".pyi", ".pyx",
+            ".java", ".rb", ".php", ".swift", ".kt", ".scala",
+            ".c", ".cpp", ".h", ".hpp", ".cs"
+        };
+
+        var excludeDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "node_modules", ".git", "bin", "obj", "dist", "build",
+            "__pycache__", "target", "vendor", ".next"
+        };
+
+        var files = Directory.GetFiles(directory, "*.*", SearchOption.TopDirectoryOnly)
+            .Select(Path.GetFileName)
+            .Where(f => f != null)
+            .Cast<string>()
+            .ToList();
+
+        var hasManifest = files.Any(f =>
+        {
+            var ext = Path.GetExtension(f);
+            var name = Path.GetFileNameWithoutExtension(f);
+            return manifestExtensions.Contains(ext) ||
+                   name.Equals("package.json", StringComparison.OrdinalIgnoreCase) ||
+                   name.Equals("Cargo.toml", StringComparison.OrdinalIgnoreCase) ||
+                   name.Equals("go.mod", StringComparison.OrdinalIgnoreCase) ||
+                   name.Equals("pyproject.toml", StringComparison.OrdinalIgnoreCase) ||
+                   name.Equals("requirements.txt", StringComparison.OrdinalIgnoreCase) ||
+                   name.Equals("Gemfile", StringComparison.OrdinalIgnoreCase) ||
+                   name.Equals("composer.json", StringComparison.OrdinalIgnoreCase);
+        });
+
+        if (hasManifest) return true;
+
+        var sourceCount = files.Count(f => sourceExtensions.Contains(Path.GetExtension(f)));
+        return sourceCount >= 2;
+    }
+
+    private async Task<string?> RunMempalaceInitAsync(string workingDir)
+    {
+        try
+        {
+            var mempalacePath = Which("mempalace");
+            if (mempalacePath == null)
+            {
+                return "**MemPalace:** Not installed. Install with `pip install mempalace`, then run `mempalace init .` and `mempalace mine` in your project directory.";
+            }
+
+            Status("MemPalace: checking for existing project...");
+            var initResult = await RunProcessAsync(mempalacePath, $"init \"{workingDir}\" --yes", workingDir);
+            if (initResult != null && !initResult.Contains("already initialized", StringComparison.OrdinalIgnoreCase) && !initResult.Contains("initialized", StringComparison.OrdinalIgnoreCase))
+            {
+                return $"**MemPalace init:** {initResult}";
+            }
+
+            Status("MemPalace: mining project files...");
+            var mineResult = await RunProcessAsync(mempalacePath, $"mine \"{workingDir}\"", workingDir);
+            if (mineResult != null && mineResult.Contains("error", StringComparison.OrdinalIgnoreCase))
+            {
+                return $"**MemPalace mine:** {mineResult}";
+            }
+
+            Status("MemPalace: done.");
+            return "**MemPalace:** Initialized and mined project.";
+        }
+        catch (Exception ex)
+        {
+            return $"**MemPalace:** Error — {ex.Message}";
+        }
+    }
+
+    private static string? Which(string command)
+    {
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo("which", command)
+            {
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            using var process = System.Diagnostics.Process.Start(psi);
+            if (process == null) return null;
+            process.WaitForExit(2000);
+            var output = process.StandardOutput.ReadToEnd().Trim();
+            return process.ExitCode == 0 && !string.IsNullOrEmpty(output) ? output : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static async Task<string?> RunProcessAsync(string executable, string arguments, string workingDir)
+    {
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = executable,
+                Arguments = arguments,
+                WorkingDirectory = workingDir,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            using var process = System.Diagnostics.Process.Start(psi);
+            if (process == null) return null;
+            await process.WaitForExitAsync();
+            var stdout = (await process.StandardOutput.ReadToEndAsync()).Trim();
+            var stderr = (await process.StandardError.ReadToEndAsync()).Trim();
+            return !string.IsNullOrEmpty(stdout) ? stdout : stderr;
+        }
+        catch (Exception ex)
+        {
+            return $"Error running {executable}: {ex.Message}";
+        }
     }
 
     private string HandleWeatherRoute(RouteResult route)

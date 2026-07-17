@@ -3368,7 +3368,82 @@ public class ChatSessionTests
     }
 
     [Fact]
-    public void RestoreContextState_RestoresFromSession()
+    public void TryHandleProjectStart_TriggersOnSetupPhrase()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+
+            var result = session.TryHandleProjectStart("setup my project", out var response);
+
+            result.ShouldBeTrue();
+            response.ShouldNotBeNullOrEmpty();
+            response.ShouldContain("project");
+        }
+    }
+
+    [Fact]
+    public void TryHandleProjectStart_TriggersOnSetUpPhrase()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+
+            var result = session.TryHandleProjectStart("set up my project folder", out var response);
+
+            result.ShouldBeTrue();
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void TryHandleProjectStart_TriggersWithLanguage()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+
+            var result = session.TryHandleProjectStart("setup my c# project", out var response);
+
+            result.ShouldBeTrue();
+            response.ShouldContain("project");
+        }
+    }
+
+    [Fact]
+    public void TryHandleProjectStart_NonTrigger_ReturnsFalse()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+
+            var result = session.TryHandleProjectStart("what is the weather", out _);
+
+            result.ShouldBeFalse();
+        }
+    }
+
+    [Fact]
+    public void TryHandleProjectStart_CaseInsensitive()
+    {
+        var (session, db) = CreateSessionAndDb();
+        using (db)
+        {
+            session.HandleNameInput("my name is Alice");
+
+            var result = session.TryHandleProjectStart("SETUP MY PROJECT", out var response);
+
+            result.ShouldBeTrue();
+            response.ShouldNotBeNullOrEmpty();
+        }
+    }
+
+    [Fact]
+    public void RestoreContextState_ClearsContextOnNewSession()
     {
         var db = new FreshDbContext();
         TestDataHelper.SeedBotResponses(db.Context);

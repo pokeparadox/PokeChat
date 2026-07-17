@@ -1,4 +1,6 @@
+using Microsoft.EntityFrameworkCore;
 using PokeChat.Data;
+using PokeChat.Enrichment;
 using PokeChat.Knowledge;
 using PokeChat.LLM;
 using PokeChat.NLP;
@@ -11,15 +13,20 @@ public class ChatSession : IDisposable
 {
     private readonly ChatEngine _engine;
 
-    public ChatSession()
+    public ChatSession(IDbContextFactory<PokeChatDbContext> dbContextFactory, EnrichmentQueue? enrichmentQueue = null)
     {
-        _engine = new ChatEngine();
+        _engine = new ChatEngine(dbContextFactory, enrichmentQueue);
         _engine.OnStatusUpdate = msg =>
         {
             if (msg == "thinking")
                 Console.Write($"\r{_engine.BotName} is thinking...");
             else if (msg == "clear")
-                Console.Write("\r" + new string(' ', 40) + "\r");
+                Console.Write("\r" + new string(' ', 60) + "\r");
+            else if (!string.IsNullOrEmpty(msg))
+            {
+                Console.Write("\r" + new string(' ', 60) + "\r");
+                Console.Write($"\r{msg} ");
+            }
         };
     }
 
@@ -236,6 +243,7 @@ public class ChatSession : IDisposable
     internal bool TryHandleMadLibsStart(string input, out string response) => _engine.TryHandleMadLibsStart(input, out response);
     internal string HandleJokeTurn() => _engine.HandleJokeTurn();
     internal bool TryHandleJokeStart(string input, out string response) => _engine.TryHandleJokeStart(input, out response);
+    internal bool TryHandleProjectStart(string input, out string response) => _engine.TryHandleProjectStart(input, out response);
     internal string HandleRiddleTurn(string input) => _engine.HandleRiddleTurn(input);
     internal bool TryHandleRiddleStart(string input, out string response) => _engine.TryHandleRiddleStart(input, out response);
     internal string? TryBuildCrossSessionRecall() => _engine.TryBuildCrossSessionRecall();

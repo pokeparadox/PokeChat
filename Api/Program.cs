@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using PokeChat.Api.Models;
 using PokeChat.Api.Services;
 using PokeChat.Data;
@@ -25,9 +26,27 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
 });
 
-builder.Services.AddSingleton<PokeChatDbContext>();
-builder.Services.AddSingleton(sp =>
-    new ChatEngineFactory(sp.GetService<EnrichmentQueue>()));
+// Register DbContext factory with pooling (provides IDbContextFactory<PokeChatDbContext>)
+builder.Services.AddPooledDbContextFactory<PokeChatDbContext>(options =>
+{
+    var dbPath = Path.Combine(AppContext.BaseDirectory, "pokechat.db");
+    var envPath = Environment.GetEnvironmentVariable("POKECHAT_DB_PATH");
+    if (!string.IsNullOrEmpty(envPath)) dbPath = envPath;
+    options.UseSqlite($"Data Source={dbPath}");
+});
+
+// Register ChatEngineFactory properly
+builder.Services.AddSingleton(sp => new ChatEngineFactory(
+    sp.GetRequiredService<IDbContextFactory<PokeChatDbContext>>(),
+    sp.GetService<EnrichmentQueue>()));
+
+// Register SessionManager with all required dependencies
+builder.Services.AddSingleton<SessionManager>(sp => 
+    new SessionManager(
+        sp.GetRequiredService<ChatEngineFactory>(),
+        sp.GetRequiredService<IDbContextFactory<PokeChatDbContext>>(),
+        sp.GetRequiredService<SessionQuotaOptions>()
+    ));
 
 var memPalaceOptions = new MemPalaceOptions();
 builder.Configuration.GetSection("MemPalace").Bind(memPalaceOptions);
@@ -66,7 +85,7 @@ builder.Services.AddSingleton(weatherOptions);
 
 builder.Services.AddHttpClient<UpstreamLLMClient>();
 builder.Services.AddHttpClient<WeatherApiClient>();
-builder.Services.AddSingleton<SessionManager>();
+
 builder.Services.AddSingleton<OpenAIAdapter>();
 builder.Services.AddSingleton<TitleGenerator>();
 
@@ -106,7 +125,7 @@ if (args.Contains("--restore-db"))
 
 app.UseRateLimiter();
 
-using (var initContext = new PokeChatDbContext())
+using (var initContext = app.Services.GetRequiredService<IDbContextFactory<PokeChatDbContext>>().CreateDbContext())
 {
     new DatabaseInitializer(initContext).Initialize();
 }

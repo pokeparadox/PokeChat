@@ -13,6 +13,8 @@ public class SessionQuotaTests
 {
     private sealed class TestEngineFactory : ChatEngineFactory
     {
+        public TestEngineFactory() : base(new TestDbContextFactory()) { }
+
         public override ChatEngine Create(string? sessionId = null, string persona = "chat")
         {
             var engineDb = new FreshDbContext();
@@ -45,10 +47,10 @@ public class SessionQuotaTests
     [Fact]
     public void IsTurnQuotaExceeded_returns_false_when_under_limit()
     {
-        using var fresh = new FreshDbContext();
-        var factory = new TestEngineFactory();
+        using var factory = new TestDbContextFactory();
+        var engineFactory = new TestEngineFactory();
         var quotas = new SessionQuotaOptions { MaxTurnsPerSession = 10, MaxSessionsPerUser = 10, MaxUpstreamCallsPerSession = 5, SessionTtlMinutes = 60 };
-        using var manager = new SessionManager(factory, fresh.Context, quotas);
+        using var manager = new SessionManager(engineFactory, factory, quotas);
 
         manager.GetOrCreate("turn-test");
         manager.IsTurnQuotaExceeded("turn-test").ShouldBeFalse();
@@ -57,10 +59,10 @@ public class SessionQuotaTests
     [Fact]
     public void IsTurnQuotaExceeded_returns_true_when_at_limit()
     {
-        using var fresh = new FreshDbContext();
-        var factory = new TestEngineFactory();
+        using var factory = new TestDbContextFactory();
+        var engineFactory = new TestEngineFactory();
         var quotas = new SessionQuotaOptions { MaxTurnsPerSession = 3, MaxSessionsPerUser = 10, MaxUpstreamCallsPerSession = 5, SessionTtlMinutes = 60 };
-        using var manager = new SessionManager(factory, fresh.Context, quotas);
+        using var manager = new SessionManager(engineFactory, factory, quotas);
 
         manager.GetOrCreate("turn-max");
         manager.UpdateActivity("turn-max");
@@ -73,10 +75,10 @@ public class SessionQuotaTests
     [Fact]
     public void IsTurnQuotaExceeded_returns_false_for_unknown_session()
     {
-        using var fresh = new FreshDbContext();
-        var factory = new TestEngineFactory();
+        using var factory = new TestDbContextFactory();
+        var engineFactory = new TestEngineFactory();
         var quotas = new SessionQuotaOptions();
-        using var manager = new SessionManager(factory, fresh.Context, quotas);
+        using var manager = new SessionManager(engineFactory, factory, quotas);
 
         manager.IsTurnQuotaExceeded("nonexistent").ShouldBeFalse();
     }
@@ -84,10 +86,10 @@ public class SessionQuotaTests
     [Fact]
     public void TryConsumeUpstreamCall_allows_first_call()
     {
-        using var fresh = new FreshDbContext();
-        var factory = new TestEngineFactory();
+        using var factory = new TestDbContextFactory();
+        var engineFactory = new TestEngineFactory();
         var quotas = new SessionQuotaOptions { MaxUpstreamCallsPerSession = 2 };
-        using var manager = new SessionManager(factory, fresh.Context, quotas);
+        using var manager = new SessionManager(engineFactory, factory, quotas);
 
         manager.TryConsumeUpstreamCall("upstream-test").ShouldBeTrue();
     }
@@ -95,10 +97,10 @@ public class SessionQuotaTests
     [Fact]
     public void TryConsumeUpstreamCall_blocks_when_exceeded()
     {
-        using var fresh = new FreshDbContext();
-        var factory = new TestEngineFactory();
+        using var factory = new TestDbContextFactory();
+        var engineFactory = new TestEngineFactory();
         var quotas = new SessionQuotaOptions { MaxUpstreamCallsPerSession = 2 };
-        using var manager = new SessionManager(factory, fresh.Context, quotas);
+        using var manager = new SessionManager(engineFactory, factory, quotas);
 
         manager.TryConsumeUpstreamCall("upstream-exceed").ShouldBeTrue();
         manager.TryConsumeUpstreamCall("upstream-exceed").ShouldBeTrue();
@@ -108,10 +110,10 @@ public class SessionQuotaTests
     [Fact]
     public void GetUpstreamCalls_returns_zero_initially()
     {
-        using var fresh = new FreshDbContext();
-        var factory = new TestEngineFactory();
+        using var factory = new TestDbContextFactory();
+        var engineFactory = new TestEngineFactory();
         var quotas = new SessionQuotaOptions();
-        using var manager = new SessionManager(factory, fresh.Context, quotas);
+        using var manager = new SessionManager(engineFactory, factory, quotas);
 
         manager.GetUpstreamCalls("any-session").ShouldBe(0);
     }
@@ -119,10 +121,10 @@ public class SessionQuotaTests
     [Fact]
     public void GetUpstreamCalls_returns_correct_count()
     {
-        using var fresh = new FreshDbContext();
-        var factory = new TestEngineFactory();
+        using var factory = new TestDbContextFactory();
+        var engineFactory = new TestEngineFactory();
         var quotas = new SessionQuotaOptions();
-        using var manager = new SessionManager(factory, fresh.Context, quotas);
+        using var manager = new SessionManager(engineFactory, factory, quotas);
 
         manager.TryConsumeUpstreamCall("count-test");
         manager.TryConsumeUpstreamCall("count-test");
@@ -132,10 +134,10 @@ public class SessionQuotaTests
     [Fact]
     public void CountSessionsForUser_returns_zero_for_unknown_user()
     {
-        using var fresh = new FreshDbContext();
-        var factory = new TestEngineFactory();
+        using var factory = new TestDbContextFactory();
+        var engineFactory = new TestEngineFactory();
         var quotas = new SessionQuotaOptions();
-        using var manager = new SessionManager(factory, fresh.Context, quotas);
+        using var manager = new SessionManager(engineFactory, factory, quotas);
 
         manager.CountSessionsForUser(999).ShouldBe(0);
     }
@@ -143,10 +145,10 @@ public class SessionQuotaTests
     [Fact]
     public void EndSession_cleans_up_upstream_calls()
     {
-        using var fresh = new FreshDbContext();
-        var factory = new TestEngineFactory();
+        using var factory = new TestDbContextFactory();
+        var engineFactory = new TestEngineFactory();
         var quotas = new SessionQuotaOptions();
-        using var manager = new SessionManager(factory, fresh.Context, quotas);
+        using var manager = new SessionManager(engineFactory, factory, quotas);
 
         manager.TryConsumeUpstreamCall("cleanup-test");
         manager.GetUpstreamCalls("cleanup-test").ShouldBe(1);

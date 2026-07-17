@@ -234,10 +234,6 @@ public class OpenAIAdapter
             Choices = [new ChunkChoice { Index = 0, Delta = new Delta { Role = "assistant" } }]
         });
 
-        var statusLock = new object();
-        var statusBuffer = new List<ChatCompletionChunk>();
-        var statusFlushed = false;
-
         Action<string>? statusCallback = msg =>
         {
             if (string.IsNullOrEmpty(msg) || msg == "clear")
@@ -249,12 +245,13 @@ public class OpenAIAdapter
                 Choices = [new ChunkChoice { Index = 0, Delta = new Delta { Content = $"[{msg}]" } }]
             };
 
-            lock (statusLock)
+            try
             {
-                if (statusFlushed)
-                    onChunk(statusChunk).GetAwaiter().GetResult();
-                else
-                    statusBuffer.Add(statusChunk);
+                onChunk(statusChunk).GetAwaiter().GetResult();
+            }
+            catch
+            {
+                // Client disconnected — ignore
             }
         };
 
@@ -271,14 +268,6 @@ public class OpenAIAdapter
         finally
         {
             engine.OnStatusUpdate = null;
-
-            lock (statusLock)
-            {
-                statusFlushed = true;
-                foreach (var chunk in statusBuffer)
-                    onChunk(chunk).GetAwaiter().GetResult();
-                statusBuffer.Clear();
-            }
         }
 
         engineHandled = !engine.LastResponseIsDeadEnd;
