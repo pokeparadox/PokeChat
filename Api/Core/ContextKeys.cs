@@ -88,6 +88,10 @@ public static class ContextKeys
     public const string LastBuildOutput = "last_build_output";
     public const string CurrentBranch = "current_branch";
     public const string ProjectRoot = "project_root";
+    public const string ClientWorkingDirectory = "client_working_directory";
+    public const string PendingProjectConfirmation = "pending_project_confirmation";
+    public const string PendingProjectStep = "pending_project_step";
+    public const string PendingProjectLanguage = "pending_project_language";
     public const string PendingConfirmation = "pending_confirmation";
     public const string PendingConfirmationCommand = "pending_confirmation_command";
     public const string PendingConfirmationArgs = "pending_confirmation_args";

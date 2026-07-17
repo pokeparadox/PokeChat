@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using PokeChat.Core;
 
 namespace PokeChat.Api.Services;
@@ -28,6 +29,9 @@ public static class SystemPromptMapper
         "be detailed", "be thorough", "detailed responses", "thorough explanations",
         "long answers", "verbose", "explain in detail"
     };
+
+    private static readonly Regex WorkingDirectoryPattern = new(
+        @"Working directory:\s*(.+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     public static SystemPromptResult Parse(string? systemPrompt)
     {
@@ -78,12 +82,23 @@ public static class SystemPromptMapper
             }
         }
 
+        var wdMatch = WorkingDirectoryPattern.Match(systemPrompt);
+        if (wdMatch.Success)
+        {
+            var dir = wdMatch.Groups[1].Value.Trim();
+            if (Directory.Exists(dir))
+                result.WorkingDirectory = dir;
+        }
+
         return result;
     }
 
     public static void Apply(ChatEngine engine, string? systemPrompt)
     {
         var result = Parse(systemPrompt);
+
+        if (result.WorkingDirectory != null)
+            engine.SetContext(ContextKeys.ClientWorkingDirectory, result.WorkingDirectory);
 
         if (result.Persona != null)
             engine.SwitchPersona(result.Persona);
@@ -97,5 +112,6 @@ public class SystemPromptResult
 {
     public string? Persona { get; set; }
     public string? ResponseLength { get; set; }
+    public string? WorkingDirectory { get; set; }
     public string? OriginalPrompt { get; set; }
 }

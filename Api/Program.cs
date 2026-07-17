@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using PokeChat.Api.Models;
 using PokeChat.Api.Services;
+using PokeChat.Core;
 using PokeChat.Data;
 using PokeChat.Enrichment;
 using PokeChat.Math;
@@ -158,8 +159,16 @@ app.MapPost("/v1/chat/completions", async (HttpContext httpContext, ChatCompleti
         httpContext.Response.Headers.Connection = "keep-alive";
 
         await adapter.StreamResponseAsync(request, sessionId, persona: persona, rateLimitKey: rateLimitKey,
-            onChunk: chunk => httpContext.Response.WriteAsync($"data: {JsonSerializer.Serialize(chunk, jsonOptions)}\n\n"),
-            onDone: () => httpContext.Response.WriteAsync("data: [DONE]\n\n"),
+            onChunk: async chunk =>
+            {
+                await httpContext.Response.WriteAsync($"data: {JsonSerializer.Serialize(chunk, jsonOptions)}\n\n");
+                await httpContext.Response.Body.FlushAsync();
+            },
+            onDone: async () =>
+            {
+                await httpContext.Response.WriteAsync("data: [DONE]\n\n");
+                await httpContext.Response.Body.FlushAsync();
+            },
             ct: httpContext.RequestAborted);
 
         await httpContext.Response.Body.FlushAsync();
@@ -237,12 +246,15 @@ app.MapDelete("/sessions/{id}", (string id, SessionManager sessions) =>
     return Results.Ok(new { status = "ended", session_id = id });
 });
 
-app.MapPost("/sessions/{id}/chat", (string id, ChatRequest request, SessionManager sessions) =>
+app.MapPost("/sessions/{id}/chat", async (string id, ChatRequest request, SessionManager sessions) =>
 {
     var engine = sessions.GetOrCreate(id);
     try
     {
-        var response = engine.ProcessInput(request.Message);
+        if (!string.IsNullOrWhiteSpace(request.WorkingDirectory))
+            engine.SetContext(ContextKeys.ClientWorkingDirectory, request.WorkingDirectory);
+
+        var response = await engine.ProcessInputAsync(request.Message);
         sessions.UpdateActivity(id);
         return Results.Ok(new { response, session_id = id });
     }
@@ -263,6 +275,7 @@ public class SessionCreateRequest
 public class ChatRequest
 {
     public string Message { get; set; } = string.Empty;
+    public string? WorkingDirectory { get; set; }
 }
 
 public class TitleRequest

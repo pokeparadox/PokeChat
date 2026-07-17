@@ -222,6 +222,7 @@ public class ChatSession : IDisposable
 
     public string GetInitialGreeting() => _engine.GetInitialGreeting();
 
+    internal async Task<string> ProcessInputAsync(string input) => await _engine.ProcessInputAsync(input);
     internal string ProcessInput(string input) => _engine.ProcessInput(input);
     internal void Save() => _engine.Save();
     internal void RestoreContextState() => _engine.RestoreContextState();

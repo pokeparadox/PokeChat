@@ -52,7 +52,7 @@ while (true)
 
     try
     {
-        var response = await http.PostAsJsonAsync($"/sessions/{sessionId}/chat", new { message = input });
+        var response = await http.PostAsJsonAsync($"/sessions/{sessionId}/chat", new { message = input, working_directory = Environment.CurrentDirectory });
         if (!response.IsSuccessStatusCode)
         {
             var errorBody = await response.Content.ReadAsStringAsync();

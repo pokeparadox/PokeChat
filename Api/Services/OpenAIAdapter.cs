@@ -30,12 +30,13 @@ public class OpenAIAdapter
     public async Task<ChatCompletionResponse> ProcessAsync(ChatCompletionRequest request, string sessionId, string persona = "chat", string? rateLimitKey = null)
     {
         var engine = _sessionManager.GetOrCreate(sessionId, userName: request.User, messages: request.Messages, persona: persona);
+        ApplyWorkingDirectory(engine, request.WorkingDirectory);
 
         var systemMessage = request.Messages.FirstOrDefault(m => m.Role == "system");
         if (systemMessage?.Content != null)
             SystemPromptMapper.Apply(engine, systemMessage.Content);
 
-        RebuildHistory(engine, request.Messages);
+        await RebuildHistoryAsync(engine, request.Messages);
 
         var userMessage = request.Messages.LastOrDefault(m => m.Role == "user");
         var input = userMessage?.Content ?? "";
@@ -72,7 +73,7 @@ public class OpenAIAdapter
             };
         }
 
-        var rawResponseText = engine.ProcessInput(input);
+        var rawResponseText = await engine.ProcessInputAsync(input);
 
         var engineHandled = !engine.LastResponseIsDeadEnd;
         var routeInfo = new RouteInfo
@@ -164,12 +165,13 @@ public class OpenAIAdapter
         string persona = "chat", string? rateLimitKey = null, CancellationToken ct = default)
     {
         var engine = _sessionManager.GetOrCreate(sessionId, userName: request.User, messages: request.Messages, persona: persona);
+        ApplyWorkingDirectory(engine, request.WorkingDirectory);
 
         var systemMessage = request.Messages.FirstOrDefault(m => m.Role == "system");
         if (systemMessage?.Content != null)
             SystemPromptMapper.Apply(engine, systemMessage.Content);
 
-        RebuildHistory(engine, request.Messages);
+        await RebuildHistoryAsync(engine, request.Messages);
 
         var userMessage = request.Messages.LastOrDefault(m => m.Role == "user");
         var input = userMessage?.Content ?? "";
@@ -262,8 +264,7 @@ public class OpenAIAdapter
 
         try
         {
-            var engineTask = Task.Run(() => engine.ProcessInput(input), ct);
-            responseText = await engineTask;
+            responseText = await engine.ProcessInputAsync(input);
         }
         finally
         {
@@ -410,7 +411,7 @@ public class OpenAIAdapter
         };
     }
 
-    internal static void RebuildHistory(ChatEngine engine, List<ChatMessage> messages)
+    internal static async Task RebuildHistoryAsync(ChatEngine engine, List<ChatMessage> messages)
     {
         var userMessages = new List<ChatMessage>();
         foreach (var msg in messages)
@@ -445,7 +446,7 @@ public class OpenAIAdapter
             {
                 if (string.IsNullOrWhiteSpace(msg.Content))
                     continue;
-                engine.ProcessInput(msg.Content);
+                await engine.ProcessInputAsync(msg.Content);
             }
         }
         finally
@@ -455,6 +456,9 @@ public class OpenAIAdapter
 
         engine.SetContext(ContextKeys.LastProcessedHistoryHash, historyHash);
     }
+
+    internal static void RebuildHistory(ChatEngine engine, List<ChatMessage> messages)
+        => RebuildHistoryAsync(engine, messages).GetAwaiter().GetResult();
 
     private static string ComputeHistoryHash(List<ChatMessage> priorMessages)
     {
@@ -515,5 +519,11 @@ public class OpenAIAdapter
             null => null,
             _ => category?.StartsWith("proactive_") == true ? "proactive question (low confidence)" : "engine response"
         };
+    }
+
+    private static void ApplyWorkingDirectory(ChatEngine engine, string? workingDirectory)
+    {
+        if (!string.IsNullOrWhiteSpace(workingDirectory))
+            engine.SetContext(ContextKeys.ClientWorkingDirectory, workingDirectory);
     }
 }

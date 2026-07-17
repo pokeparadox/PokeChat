@@ -417,7 +417,7 @@ public class ChatEngine : IDisposable
     public string GetInitialGreeting() =>
         GreetingPool.GetRandomGreeting(_knowledgeStore, _botName, _persona);
 
-    internal string ProcessInput(string input)
+    internal async Task<string> ProcessInputAsync(string input)
     {
         LastResponseCategory = "state_handled";
 
@@ -431,6 +431,15 @@ public class ChatEngine : IDisposable
         if (pendingIdentity != null)
         {
             return HandleIdentityVerification(input, pendingIdentity);
+        }
+
+        var pendingProject = _context.GetContext(ContextKeys.PendingProjectConfirmation);
+        if (pendingProject != null)
+        {
+            if (input.TrimStart().StartsWith("~project", StringComparison.OrdinalIgnoreCase))
+                ClearProjectState();
+            else
+                return (await HandleProjectStepAsync(input)) ?? input;
         }
 
         if ((_currentUserId == null || _currentUserName == "Guest") && _persona != "coding" && !(input.Length > 1 && input[0] == '~'))
@@ -770,6 +779,8 @@ public class ChatEngine : IDisposable
         return response;
     }
 
+    internal string ProcessInput(string input) => ProcessInputAsync(input).GetAwaiter().GetResult();
+
     private string? TryHandleConfirmation(string input)
     {
         var pendingCmd = _context.GetContext(ContextKeys.PendingConfirmation);
@@ -977,7 +988,9 @@ public class ChatEngine : IDisposable
     {
         try
         {
-            var dir = Directory.GetCurrentDirectory();
+            var dir = _context.GetContext(ContextKeys.ClientWorkingDirectory);
+            if (string.IsNullOrWhiteSpace(dir))
+                dir = Directory.GetCurrentDirectory();
             _context.SetContext(ContextKeys.ProjectRoot, dir);
 
             var branch = RunGitCommand("branch --show-current");
@@ -2470,15 +2483,14 @@ public class ChatEngine : IDisposable
     private string HandleProjectCommand(string? argument)
     {
         var detector = new ProjectDetector();
-        var gitignoreService = new GitignoreService(status: Status);
-        var agentsGen = new AgentsMdGenerator();
 
-        var workingDir = Environment.CurrentDirectory;
-        var results = new List<string>();
-        var detectedProjects = new List<ProjectMatch>();
+        var workingDir = _context.GetContext(ContextKeys.ClientWorkingDirectory);
+        if (string.IsNullOrWhiteSpace(workingDir))
+            workingDir = Environment.CurrentDirectory;
 
         Status("Detecting project type...");
 
+        List<ProjectMatch> detectedProjects;
         if (!string.IsNullOrWhiteSpace(argument))
         {
             var lang = argument.Trim();
@@ -2487,7 +2499,7 @@ public class ChatEngine : IDisposable
                 return "This doesn't look like a project folder — I can't find any programming files here. Navigate to a project directory first, then try again.";
             }
             var gitignoreName = ProjectDetector.GetGitignoreName(lang);
-            detectedProjects.Add(new ProjectMatch(lang, gitignoreName, 1.0, "specified by user"));
+            detectedProjects = [new ProjectMatch(lang, gitignoreName, 1.0, "specified by user")];
         }
         else
         {
@@ -2498,14 +2510,84 @@ public class ChatEngine : IDisposable
             }
         }
 
-        results.Add("**Detected project:** " + string.Join(", ", detectedProjects.Select(p => $"{p.Language} ({p.Reason})")));
+        var langList = string.Join(", ", detectedProjects.Select(p => $"{p.Language} ({p.Reason})"));
+        _context.SetContext(ContextKeys.PendingProjectLanguage, langList);
+
+        var hasGitignore = File.Exists(Path.Combine(workingDir, ".gitignore"));
+        var hasAgentsMd = File.Exists(Path.Combine(workingDir, "AGENTS.md"));
+
+        if (hasGitignore && hasAgentsMd)
+            return $"**Detected project:** {langList}\n\nBoth `.gitignore` and `AGENTS.md` already exist. Nothing to do!";
+
+        _context.SetContext(ContextKeys.PendingProjectConfirmation, "true");
+
+        if (!hasGitignore)
+        {
+            _context.SetContext(ContextKeys.PendingProjectStep, "gitignore");
+            return $"**Detected project:** {langList}\n\nCreate a `.gitignore` for this project? (yes/no)";
+        }
+
+        _context.SetContext(ContextKeys.PendingProjectStep, "mempalace");
+        return $"**Detected project:** {langList}\n\nSet up [MemPalace](https://github.com/pokechat/mempalace) for this project? (yes/no)";
+    }
+
+    private async Task<string?> HandleProjectStepAsync(string input)
+    {
+        var lower = input.Trim().ToLowerInvariant();
+        var step = _context.GetContext(ContextKeys.PendingProjectStep);
+        var langList = _context.GetContext(ContextKeys.PendingProjectLanguage);
+        var workingDir = _context.GetContext(ContextKeys.ClientWorkingDirectory);
+        if (string.IsNullOrWhiteSpace(workingDir))
+            workingDir = Environment.CurrentDirectory;
+
+        if (step == null || workingDir == null)
+        {
+            ClearProjectState();
+            return null;
+        }
+
+        var isYes = Affirmations.Contains(lower);
+        var isNo = Denials.Contains(lower);
+        if (!isYes && !isNo)
+            return "Please answer yes or no.";
+
+        if (step == "gitignore")
+            return await ExecuteGitignoreStepAsync(workingDir, langList, isYes);
+
+        if (step == "mempalace")
+            return await ExecuteMemPalaceStepAsync(workingDir, isYes);
+
+        if (step == "agents_md")
+            return ExecuteAgentsMdStep(workingDir, langList, isYes);
+
+        ClearProjectState();
+        return null;
+    }
+
+    private async Task<string> ExecuteGitignoreStepAsync(string workingDir, string? langList, bool yes)
+    {
+        if (!yes)
+        {
+            _context.SetContext(ContextKeys.PendingProjectStep, "mempalace");
+            return "Skipped `.gitignore`.\n\nSet up MemPalace for this project? (yes/no)";
+        }
 
         Status("Fetching .gitignore templates...");
 
+        var detector = new ProjectDetector();
+        var gitignoreService = new GitignoreService(status: Status);
+        var detectedProjects = detector.Detect(workingDir);
+        if (detectedProjects.Count == 0 && !string.IsNullOrWhiteSpace(langList))
+        {
+            var name = ProjectDetector.GetGitignoreName(langList.Split(',').First().Trim().Split(' ').First());
+            detectedProjects = [new ProjectMatch(langList, name, 1.0, "specified by user")];
+        }
+
         var templateNames = detectedProjects.Select(p => p.GitignoreName).Distinct().ToList();
-        var gitignoreContent = gitignoreService.BuildGitignoreAsync(templateNames).GetAwaiter().GetResult();
+        var gitignoreContent = await gitignoreService.BuildGitignoreAsync(templateNames);
 
         var gitignorePath = Path.Combine(workingDir, ".gitignore");
+        string result;
         if (!string.IsNullOrWhiteSpace(gitignoreContent))
         {
             var action = GitignoreService.ShouldMerge(gitignorePath);
@@ -2513,53 +2595,115 @@ public class ChatEngine : IDisposable
             {
                 case MergeAction.Create:
                     File.WriteAllText(gitignorePath, gitignoreContent);
-                    results.Add("**.gitignore:** Created with " + string.Join(" + ", templateNames));
+                    result = $"**.gitignore:** Created with {string.Join(" + ", templateNames)}";
                     break;
                 case MergeAction.Merge:
                     var existing = File.ReadAllText(gitignorePath);
                     var merged = GitignoreService.MergeGitignore(existing, gitignoreContent);
                     File.WriteAllText(gitignorePath, merged);
-                    results.Add("**.gitignore:** Merged " + string.Join(" + ", templateNames) + " into existing");
+                    result = $"**.gitignore:** Merged {string.Join(" + ", templateNames)} into existing";
                     break;
                 case MergeAction.Overwrite:
                     File.WriteAllText(gitignorePath, gitignoreContent);
-                    results.Add("**.gitignore:** Overwritten with " + string.Join(" + ", templateNames));
+                    result = $"**.gitignore:** Overwritten with {string.Join(" + ", templateNames)}";
+                    break;
+                default:
+                    result = "**.gitignore:** Already exists, skipped";
                     break;
             }
         }
         else if (File.Exists(gitignorePath))
         {
-            results.Add("**.gitignore:** Already exists, skipped fetch");
+            result = "**.gitignore:** Already exists, skipped";
         }
         else
         {
-            results.Add("**.gitignore:** Could not fetch from GitHub (rate limited or offline). Create manually or run `curl -o .gitignore https://raw.githubusercontent.com/github/gitignore/main/VisualStudio.gitignore`");
+            result = "**.gitignore:** Could not fetch from GitHub (rate limited or offline).";
+        }
+
+        _context.SetContext(ContextKeys.PendingProjectStep, "mempalace");
+        return result + "\n\nSet up MemPalace for this project? (yes/no)";
+    }
+
+    private async Task<string> ExecuteMemPalaceStepAsync(string workingDir, bool yes)
+    {
+        if (!yes)
+        {
+            _context.SetContext(ContextKeys.PendingProjectStep, "agents_md");
+            return "Skipped MemPalace.\n\nCreate an `AGENTS.md` with project context for AI assistants? (yes/no)";
         }
 
         Status("Initializing MemPalace...");
 
-        var mempalaceCheck = RunMempalaceInitAsync(workingDir).GetAwaiter().GetResult();
-        if (mempalaceCheck != null)
-            results.Add(mempalaceCheck);
+        var mempalaceCheck = await RunMempalaceInitAsync(workingDir);
+
+        var mempalaceResult = mempalaceCheck ?? "**MemPalace:** Initialized and mined project.";
+
+        var langList = _context.GetContext(ContextKeys.PendingProjectLanguage);
 
         Status("Generating AGENTS.md...");
+
+        var agentsGen = new AgentsMdGenerator();
+        var detector = new ProjectDetector();
+        var detectedProjects = detector.Detect(workingDir);
+        if (detectedProjects.Count == 0 && !string.IsNullOrWhiteSpace(langList))
+        {
+            var name = ProjectDetector.GetGitignoreName(langList.Split(',').First().Trim().Split(' ').First());
+            detectedProjects = [new ProjectMatch(langList, name, 1.0, "specified by user")];
+        }
+
+        var agentsContent = agentsGen.Generate(workingDir, detectedProjects);
+        var agentsPath = Path.Combine(workingDir, "AGENTS.md");
+        string agentsResult;
+        if (!File.Exists(agentsPath))
+        {
+            File.WriteAllText(agentsPath, agentsContent);
+            agentsResult = "**AGENTS.md:** Created";
+        }
+        else
+        {
+            agentsResult = "**AGENTS.md:** Already exists (not overwritten)";
+        }
+
+        ClearProjectState();
+
+        return $"{mempalaceResult}\n\n{agentsResult}\n\nDone! Run `~project` again or edit AGENTS.md as needed.";
+    }
+
+    private string ExecuteAgentsMdStep(string workingDir, string? langList, bool yes)
+    {
+        ClearProjectState();
+
+        if (!yes)
+            return "Skipped `AGENTS.md`.\n\nDone! Your project is set up.";
+
+        Status("Generating AGENTS.md...");
+
+        var agentsGen = new AgentsMdGenerator();
+        var detector = new ProjectDetector();
+        var detectedProjects = detector.Detect(workingDir);
+        if (detectedProjects.Count == 0 && !string.IsNullOrWhiteSpace(langList))
+        {
+            var name = ProjectDetector.GetGitignoreName(langList.Split(',').First().Trim().Split(' ').First());
+            detectedProjects = [new ProjectMatch(langList, name, 1.0, "specified by user")];
+        }
 
         var agentsContent = agentsGen.Generate(workingDir, detectedProjects);
         var agentsPath = Path.Combine(workingDir, "AGENTS.md");
         if (!File.Exists(agentsPath))
         {
             File.WriteAllText(agentsPath, agentsContent);
-            results.Add("**AGENTS.md:** Created");
-        }
-        else
-        {
-            results.Add("**AGENTS.md:** Already exists (not overwritten)");
+            return "**AGENTS.md:** Created\n\nDone! Run `~project` again or edit AGENTS.md as needed.";
         }
 
-        results.Add("");
-        results.Add("Done! Run `~project` again or edit AGENTS.md as needed.");
+        return "**AGENTS.md:** Already exists (not overwritten)\n\nDone! Run `~project` again or edit AGENTS.md as needed.";
+    }
 
-        return string.Join("\n", results);
+    private void ClearProjectState()
+    {
+        _context.SetContext(ContextKeys.PendingProjectConfirmation, null);
+        _context.SetContext(ContextKeys.PendingProjectStep, null);
+        _context.SetContext(ContextKeys.PendingProjectLanguage, null);
     }
 
     internal bool TryHandleProjectStart(string input, out string response)
@@ -2656,21 +2800,38 @@ public class ChatEngine : IDisposable
             }
 
             Status("MemPalace: checking for existing project...");
-            var initResult = await RunProcessAsync(mempalacePath, $"init \"{workingDir}\" --yes", workingDir);
-            if (initResult != null && !initResult.Contains("already initialized", StringComparison.OrdinalIgnoreCase) && !initResult.Contains("initialized", StringComparison.OrdinalIgnoreCase))
-            {
-                return $"**MemPalace init:** {initResult}";
-            }
 
-            Status("MemPalace: mining project files...");
-            var mineResult = await RunProcessAsync(mempalacePath, $"mine \"{workingDir}\"", workingDir);
-            if (mineResult != null && mineResult.Contains("error", StringComparison.OrdinalIgnoreCase))
+            using var heartbeatCts = new CancellationTokenSource();
+            var heartbeatTimer = new System.Threading.Timer(async _ =>
             {
-                return $"**MemPalace mine:** {mineResult}";
-            }
+                try { Status("MemPalace: still working..."); }
+                catch { }
+            }, null, TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(15));
 
-            Status("MemPalace: done.");
-            return "**MemPalace:** Initialized and mined project.";
+            try
+            {
+                var initResult = await RunProcessStreamingAsync(mempalacePath, $"init \"{workingDir}\" --yes", workingDir, Status);
+                if (initResult.ExitCode != 0 && !initResult.Output.Contains("already initialized", StringComparison.OrdinalIgnoreCase) && !initResult.Output.Contains("initialized", StringComparison.OrdinalIgnoreCase))
+                {
+                    heartbeatTimer.Dispose();
+                    return $"**MemPalace init:** {initResult.Output}";
+                }
+
+                Status("MemPalace: mining project files...");
+                var mineResult = await RunProcessStreamingAsync(mempalacePath, $"mine \"{workingDir}\"", workingDir, Status);
+                if (mineResult.Output.Contains("error", StringComparison.OrdinalIgnoreCase))
+                {
+                    heartbeatTimer.Dispose();
+                    return $"**MemPalace mine:** {mineResult.Output}";
+                }
+
+                Status("MemPalace: done.");
+                return "**MemPalace:** Initialized and mined project.";
+            }
+            finally
+            {
+                heartbeatTimer.Dispose();
+            }
         }
         catch (Exception ex)
         {
@@ -2690,8 +2851,9 @@ public class ChatEngine : IDisposable
             };
             using var process = System.Diagnostics.Process.Start(psi);
             if (process == null) return null;
+            var outputTask = process.StandardOutput.ReadToEndAsync();
             process.WaitForExit(2000);
-            var output = process.StandardOutput.ReadToEnd().Trim();
+            var output = outputTask.Result.Trim();
             return process.ExitCode == 0 && !string.IsNullOrEmpty(output) ? output : null;
         }
         catch
@@ -2700,7 +2862,7 @@ public class ChatEngine : IDisposable
         }
     }
 
-    private static async Task<string?> RunProcessAsync(string executable, string arguments, string workingDir)
+    private static async Task<string?> RunProcessAsync(string executable, string arguments, string workingDir, int timeoutMs = 60_000)
     {
         try
         {
@@ -2716,14 +2878,89 @@ public class ChatEngine : IDisposable
             };
             using var process = System.Diagnostics.Process.Start(psi);
             if (process == null) return null;
-            await process.WaitForExitAsync();
-            var stdout = (await process.StandardOutput.ReadToEndAsync()).Trim();
-            var stderr = (await process.StandardError.ReadToEndAsync()).Trim();
+
+            var stdoutTask = process.StandardOutput.ReadToEndAsync();
+            var stderrTask = process.StandardError.ReadToEndAsync();
+
+            using var cts = new CancellationTokenSource(timeoutMs);
+            try
+            {
+                await process.WaitForExitAsync(cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                try { process.Kill(entireProcessTree: true); } catch { }
+                return $"Timed out after {timeoutMs / 1000}s";
+            }
+
+            var stdout = (await stdoutTask).Trim();
+            var stderr = (await stderrTask).Trim();
             return !string.IsNullOrEmpty(stdout) ? stdout : stderr;
         }
         catch (Exception ex)
         {
             return $"Error running {executable}: {ex.Message}";
+        }
+    }
+
+    private record ProcessResult(string Output, int ExitCode);
+
+    private static async Task<ProcessResult> RunProcessStreamingAsync(string executable, string arguments, string workingDir, Action<string> onLine, int timeoutMs = 120_000)
+    {
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = executable,
+                Arguments = arguments,
+                WorkingDirectory = workingDir,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            using var process = System.Diagnostics.Process.Start(psi);
+            if (process == null) return new ProcessResult("Failed to start process", -1);
+
+            var output = new System.Text.StringBuilder();
+
+            process.OutputDataReceived += (_, e) =>
+            {
+                if (e.Data != null)
+                {
+                    output.AppendLine(e.Data);
+                    onLine($"mempalace: {e.Data}");
+                }
+            };
+            process.ErrorDataReceived += (_, e) =>
+            {
+                if (e.Data != null)
+                {
+                    output.AppendLine(e.Data);
+                    onLine($"mempalace: {e.Data}");
+                }
+            };
+
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
+            using var cts = new CancellationTokenSource(timeoutMs);
+            try
+            {
+                await process.WaitForExitAsync(cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                try { process.Kill(entireProcessTree: true); } catch { }
+                return new ProcessResult($"Timed out after {timeoutMs / 1000}s", -1);
+            }
+
+            await process.WaitForExitAsync();
+            return new ProcessResult(output.ToString().Trim(), process.ExitCode);
+        }
+        catch (Exception ex)
+        {
+            return new ProcessResult($"Error running {executable}: {ex.Message}", -1);
         }
     }
 

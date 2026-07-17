@@ -61,4 +61,7 @@ public class ChatCompletionRequest
 
     [JsonPropertyName("session_id")]
     public string? SessionId { get; set; }
+
+    [JsonPropertyName("working_directory")]
+    public string? WorkingDirectory { get; set; }
 }
