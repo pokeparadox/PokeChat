@@ -1198,7 +1198,7 @@ public class KnowledgeStoreTests
 
         var codingRules = store.GetResponseRules("coding");
         codingRules.ShouldContain(r => r.Pattern == "coding pattern");
-        codingRules.ShouldContain(r => r.Pattern == "null pattern");
+        codingRules.ShouldNotContain(r => r.Pattern == "null pattern");
         codingRules.ShouldNotContain(r => r.Pattern == "chat pattern");
     }
 

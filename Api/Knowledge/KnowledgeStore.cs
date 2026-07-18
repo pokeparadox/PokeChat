@@ -404,7 +404,9 @@ public class KnowledgeStore(PokeChatDbContext context, EnrichmentQueue? enrichme
         var query = context.ResponseRules
             .Include(r => r.Responses)
             .Where(r => r.IsActive);
-        if (persona != null)
+        if (persona == "coding")
+            query = query.Where(r => r.Persona == "coding");
+        else if (persona != null)
             query = query.Where(r => r.Persona == null || r.Persona == persona);
         return query.ToList();
     }

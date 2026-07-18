@@ -383,17 +383,17 @@ public static class DbSeeder
             (@"^(network|ip|address)\b", "Statement", "Checking network. {tool:shell_command:ip:addr}"),
 
             // AGENTS.md operations
-            (@"update\s+(the\s+)?AGENTS\.md", "Statement", "Let me read the current AGENTS.md first. {tool:file_ops:read:AGENTS.md}"),
-            (@"read\s+(the\s+)?AGENTS\.md", "Statement", "Reading AGENTS.md. {tool:file_ops:read:AGENTS.md}"),
-            (@"show\s+(me\s+)?(the\s+)?AGENTS\.md", "Statement", "Here's AGENTS.md. {tool:file_ops:read:AGENTS.md}"),
-            (@"what('s|\s+is)\s+(in\s+)?(the\s+)?AGENTS\.md", "Statement", "Let me check AGENTS.md. {tool:file_ops:read:AGENTS.md}"),
-            (@"write\s+(the\s+)?AGENTS\.md", "Statement", "I'll need the content to write. What should go in AGENTS.md?"),
+            (@"update\s+(my|the|a|an|this|our|some)?\s*AGENTS\.md(\s+file)?", "Statement", "Let me read the current AGENTS.md first. {tool:file_ops:read:AGENTS.md}"),
+            (@"read\s+(my|the|a|an|this|our|some)?\s*AGENTS\.md(\s+file)?", "Statement", "Reading AGENTS.md. {tool:file_ops:read:AGENTS.md}"),
+            (@"show\s+(me\s+)?(my|the|a|an|this|our|some)?\s*AGENTS\.md(\s+file)?", "Statement", "Here's AGENTS.md. {tool:file_ops:read:AGENTS.md}"),
+            (@"what('s|\s+is)\s+(in\s+)?(my|the|a|an|this|our|some)?\s*AGENTS\.md(\s+file)?", "Statement", "Let me check AGENTS.md. {tool:file_ops:read:AGENTS.md}"),
+            (@"write\s+(to\s+)?(my|the|a|an|this|our|some)?\s*AGENTS\.md(\s+file)?", "Statement", "I'll need the content to write. What should go in AGENTS.md?"),
 
             // General file operations (natural language)
-            (@"read\s+(the\s+)?(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))", "Statement", "Reading {$2}. {tool:file_ops:read:{$2}}"),
-            (@"open\s+(the\s+)?(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))", "Statement", "Opening {$2}. {tool:file_ops:read:{$2}}"),
-            (@"show\s+(me\s+)?(the\s+)?(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))", "Statement", "Here's {$3}. {tool:file_ops:read:{$3}}"),
-            (@"what('s|\s+is)\s+in\s+(the\s+)?(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))", "Statement", "Let me check {$3}. {tool:file_ops:read:{$3}}"),
+            (@"read\s+(my|the|a|an|this|our|some)?\s*(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))", "Statement", "Reading {$2}. {tool:file_ops:read:{$2}}"),
+            (@"open\s+(my|the|a|an|this|our|some)?\s*(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))", "Statement", "Opening {$2}. {tool:file_ops:read:{$2}}"),
+            (@"show\s+(me\s+)?(my|the|a|an|this|our|some)?\s*(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))", "Statement", "Here's {$3}. {tool:file_ops:read:{$3}}"),
+            (@"what('s|\s+is)\s+in\s+(my|the|a|an|this|our|some)?\s*(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))", "Statement", "Let me check {$3}. {tool:file_ops:read:{$3}}"),
             (@"write\s+(to\s+)?(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))\s+(with\s+)?(.+)", "Statement", "Writing to {$2}. {tool:file_ops:write:{$2}:{$5}}"),
             (@"create\s+(a\s+)?(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))", "Statement", "Creating {$2}. {tool:file_ops:write:{$2}:}"),
             (@"list\s+(all\s+)?(files|the\s+files)", "Statement", "Listing files. {tool:file_ops:list:.}"),
