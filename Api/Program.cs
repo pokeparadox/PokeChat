@@ -146,7 +146,8 @@ app.MapGet("/v1/models", () => Results.Ok(new
 app.MapPost("/v1/chat/completions", async (HttpContext httpContext, ChatCompletionRequest request, OpenAIAdapter adapter, SessionManager sessions) =>
 {
     var rateLimitKey = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-    var sessionId = request.SessionId ?? Guid.NewGuid().ToString();
+    var sessionId = request.SessionId
+        ?? (!string.IsNullOrEmpty(request.User) ? $"user-{request.User}" : $"ip-{rateLimitKey}");
     sessions.UpdateActivity(sessionId);
 
     var userAgent = httpContext.Request.Headers.UserAgent.FirstOrDefault();
