@@ -928,6 +928,7 @@ public class ChatEngine : IDisposable
         {
             _botName = "PokeCode";
             TryDetectProjectContext();
+            LoadProjectContext();
         }
         else
         {
@@ -935,6 +936,37 @@ public class ChatEngine : IDisposable
         }
 
         _responseEngine.SetBotName(_botName);
+    }
+
+    private void LoadProjectContext()
+    {
+        try
+        {
+            var dir = _context.GetContext(ContextKeys.ClientWorkingDirectory);
+            if (string.IsNullOrWhiteSpace(dir))
+                dir = Directory.GetCurrentDirectory();
+
+            var agentsMd = Path.Combine(dir, "AGENTS.md");
+            if (File.Exists(agentsMd))
+            {
+                var content = File.ReadAllText(agentsMd);
+                if (content.Length > 8000)
+                    content = content[..8000];
+                _context.SetContext(ContextKeys.ProjectAgentsMd, content);
+            }
+
+            var readme = Path.Combine(dir, "README.md");
+            if (File.Exists(readme))
+            {
+                var content = File.ReadAllText(readme);
+                if (content.Length > 8000)
+                    content = content[..8000];
+                _context.SetContext(ContextKeys.ProjectReadme, content);
+            }
+        }
+        catch
+        {
+        }
     }
 
     internal void ApplySystemConfig(string? responseLength = null)

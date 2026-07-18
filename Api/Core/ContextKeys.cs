@@ -110,4 +110,6 @@ public static class ContextKeys
     public const string LastProcessedHistoryHash = "last_processed_history_hash";
     public const string RebuildHistoryTurnCap = "rebuild_history_turn_cap";
     public const string LastConversationId = "last_conversation_id";
+    public const string ProjectAgentsMd = "project_agents_md";
+    public const string ProjectReadme = "project_readme";
 }

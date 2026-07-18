@@ -381,6 +381,25 @@ public static class DbSeeder
             (@"^(system|os)\s+(info|version)", "Statement", "Checking system info. {tool:shell_command:uname:-a}"),
             (@"^(memory|ram|mem)\b", "Statement", "Checking memory. {tool:shell_command:free:-h}"),
             (@"^(network|ip|address)\b", "Statement", "Checking network. {tool:shell_command:ip:addr}"),
+
+            // AGENTS.md operations
+            (@"update\s+(the\s+)?AGENTS\.md", "Statement", "Let me read the current AGENTS.md first. {tool:file_ops:read:AGENTS.md}"),
+            (@"read\s+(the\s+)?AGENTS\.md", "Statement", "Reading AGENTS.md. {tool:file_ops:read:AGENTS.md}"),
+            (@"show\s+(me\s+)?(the\s+)?AGENTS\.md", "Statement", "Here's AGENTS.md. {tool:file_ops:read:AGENTS.md}"),
+            (@"what('s|\s+is)\s+(in\s+)?(the\s+)?AGENTS\.md", "Statement", "Let me check AGENTS.md. {tool:file_ops:read:AGENTS.md}"),
+            (@"write\s+(the\s+)?AGENTS\.md", "Statement", "I'll need the content to write. What should go in AGENTS.md?"),
+
+            // General file operations (natural language)
+            (@"read\s+(the\s+)?(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))", "Statement", "Reading {$2}. {tool:file_ops:read:{$2}}"),
+            (@"open\s+(the\s+)?(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))", "Statement", "Opening {$2}. {tool:file_ops:read:{$2}}"),
+            (@"show\s+(me\s+)?(the\s+)?(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))", "Statement", "Here's {$3}. {tool:file_ops:read:{$3}}"),
+            (@"what('s|\s+is)\s+in\s+(the\s+)?(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))", "Statement", "Let me check {$3}. {tool:file_ops:read:{$3}}"),
+            (@"write\s+(to\s+)?(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))\s+(with\s+)?(.+)", "Statement", "Writing to {$2}. {tool:file_ops:write:{$2}:{$5}}"),
+            (@"create\s+(a\s+)?(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))", "Statement", "Creating {$2}. {tool:file_ops:write:{$2}:}"),
+            (@"list\s+(all\s+)?(files|the\s+files)", "Statement", "Listing files. {tool:file_ops:list:.}"),
+            (@"what\s+files\s+(are\s+)?(there|in\s+this)", "Statement", "Listing files. {tool:file_ops:list:.}"),
+            (@"project\s+(structure|files|layout)", "Statement", "Showing project structure. {tool:shell_command:find:.:.-maxdepth:3:-type:f}"),
+            (@"search\s+(for\s+)?(.+?)\s+in\s+(.+)", "Statement", "Searching for '{$2}' in {$3}. {tool:file_ops:search:{$3}:{$2}}"),
         };
 
         foreach (var (pattern, inputType, response) in rules)

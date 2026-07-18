@@ -14,10 +14,13 @@ public static class PersonaRouter
         if (model == "pokecode-v1")
             return ("coding", null);
 
+        if (IsOpenCodeEnvironment())
+            return ("coding", null);
+
         var isCodingClient = !string.IsNullOrEmpty(userAgent) &&
             CodingClientPatterns.Any(p => userAgent.Contains(p, StringComparison.OrdinalIgnoreCase));
 
-        if (isCodingClient && model != "pokecode-v1")
+        if (isCodingClient)
         {
             return ("coding",
                 "Note: Detected coding assistant client. Auto-switched to pokecode-v1 persona. " +
@@ -25,5 +28,22 @@ public static class PersonaRouter
         }
 
         return ("chat", null);
+    }
+
+    private static bool IsOpenCodeEnvironment()
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OPENCODE_API_KEY")))
+                return true;
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OPENCODE_SESSION_ID")))
+                return true;
+            if (string.Equals(Environment.GetEnvironmentVariable("OPENCODE_ENV"), "opencode", StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        catch
+        {
+        }
+        return false;
     }
 }

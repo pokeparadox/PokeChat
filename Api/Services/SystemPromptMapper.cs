@@ -9,7 +9,7 @@ public static class SystemPromptMapper
     {
         "coding assistant", "write code", "software engineer", "programmer",
         "developer", "coding helper", "code assistant", "code helper",
-        "pair programmer", "coding copilot"
+        "pair programmer", "coding copilot", "opencode"
     };
 
     private static readonly HashSet<string> ChatPersonaKeywords = new(StringComparer.OrdinalIgnoreCase)
@@ -36,7 +36,11 @@ public static class SystemPromptMapper
     public static SystemPromptResult Parse(string? systemPrompt)
     {
         if (string.IsNullOrWhiteSpace(systemPrompt))
+        {
+            if (IsOpenCodeEnvironment())
+                return new SystemPromptResult { Persona = "coding", ResponseLength = "detailed" };
             return new SystemPromptResult();
+        }
 
         var result = new SystemPromptResult { OriginalPrompt = systemPrompt };
 
@@ -47,6 +51,12 @@ public static class SystemPromptMapper
                 result.Persona = "coding";
                 break;
             }
+        }
+
+        if (result.Persona == null && IsOpenCodeEnvironment())
+        {
+            result.Persona = "coding";
+            result.ResponseLength = "detailed";
         }
 
         if (result.Persona == null)
@@ -105,6 +115,23 @@ public static class SystemPromptMapper
 
         if (result.ResponseLength != null)
             engine.ApplySystemConfig(result.ResponseLength);
+    }
+
+    private static bool IsOpenCodeEnvironment()
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OPENCODE_API_KEY")))
+                return true;
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OPENCODE_SESSION_ID")))
+                return true;
+            if (string.Equals(Environment.GetEnvironmentVariable("OPENCODE_ENV"), "opencode", StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        catch
+        {
+        }
+        return false;
     }
 }
 

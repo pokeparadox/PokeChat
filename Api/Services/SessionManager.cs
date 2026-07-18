@@ -29,6 +29,7 @@ public sealed class SessionManager : IDisposable
     private readonly int _maxSessions;
     private readonly TimeSpan _sessionTtl;
     private readonly SessionQuotaOptions _quotas;
+    private readonly bool _openCodeDetected;
 
     public SessionManager(ChatEngineFactory factory, IDbContextFactory<PokeChatDbContext> factoryDb, SessionQuotaOptions quotas)
     {
@@ -37,6 +38,26 @@ public sealed class SessionManager : IDisposable
         _quotas = quotas;
         _maxSessions = quotas.MaxSessions;
         _sessionTtl = TimeSpan.FromMinutes(quotas.SessionTtlMinutes);
+        _openCodeDetected = DetectOpenCodeEnvironment();
+    }
+
+    public bool IsOpenCodeEnvironment => _openCodeDetected;
+
+    private static bool DetectOpenCodeEnvironment()
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OPENCODE_API_KEY")))
+                return true;
+            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OPENCODE_SESSION_ID")))
+                return true;
+            if (string.Equals(Environment.GetEnvironmentVariable("OPENCODE_ENV"), "opencode", StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        catch
+        {
+        }
+        return false;
     }
 
     public ChatEngine GetOrCreate(string sessionId, string? userName = null, List<ChatMessage>? messages = null, string? persona = null)
@@ -62,7 +83,9 @@ public sealed class SessionManager : IDisposable
                 ctx.SaveChanges();
             }
 
-            var resolvedPersona = persona ?? dbSession.Persona ?? "chat";
+            var resolvedPersona = persona ?? dbSession.Persona ?? (_openCodeDetected ? "coding" : "chat");
+            if (_openCodeDetected && resolvedPersona == "chat" && dbSession.Persona == null)
+                resolvedPersona = "coding";
             var engine = _factory.Create(id, resolvedPersona);
 
             if (dbSession.UserId.HasValue)
