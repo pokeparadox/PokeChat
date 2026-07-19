@@ -150,5 +150,11 @@ public class SessionLogger : IDisposable
             _writer.WriteLine();
         }
         _writer?.Dispose();
+
+        if (_turnCount == 0 && _logPath != null && File.Exists(_logPath))
+        {
+            try { File.Delete(_logPath); }
+            catch { /* best effort cleanup */ }
+        }
     }
 }

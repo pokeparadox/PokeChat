@@ -176,10 +176,21 @@ public class SessionLoggerTests : IDisposable
     public void SessionLogger_Dispose_WritesSessionEnded()
     {
         var logger = new SessionLogger(_sessionId, Config(), _tempDir);
+        logger.LogTurn("hello", "hi there"); // need at least one turn
         logger.Dispose();
 
         var content = File.ReadAllText(logger.LogPath!);
         content.ShouldContain("## Session Ended");
+    }
+
+    [Fact]
+    public void SessionLogger_Dispose_DeletesFileWhenNoTurns()
+    {
+        var logger = new SessionLogger(_sessionId, Config(), _tempDir);
+        var path = logger.LogPath;
+        logger.Dispose();
+
+        File.Exists(path).ShouldBeFalse();
     }
 
     public void Dispose()

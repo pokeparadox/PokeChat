@@ -23,7 +23,7 @@ public class SessionLogConfig
         try
         {
             var json = File.ReadAllText(configPath);
-            var config = JsonSerializer.Deserialize<ConfigFile>(json);
+            var config = JsonSerializer.Deserialize<ConfigFile>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             return config?.Logging ?? new SessionLogConfig();
         }
         catch

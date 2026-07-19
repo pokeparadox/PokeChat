@@ -177,18 +177,26 @@ public class RouterService
             };
         }
 
-        if (cmd.Length > 1 && cmd[^1] is '+' or '-' && arg == null)
+        if (cmd.Length > 1 && arg == null)
         {
-            var stripped = cmd[..^1];
-            if (BotCommandMap.TryGetValue(stripped, out handler))
+            var plusIdx = cmd.IndexOf('+');
+            var minusIdx = cmd.IndexOf('-');
+            var sepIdx = plusIdx > 0 ? plusIdx : minusIdx;
+
+            if (sepIdx > 0 && sepIdx < cmd.Length - 1)
             {
-                return new RouteResult
+                var stripped = cmd[..sepIdx];
+                var suffix = cmd[sepIdx..];
+                if (BotCommandMap.TryGetValue(stripped, out handler))
                 {
-                    Handler = handler,
-                    Argument = cmd[^1..],
-                    OriginalInput = input,
-                    IsBotCommand = true
-                };
+                    return new RouteResult
+                    {
+                        Handler = handler,
+                        Argument = suffix,
+                        OriginalInput = input,
+                        IsBotCommand = true
+                    };
+                }
             }
         }
 

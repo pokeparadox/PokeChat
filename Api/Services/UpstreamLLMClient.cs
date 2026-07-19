@@ -9,6 +9,8 @@ public class UpstreamLLMClient
 {
     private readonly HttpClient _http;
     private readonly UpstreamOptions _options;
+    private const int MaxRetries = 3;
+    private static readonly int[] RetryDelaysMs = [1000, 2000, 4000];
 
     public UpstreamLLMClient(HttpClient http, UpstreamOptions options)
     {
@@ -21,44 +23,50 @@ public class UpstreamLLMClient
         if (!_options.Enabled)
             return null;
 
-        var upstreamRequest = BuildUpstreamBody(request, stream: false);
-
-        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, _options.Endpoint)
+        for (int attempt = 0; attempt < MaxRetries; attempt++)
         {
-            Content = JsonContent.Create(upstreamRequest)
-        };
+            var upstreamRequest = BuildUpstreamBody(request, stream: false);
 
-        if (!string.IsNullOrWhiteSpace(_options.ApiKey))
-            httpRequest.Headers.TryAddWithoutValidation("Authorization", $"Bearer {_options.ApiKey}");
-
-        try
-        {
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(_options.TimeoutMs);
-
-            var response = await _http.SendAsync(httpRequest, cts.Token);
-            response.EnsureSuccessStatusCode();
-
-            var upstreamResponse = await response.Content.ReadFromJsonAsync<ChatCompletionResponse>(
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true }, cts.Token);
-
-            if (upstreamResponse != null)
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, _options.Endpoint)
             {
-                upstreamResponse.Model = _options.Model;
-                upstreamResponse.RouteInfo = new RouteInfo
-                {
-                    Category = "upstream_llm",
-                    EngineHandled = false,
-                    Description = $"routed to upstream LLM ({_options.Model})"
-                };
-            }
+                Content = JsonContent.Create(upstreamRequest)
+            };
 
-            return upstreamResponse;
+            if (!string.IsNullOrWhiteSpace(_options.ApiKey))
+                httpRequest.Headers.TryAddWithoutValidation("Authorization", $"Bearer {_options.ApiKey}");
+
+            try
+            {
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts.CancelAfter(_options.TimeoutMs);
+
+                var response = await _http.SendAsync(httpRequest, cts.Token);
+                response.EnsureSuccessStatusCode();
+
+                var upstreamResponse = await response.Content.ReadFromJsonAsync<ChatCompletionResponse>(
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }, cts.Token);
+
+                if (upstreamResponse != null)
+                {
+                    upstreamResponse.Model = _options.Model;
+                    upstreamResponse.RouteInfo = new RouteInfo
+                    {
+                        Category = "upstream_llm",
+                        EngineHandled = false,
+                        Description = $"routed to upstream LLM ({_options.Model})"
+                    };
+                }
+
+                return upstreamResponse;
+            }
+            catch
+            {
+                if (attempt < MaxRetries - 1)
+                    await Task.Delay(RetryDelaysMs[attempt], ct);
+            }
         }
-        catch
-        {
-            return null;
-        }
+
+        return null;
     }
 
     public async Task<bool> ForwardStreamingAsync(ChatCompletionRequest request,
@@ -67,73 +75,79 @@ public class UpstreamLLMClient
         if (!_options.Enabled)
             return false;
 
-        var upstreamRequest = BuildUpstreamBody(request, stream: true);
-
-        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, _options.Endpoint)
+        for (int attempt = 0; attempt < MaxRetries; attempt++)
         {
-            Content = JsonContent.Create(upstreamRequest)
-        };
+            var upstreamRequest = BuildUpstreamBody(request, stream: true);
 
-        if (!string.IsNullOrWhiteSpace(_options.ApiKey))
-            httpRequest.Headers.TryAddWithoutValidation("Authorization", $"Bearer {_options.ApiKey}");
-
-        try
-        {
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            cts.CancelAfter(_options.TimeoutMs);
-
-            var response = await _http.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, cts.Token);
-            response.EnsureSuccessStatusCode();
-
-            using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
-            using var reader = new StreamReader(stream, Encoding.UTF8);
-
-            while (true)
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, _options.Endpoint)
             {
-                cts.Token.ThrowIfCancellationRequested();
+                Content = JsonContent.Create(upstreamRequest)
+            };
 
-                var line = await reader.ReadLineAsync(cts.Token);
-                if (line == null)
-                    break;
-                if (string.IsNullOrWhiteSpace(line))
-                    continue;
+            if (!string.IsNullOrWhiteSpace(_options.ApiKey))
+                httpRequest.Headers.TryAddWithoutValidation("Authorization", $"Bearer {_options.ApiKey}");
 
-                if (line.StartsWith(":"))
-                    continue;
+            try
+            {
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts.CancelAfter(_options.TimeoutMs);
 
-                if (line == "data: [DONE]")
-                    break;
+                var response = await _http.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+                response.EnsureSuccessStatusCode();
 
-                if (!line.StartsWith("data: "))
-                    continue;
+                using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
+                using var reader = new StreamReader(stream, Encoding.UTF8);
 
-                var json = line[6..];
-                ChatCompletionChunk? chunk;
-                try
+                while (true)
                 {
-                    chunk = JsonSerializer.Deserialize<ChatCompletionChunk>(json,
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    cts.Token.ThrowIfCancellationRequested();
+
+                    var line = await reader.ReadLineAsync(cts.Token);
+                    if (line == null)
+                        break;
+                    if (string.IsNullOrWhiteSpace(line))
+                        continue;
+
+                    if (line.StartsWith(":"))
+                        continue;
+
+                    if (line == "data: [DONE]")
+                        break;
+
+                    if (!line.StartsWith("data: "))
+                        continue;
+
+                    var json = line[6..];
+                    ChatCompletionChunk? chunk;
+                    try
+                    {
+                        chunk = JsonSerializer.Deserialize<ChatCompletionChunk>(json,
+                            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    }
+                    catch
+                    {
+                        continue;
+                    }
+
+                    if (chunk == null)
+                        continue;
+
+                    chunk.Model = _options.Model;
+
+                    await onChunk(chunk);
                 }
-                catch
-                {
-                    continue;
-                }
 
-                if (chunk == null)
-                    continue;
-
-                chunk.Model = _options.Model;
-
-                await onChunk(chunk);
+                await onDone();
+                return true;
             }
+            catch
+            {
+                if (attempt < MaxRetries - 1)
+                    await Task.Delay(RetryDelaysMs[attempt], ct);
+            }
+        }
 
-            await onDone();
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
+        return false;
     }
 
     private object BuildUpstreamBody(ChatCompletionRequest request, bool stream)

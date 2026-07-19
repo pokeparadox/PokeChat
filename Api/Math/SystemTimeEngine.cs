@@ -76,6 +76,8 @@ public partial class SystemTimeEngine : ITimeEngine
 
         var candidate = match.Groups[1].Value.ToLowerInvariant();
 
+        if (candidate.Length < 2) return null;
+
         if (KnownTimezoneNames.Contains(candidate))
         {
             return candidate.ToUpperInvariant() switch
@@ -138,6 +140,6 @@ public partial class SystemTimeEngine : ITimeEngine
     [GeneratedRegex(@"\b(my timezone is |my time zone is |i'm in |i live in |set my timezone to |set my time zone to )(.+)", RegexOptions.IgnoreCase)]
     private static partial Regex TimezoneSetRegex();
 
-    [GeneratedRegex(@"\bin\s+(\w+(?:\/\w+)?)\s*(?:timezone|time zone|time)?\b", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"\bin\s+(\w+(?:\/\w+)?)\s+(?:timezone|time zone)\b", RegexOptions.IgnoreCase)]
     private static partial Regex TimezoneExtractRegex();
 }

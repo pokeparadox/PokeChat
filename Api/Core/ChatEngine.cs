@@ -426,6 +426,9 @@ public class ChatEngine : IDisposable
     {
         LastResponseCategory = "state_handled";
 
+        if (string.IsNullOrWhiteSpace(input))
+            return "";
+
         var pendingName = _context.GetContext(ContextKeys.PendingNameConfirmation);
         if (pendingName != null)
         {
@@ -2365,7 +2368,7 @@ public class ChatEngine : IDisposable
         {
             ["llm_offer"] = new() { "I don't know how to answer that. Should I use my AI to respond?" },
             ["llm_declined"] = new() { "No problem, I'll keep learning!" },
-            ["llm_unavailable"] = new() { "My AI isn't responding right now." },
+            ["llm_unavailable"] = new() { "My AI isn't responding right now. Try again in a moment, or ask me something else!" },
             ["llm_thinking"] = new() { "Let me check with my AI..." },
             ["persona_switch_chat"] = new() { "Switched to chat mode. I'm PokeChat again!" },
             ["persona_switch_coding"] = new() { "Switched to coding mode. I'm PokeCode — ready to help with code." },
