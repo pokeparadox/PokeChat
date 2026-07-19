@@ -138,10 +138,36 @@ public class UpstreamLLMClient
 
     private object BuildUpstreamBody(ChatCompletionRequest request, bool stream)
     {
+        var messages = new List<object?>(request.Messages);
+
+        var hasSystemMessage = messages.Any(m =>
+        {
+            if (m is ChatMessage cm)
+                return string.Equals(cm.Role, "system", StringComparison.OrdinalIgnoreCase);
+            return false;
+        });
+
+        if (!hasSystemMessage)
+        {
+            messages.Insert(0, new ChatMessage
+            {
+                Role = "system",
+                Content = "You are a helpful coding assistant with access to file and shell tools. " +
+                    "When the user asks you to read, open, show, update, edit, improve, or work on a file, " +
+                    "respond with a tool marker in this exact format: {tool:file_ops:read:FILENAME} to read a file, " +
+                    "{tool:file_ops:write:FILENAME:CONTENT} to write a file, " +
+                    "{tool:file_ops:list:PATH} to list files, " +
+                    "{tool:file_ops:search:PATH:QUERY} to search in files, " +
+                    "{tool:shell_command:COMMAND:ARGS} to run a shell command. " +
+                    "Use the file_ops tool for file operations and shell_command for running commands. " +
+                    "Always use tool markers when the user asks you to perform file or shell operations."
+            });
+        }
+
         var body = new Dictionary<string, object?>
         {
             ["model"] = _options.Model,
-            ["messages"] = request.Messages,
+            ["messages"] = messages,
             ["temperature"] = request.Temperature,
             ["stream"] = stream
         };

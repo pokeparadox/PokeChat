@@ -69,7 +69,7 @@ public class ContextTracker
 
         var lower = input.ToLowerInvariant();
 
-        if ((lower.Contains("that file") || lower.Contains("this file")) && !string.IsNullOrEmpty(currentFile))
+        if ((lower.Contains("that file") || lower.Contains("this file") || lower.Contains("the file")) && !string.IsNullOrEmpty(currentFile))
             return currentFile;
 
         if (lower.Contains("that test") || lower.Contains("this test"))
@@ -95,6 +95,21 @@ public class ContextTracker
         if ((lower.Contains("that function") || lower.Contains("that method") || lower.Contains("this function") || lower.Contains("this method") ||
              lower.Contains("that class") || lower.Contains("this class")) && !string.IsNullOrEmpty(currentFile))
             return currentFile;
+
+        // "there" as in "improve what's in there" — resolve to current file
+        if (lower.Contains(" there") && !string.IsNullOrEmpty(currentFile))
+            return currentFile;
+
+        // Short "it" references — resolve to current file if input is brief and no other nouns compete
+        if (lower.Contains(" it ") || lower.EndsWith(" it") || lower.StartsWith("it ") || lower == "it")
+        {
+            if (!string.IsNullOrEmpty(currentFile))
+            {
+                var wordCount = input.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+                if (wordCount <= 6)
+                    return currentFile;
+            }
+        }
 
         return null;
     }

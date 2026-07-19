@@ -22,7 +22,9 @@ public enum RouteHandler
     Weather,
     Cleanup,
     Rate,
-    Project
+    Project,
+    Plan,
+    Plans
 }
 
 public class RouteResult
@@ -59,7 +61,9 @@ public class RouterService
         ["weather"] = RouteHandler.Weather,
         ["cleanup"] = RouteHandler.Cleanup,
         ["rate"] = RouteHandler.Rate,
-        ["project"] = RouteHandler.Project
+        ["project"] = RouteHandler.Project,
+        ["plan"] = RouteHandler.Plan,
+        ["plans"] = RouteHandler.Plans
     };
 
     private static readonly Dictionary<string, RouteHandler> IntentHandlerMap = new(StringComparer.OrdinalIgnoreCase)
@@ -76,6 +80,7 @@ public class RouterService
         ["about_me_query"] = RouteHandler.AboutMe,
         ["stats_query"] = RouteHandler.Stats,
         ["weather_query"] = RouteHandler.Weather,
+        ["plan_query"] = RouteHandler.Plans,
         ["farewell"] = RouteHandler.None,
     };
 
@@ -83,7 +88,7 @@ public class RouterService
     {
         "math_query", "story_request", "poetry_request", "joke_request",
         "riddle_start", "game_start", "hangman_start", "reset_request",
-        "compliment_request", "about_me_query", "stats_query", "weather_query"
+        "compliment_request", "about_me_query", "stats_query", "weather_query", "plan_query"
     };
 
     private const float ConfidenceThreshold = 0.85f;
@@ -170,6 +175,21 @@ public class RouterService
                 OriginalInput = input,
                 IsBotCommand = true
             };
+        }
+
+        if (cmd.Length > 1 && cmd[^1] is '+' or '-' && arg == null)
+        {
+            var stripped = cmd[..^1];
+            if (BotCommandMap.TryGetValue(stripped, out handler))
+            {
+                return new RouteResult
+                {
+                    Handler = handler,
+                    Argument = cmd[^1..],
+                    OriginalInput = input,
+                    IsBotCommand = true
+                };
+            }
         }
 
         return null;

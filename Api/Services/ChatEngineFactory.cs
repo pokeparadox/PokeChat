@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using PokeChat.Api.Core.Planning;
 using PokeChat.Core;
 using PokeChat.Data;
 using PokeChat.Enrichment;
@@ -9,12 +10,14 @@ public class ChatEngineFactory
 {
     private readonly IDbContextFactory<PokeChatDbContext> _dbContextFactory;
     private readonly EnrichmentQueue? _enrichmentQueue;
+    private readonly IPlannerService? _plannerService;
     private readonly bool _openCodeDetected;
 
-    public ChatEngineFactory(IDbContextFactory<PokeChatDbContext> dbContextFactory, EnrichmentQueue? enrichmentQueue = null)
+    public ChatEngineFactory(IDbContextFactory<PokeChatDbContext> dbContextFactory, EnrichmentQueue? enrichmentQueue = null, IPlannerService? plannerService = null)
     {
         _dbContextFactory = dbContextFactory;
         _enrichmentQueue = enrichmentQueue;
+        _plannerService = plannerService;
         _openCodeDetected = DetectOpenCodeEnvironment();
     }
 
@@ -23,7 +26,7 @@ public class ChatEngineFactory
         if (_openCodeDetected && persona == "chat")
             persona = "coding";
 
-        var engine = new ChatEngine(_dbContextFactory, _enrichmentQueue);
+        var engine = new ChatEngine(_dbContextFactory, _enrichmentQueue, _plannerService);
         if (!string.IsNullOrEmpty(sessionId))
             engine.SessionId = sessionId;
         if (persona != "chat")

@@ -104,7 +104,15 @@ public partial class SystemTimeEngine : ITimeEngine
             };
         }
 
-        return candidate;
+        try
+        {
+            TimeZoneInfo.FindSystemTimeZoneById(candidate);
+            return candidate;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static string GetTimeOfDayPhrase(int hour)

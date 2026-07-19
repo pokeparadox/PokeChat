@@ -80,6 +80,7 @@ public class ToolRegistry
             new ReadUrlTool(),
             shellTool,
             fileOpsTool,
+            new MempalaceDrawerTool(),
         };
 
         foreach (var tool in tools)

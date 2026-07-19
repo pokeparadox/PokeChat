@@ -1444,7 +1444,7 @@ public class ResponseEngine
         return response;
     }
 
-    private string ProcessToolMarkers(string response)
+    internal string ProcessToolMarkers(string response)
     {
         response = SubstituteVariables(response);
 

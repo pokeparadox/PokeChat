@@ -27,6 +27,7 @@ public static class IntentCategory
         "compliment_request",
         "about_me_query",
         "stats_query",
+        "plan_query",
         "yes_no_affirmation",
         "question_about_bot",
         "complex_question",

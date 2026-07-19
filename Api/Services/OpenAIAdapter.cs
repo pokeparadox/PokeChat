@@ -105,6 +105,12 @@ public class OpenAIAdapter
                     var upstreamResult = await _upstream.ForwardAsync(request);
                     if (upstreamResult != null)
                     {
+                        if (upstreamResult.Choices.Count > 0)
+                        {
+                            var content = upstreamResult.Choices[0].Message.Content ?? "";
+                            upstreamResult.Choices[0].Message.Content = engine.ProcessToolMarkers(content);
+                        }
+
                         upstreamResult.RouteInfo = new RouteInfo
                         {
                             Category = "upstream_llm",

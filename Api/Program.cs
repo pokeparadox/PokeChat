@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using PokeChat.Api.Core.Planning;
 using PokeChat.Api.Models;
 using PokeChat.Api.Services;
 using PokeChat.Core;
@@ -30,16 +31,15 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 // Register DbContext factory with pooling (provides IDbContextFactory<PokeChatDbContext>)
 builder.Services.AddPooledDbContextFactory<PokeChatDbContext>(options =>
 {
-    var dbPath = Path.Combine(AppContext.BaseDirectory, "pokechat.db");
-    var envPath = Environment.GetEnvironmentVariable("POKECHAT_DB_PATH");
-    if (!string.IsNullOrEmpty(envPath)) dbPath = envPath;
+    var dbPath = DatabaseInitializer.ResolveDbPath();
     options.UseSqlite($"Data Source={dbPath}");
 });
 
 // Register ChatEngineFactory properly
 builder.Services.AddSingleton(sp => new ChatEngineFactory(
     sp.GetRequiredService<IDbContextFactory<PokeChatDbContext>>(),
-    sp.GetService<EnrichmentQueue>()));
+    sp.GetService<EnrichmentQueue>(),
+    sp.GetService<IPlannerService>()));
 
 // Register SessionManager with all required dependencies
 builder.Services.AddSingleton<SessionManager>(sp => 
@@ -90,6 +90,12 @@ builder.Services.AddHttpClient<WeatherApiClient>();
 builder.Services.AddSingleton<OpenAIAdapter>();
 builder.Services.AddSingleton<TitleGenerator>();
 
+// Register PlannerService with ToolRegistry dependency
+builder.Services.AddSingleton<IPlannerService>(sp =>
+    new PlannerService(
+        sp.GetRequiredService<IDbContextFactory<PokeChatDbContext>>(),
+        enrichmentTools));
+
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -109,9 +115,7 @@ var app = builder.Build();
 
 if (args.Contains("--restore-db"))
 {
-    var dbPath = Path.Combine(AppContext.BaseDirectory, "pokechat.db");
-    var envPath = Environment.GetEnvironmentVariable("POKECHAT_DB_PATH");
-    if (!string.IsNullOrEmpty(envPath)) dbPath = envPath;
+    var dbPath = DatabaseInitializer.ResolveDbPath();
 
     if (BackupHelper.Restore(dbPath))
     {

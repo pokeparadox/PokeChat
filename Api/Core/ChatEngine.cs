@@ -11,6 +11,7 @@ using PokeChat.NLP;
 using PokeChat.Responses;
 using PokeChat.Enrichment;
 using PokeChat.Tools;
+using PokeChat.Api.Core.Planning;
 
 namespace PokeChat.Core;
 
@@ -55,6 +56,7 @@ public class ChatEngine : IDisposable
     private string _persona = "chat";
     private readonly WeatherApiClient? _weatherApiClient;
     private ToolRegistry? _toolRegistry;
+    private readonly IPlannerService? _plannerService;
 
     private static readonly HashSet<string> PersonaTriggers = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -288,11 +290,12 @@ public class ChatEngine : IDisposable
 
     private static readonly Regex MadLibSlotRegex = new(@"\{(\w+)\}", RegexOptions.Compiled);
 
-    public ChatEngine(IDbContextFactory<PokeChatDbContext> dbContextFactory, EnrichmentQueue? enrichmentQueue = null)
+    public ChatEngine(IDbContextFactory<PokeChatDbContext> dbContextFactory, EnrichmentQueue? enrichmentQueue = null, IPlannerService? plannerService = null)
     {
         _dbContext = dbContextFactory.CreateDbContext();
         new DatabaseInitializer(_dbContext).Initialize();
         _sessionLogger = new SessionLogger(_sessionId);
+        _plannerService = plannerService;
 
         _knowledgeStore = new KnowledgeStore(_dbContext, enrichmentQueue);
         _context = new ContextTracker();
@@ -361,7 +364,8 @@ public class ChatEngine : IDisposable
         ToolRegistry? toolRegistry = null,
         LLMOrchestrator? llmOrchestrator = null,
         ML.IntentClassifier? intentClassifier = null,
-        string persona = "chat")
+        string persona = "chat",
+        IPlannerService? plannerService = null)
     {
         _dbContext = dbContext;
         _sessionLogger = sessionLogger;
@@ -389,6 +393,7 @@ public class ChatEngine : IDisposable
         _context.SetContext(ContextKeys.CurrentPersona, persona);
         _weatherApiClient = null;
         _toolRegistry = toolRegistry;
+        _plannerService = plannerService;
         if (toolRegistry != null)
             LoadDynamicAllowedCommands(toolRegistry);
     }
@@ -462,7 +467,7 @@ public class ChatEngine : IDisposable
         var routeResult = _router.Route(input, _intentClassifier);
         if (routeResult.Handler != RouteHandler.None)
         {
-            return ExecuteBotRoute(routeResult);
+            return await ExecuteBotRouteAsync(routeResult);
         }
 
         if (_persona == "coding")
@@ -669,6 +674,9 @@ public class ChatEngine : IDisposable
 
         var selfKnowledgeResponse = _responseEngine.HandleSelfKnowledgeRequest(input, _currentUserId);
         if (selfKnowledgeResponse != null) return selfKnowledgeResponse;
+
+        var planResult = await TryHandleGoalDecompositionAsync(input);
+        if (planResult != null) return planResult;
 
         var earlyLlmResult = TryEarlyLlmRouting(input);
         if (earlyLlmResult != null) return earlyLlmResult;
@@ -991,6 +999,8 @@ public class ChatEngine : IDisposable
         _context.SetContext(ContextKeys.HangmanWrongCount, null);
         _context.SetContext(ContextKeys.UnknownWords, null);
     }
+
+    internal string ProcessToolMarkers(string response) => _responseEngine.ProcessToolMarkers(response);
 
     internal void DetectFileMentions(string input)
     {
@@ -2369,7 +2379,7 @@ public class ChatEngine : IDisposable
         return string.Empty;
     }
 
-    private string ExecuteBotRoute(RouteResult route)
+    private async Task<string> ExecuteBotRouteAsync(RouteResult route)
     {
         ClearPendingState();
 
@@ -2469,6 +2479,12 @@ public class ChatEngine : IDisposable
             case RouteHandler.Project:
                 return HandleProjectCommand(route.Argument);
 
+            case RouteHandler.Plan:
+                return await HandlePlanCommandAsync(route.Argument);
+
+            case RouteHandler.Plans:
+                return await HandlePlansCommandAsync();
+
             default:
                 return GetLLMResponse("default_response");
         }
@@ -2561,6 +2577,82 @@ public class ChatEngine : IDisposable
 
         _context.SetContext(ContextKeys.PendingProjectStep, "mempalace");
         return $"**Detected project:** {langList}\n\nSet up [MemPalace](https://github.com/pokechat/mempalace) for this project? (yes/no)";
+    }
+
+    private async Task<string> HandlePlanCommandAsync(string? argument)
+    {
+        if (_plannerService == null)
+            return "Planning service is not available.";
+
+        if (string.IsNullOrWhiteSpace(argument))
+            return "Usage: ~plan <goal description>\nExample: ~plan refactor the authentication module to use JWT tokens";
+
+        Status("Creating plan...");
+        var plan = await _plannerService.PlanAsync(argument.Trim());
+
+        if (plan.Tasks.Count == 0)
+            return $"**Plan created** (ID: {plan.Id})\n\nGoal: {plan.GoalDescription}\n\nNo tasks generated yet. The plan template is ready for customization.";
+
+        var taskList = string.Join("\n", plan.Tasks
+            .OrderBy(t => t.SequenceOrder)
+            .Select(t => $"  {t.SequenceOrder}. [{t.Type}] {t.Payload ?? "(empty)"}"));
+
+        return $"**Plan created** (ID: {plan.Id})\n\nGoal: {plan.GoalDescription}\nTasks:\n{taskList}\n\nUse ~run {plan.Id} to execute.";
+    }
+
+    private async Task<string> HandlePlansCommandAsync()
+    {
+        if (_plannerService == null)
+            return "Planning service is not available.";
+
+        Status("Loading plans...");
+        var plans = await _plannerService.GetAllPlansAsync();
+
+        if (plans.Count == 0)
+            return "No plans found. Use ~plan <goal> to create one.";
+
+        var lines = plans.Select(p =>
+        {
+            var rating = p.SuccessRating > 0 ? $"Rating: {p.SuccessRating:P0}" : "Not rated";
+            var taskCount = p.Tasks?.Count ?? 0;
+            return $"  #{p.Id} — {p.GoalDescription} ({taskCount} tasks, {rating})";
+        });
+
+        return $"**Saved plans:** ({plans.Count})\n\n" + string.Join("\n", lines) + "\n\nUse ~plan <goal> to create or ~run <id> to execute.";
+    }
+
+    private async Task<string?> TryHandleGoalDecompositionAsync(string input)
+    {
+        if (_plannerService == null)
+            return null;
+
+        var lower = input.Trim().ToLowerInvariant();
+
+        if (lower.Length < 20)
+            return null;
+
+        bool looksLikeMultiStep =
+            lower.Contains(" and then ") ||
+            lower.Contains(" first ") ||
+            lower.Contains(" step 1") ||
+            lower.Contains("steps to") ||
+            lower.Contains("how do i ") ||
+            lower.Contains("help me ") && (lower.Contains(" then ") || lower.Contains(" and "));
+
+        if (!looksLikeMultiStep)
+            return null;
+
+        Status("Breaking down your request into steps...");
+        var plan = await _plannerService.PlanAsync(input);
+
+        if (plan.Tasks.Count == 0)
+            return null;
+
+        var taskList = string.Join("\n", plan.Tasks
+            .OrderBy(t => t.SequenceOrder)
+            .Select(t => $"  {t.SequenceOrder}. [{t.Type}] {t.Payload ?? "(empty)"}"));
+
+        return $"I've broken this down into {plan.Tasks.Count} steps:\n\n{taskList}\n\nGoal: {plan.GoalDescription}\nSay **yes** to execute, or tell me to adjust.";
     }
 
     private async Task<string?> HandleProjectStepAsync(string input)
@@ -3130,6 +3222,8 @@ public class ChatEngine : IDisposable
             + "~weather [city] — Tell me the weather (e.g. ~weather London)\n"
             + "~cleanup — Clean up old, unused knowledge\n"
             + "~rate <+/-> — Rate my last response (+1 or -1), or just say thanks!\n"
+            + "~plan <goal> — Create a plan for a goal\n"
+            + "~plans — List saved plans\n"
             + "~help — Show this help message";
     }
 

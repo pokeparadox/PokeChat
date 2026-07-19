@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Data.Sqlite;
 
 namespace PokeChat.Data;
@@ -20,24 +19,14 @@ public class DatabaseInitializer(PokeChatDbContext context)
         }
         catch
         {
-            Console.WriteLine("[Database] Migration failed. Wiping and re-migrating...");
-            WipeAllTables(dbPath);
-
-            try
-            {
-                context.Database.Migrate();
-            }
-            catch
-            {
-                Console.WriteLine("[Database] Re-migration also failed. Creating schema from model...");
-                context.Database.EnsureCreated();
-            }
+            Console.WriteLine("[Database] Migration failed. Deleting DB and recreating...");
+            RecreateDatabase(dbPath);
 
             if (File.Exists(bakPath))
             {
                 try
                 {
-                    Console.WriteLine("[Database] Copying learned data from backup...");
+                    Console.WriteLine("[Database] Restoring learned data from backup...");
                     BackupHelper.CopyData(bakPath, dbPath);
                     Console.WriteLine("[Database] Learned data restored.");
                 }
@@ -51,42 +40,26 @@ public class DatabaseInitializer(PokeChatDbContext context)
         DbSeeder.Seed(context);
     }
 
-    private void WipeAllTables(string dbPath)
+    private void RecreateDatabase(string dbPath)
     {
-        context.Database.CloseConnection();
         SqliteConnection.ClearAllPools();
 
-        using var conn = new SqliteConnection($"Data Source={dbPath}");
-        conn.Open();
+        try { File.Delete(dbPath); }
+        catch (Exception ex) { Console.WriteLine($"[Database] Could not delete DB file: {ex.Message}"); }
 
-        using var getTables = conn.CreateCommand();
-        getTables.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'";
-        var tables = new List<string>();
-        using (var reader = getTables.ExecuteReader())
+        try
         {
-            while (reader.Read())
-                tables.Add(reader.GetString(0));
+            context.Database.Migrate();
         }
-
-        using var pragma = conn.CreateCommand();
-        pragma.CommandText = "PRAGMA foreign_keys = OFF";
-        pragma.ExecuteNonQuery();
-
-        foreach (var table in tables)
+        catch
         {
-            using var drop = conn.CreateCommand();
-            drop.CommandText = $"DROP TABLE IF EXISTS \"{table}\"";
-            drop.ExecuteNonQuery();
+            Console.WriteLine("[Database] Migrate failed on fresh DB. Falling back to EnsureCreated...");
+            try { context.Database.EnsureCreated(); }
+            catch (Exception ex) { Console.WriteLine($"[Database] EnsureCreated also failed: {ex.Message}"); }
         }
-
-        using var pragmaOn = conn.CreateCommand();
-        pragmaOn.CommandText = "PRAGMA foreign_keys = ON";
-        pragmaOn.ExecuteNonQuery();
-
-        conn.Close();
     }
 
-    private static string ResolveDbPath()
+    public static string ResolveDbPath()
     {
         var envPath = Environment.GetEnvironmentVariable("POKECHAT_DB_PATH");
         if (!string.IsNullOrEmpty(envPath))

@@ -44,6 +44,8 @@ public sealed class PokeChatDbContext : DbContext
     public DbSet<ErrorKnowledgeEntry> ErrorKnowledgeEntries => Set<ErrorKnowledgeEntry>();
     public DbSet<Reminder> Reminders => Set<Reminder>();
     public DbSet<FactEndorsement> FactEndorsements => Set<FactEndorsement>();
+    public DbSet<TaskList> TaskLists => Set<TaskList>();
+    public DbSet<PokeChat.Data.Entities.ExecutionTask> Tasks => Set<PokeChat.Data.Entities.ExecutionTask>();
     public DbSet<AllowedCommand> AllowedCommands => Set<AllowedCommand>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -439,6 +441,34 @@ public sealed class PokeChatDbContext : DbContext
             entity.HasOne<User>()
                 .WithMany()
                 .HasForeignKey(e => e.AddedByUserId);
+        });
+
+        modelBuilder.Entity<TaskList>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.GoalDescription).IsRequired();
+            entity.Property(e => e.ContextTags);
+            entity.Property(e => e.SuccessRating).HasDefaultValue(0.0);
+            entity.Property(e => e.Version).HasDefaultValue(1);
+            entity.Property(e => e.IsTemplate).HasDefaultValue(true);
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.LastUsedAt);
+        });
+
+        modelBuilder.Entity<ExecutionTask>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.SequenceOrder).IsRequired();
+            entity.Property(e => e.Type).IsRequired();
+            entity.Property(e => e.Payload);
+            entity.Property(e => e.Status).IsRequired().HasDefaultValue("Pending");
+            entity.Property(e => e.Result);
+            entity.Property(e => e.ErrorMessage);
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.HasOne(e => e.TaskList)
+                .WithMany(tl => tl.Tasks)
+                .HasForeignKey(e => e.TaskListId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

@@ -383,23 +383,24 @@ public static class DbSeeder
             (@"^(network|ip|address)\b", "Statement", "Checking network. {tool:shell_command:ip:addr}"),
 
             // AGENTS.md operations
-            (@"update\s+(my|the|a|an|this|our|some)?\s*AGENTS\.md(\s+file)?", "Statement", "Let me read the current AGENTS.md first. {tool:file_ops:read:AGENTS.md}"),
-            (@"read\s+(my|the|a|an|this|our|some)?\s*AGENTS\.md(\s+file)?", "Statement", "Reading AGENTS.md. {tool:file_ops:read:AGENTS.md}"),
-            (@"show\s+(me\s+)?(my|the|a|an|this|our|some)?\s*AGENTS\.md(\s+file)?", "Statement", "Here's AGENTS.md. {tool:file_ops:read:AGENTS.md}"),
+            (@"(read|open|show|view|display|cat|less)\s+(me\s+)?(my|the|a|an|this|our|some)?\s*AGENTS\.md(\s+file)?", "Statement", "Reading AGENTS.md. {tool:file_ops:read:AGENTS.md}"),
             (@"what('s|\s+is)\s+(in\s+)?(my|the|a|an|this|our|some)?\s*AGENTS\.md(\s+file)?", "Statement", "Let me check AGENTS.md. {tool:file_ops:read:AGENTS.md}"),
             (@"write\s+(to\s+)?(my|the|a|an|this|our|some)?\s*AGENTS\.md(\s+file)?", "Statement", "I'll need the content to write. What should go in AGENTS.md?"),
+            (@"(update|improve|edit|modify|change|work\s+on|revise|enhance|fix|rewrite|adjust|append|add\s+to|review|check|look\s+at|examine|analy[sz]e|inspect|go\s+over|read\s+through)\s+(my|the|a|an|this|our|some)?\s*AGENTS\.md(\s+file)?", "Statement", "Let me read the current AGENTS.md first. {tool:file_ops:read:AGENTS.md}"),
 
             // General file operations (natural language)
-            (@"read\s+(my|the|a|an|this|our|some)?\s*(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))", "Statement", "Reading {$2}. {tool:file_ops:read:{$2}}"),
-            (@"open\s+(my|the|a|an|this|our|some)?\s*(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))", "Statement", "Opening {$2}. {tool:file_ops:read:{$2}}"),
-            (@"show\s+(me\s+)?(my|the|a|an|this|our|some)?\s*(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))", "Statement", "Here's {$3}. {tool:file_ops:read:{$3}}"),
+            (@"(read|open|show|view|display|cat|less)\s+(me\s+)?(my|the|a|an|this|our|some)?\s*(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))", "Statement", "Reading {$4}. {tool:file_ops:read:{$4}}"),
             (@"what('s|\s+is)\s+in\s+(my|the|a|an|this|our|some)?\s*(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))", "Statement", "Let me check {$3}. {tool:file_ops:read:{$3}}"),
             (@"write\s+(to\s+)?(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))\s+(with\s+)?(.+)", "Statement", "Writing to {$2}. {tool:file_ops:write:{$2}:{$5}}"),
-            (@"create\s+(a\s+)?(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))", "Statement", "Creating {$2}. {tool:file_ops:write:{$2}:}"),
+            (@"(create|make|new)\s+(a\s+)?(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))", "Statement", "Creating {$3}. {tool:file_ops:write:{$3}:}"),
+            (@"(update|improve|edit|modify|change|review|check|look\s+at|examine|fix|rewrite|work\s+on)\s+(my|the|a|an|this|our|some)?\s*(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))", "Statement", "Let me read {$4} first. {tool:file_ops:read:{$4}}"),
             (@"list\s+(all\s+)?(files|the\s+files)", "Statement", "Listing files. {tool:file_ops:list:.}"),
             (@"what\s+files\s+(are\s+)?(there|in\s+this)", "Statement", "Listing files. {tool:file_ops:list:.}"),
             (@"project\s+(structure|files|layout)", "Statement", "Showing project structure. {tool:shell_command:find:.:.-maxdepth:3:-type:f}"),
             (@"search\s+(for\s+)?(.+?)\s+in\s+(.+)", "Statement", "Searching for '{$2}' in {$3}. {tool:file_ops:search:{$3}:{$2}}"),
+
+            // Catch-all: file mentioned without an action verb — acknowledge and ask what to do
+            (@"([\w./\\-]+\.(cs|json|csproj|slnx|md|txt|py|js|ts|xml|yaml|yml))", "Statement", "I see you mentioned {$1}. What would you like me to do with it?"),
         };
 
         foreach (var (pattern, inputType, response) in rules)

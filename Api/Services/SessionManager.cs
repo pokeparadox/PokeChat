@@ -180,15 +180,26 @@ public sealed class SessionManager : IDisposable
             entry.LastAccessed = DateTime.UtcNow;
         }
 
-        using var ctx = _factoryDb.CreateDbContext();
-        var dbSession = ctx.ConversationSessions.FirstOrDefault(s => s.SessionGuid == sessionId);
-        if (dbSession != null)
+        try
         {
-            dbSession.LastActiveAt = DateTime.UtcNow.ToString("o");
-            dbSession.TurnCount++;
-            if (entry != null)
-                SyncUserId(entry.Engine, sessionId, ctx);
-            ctx.SaveChanges();
+            using var ctx = _factoryDb.CreateDbContext();
+            var dbSession = ctx.ConversationSessions.FirstOrDefault(s => s.SessionGuid == sessionId);
+            if (dbSession != null)
+            {
+                dbSession.LastActiveAt = DateTime.UtcNow.ToString("o");
+                dbSession.TurnCount++;
+                if (entry != null)
+                    SyncUserId(entry.Engine, sessionId, ctx);
+                ctx.SaveChanges();
+            }
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException)
+        {
+            // DB tables may not exist yet during startup — ignore
+        }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException)
+        {
+            // DB may be in recovery or read-only state — ignore
         }
     }
 
