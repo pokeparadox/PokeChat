@@ -476,6 +476,80 @@ public class OpenAIAdapterSpecTests
 
     #endregion
 
+    #region GenerateToolResultResponse
+
+    [Fact]
+    public void GenerateToolResultResponse_ReadIntent_WithFileContent_ReturnsFormattedContent()
+    {
+        var messages = new List<ChatMessage>
+        {
+            new() { Role = "user", Content = "read AGENTS.md" },
+            new() { Role = "assistant", ToolCalls = [new ToolCall { Id = "c1", Function = new FunctionCall { Name = "read", Arguments = """{"filePath":"AGENTS.md"}""" } }] },
+            new() { Role = "tool", Content = "# AGENTS.md\nThis is the content." }
+        };
+        var result = OpenAIAdapter.GenerateToolResultResponse(messages, "# AGENTS.md\nThis is the content.");
+        result.ShouldContain("AGENTS.md");
+        result.ShouldContain("This is the content.");
+    }
+
+    [Fact]
+    public void GenerateToolResultResponse_UpdateIntent_ReturnsContentPlusQuestion()
+    {
+        var messages = new List<ChatMessage>
+        {
+            new() { Role = "user", Content = "Can you update AGENTS.md file?" },
+            new() { Role = "assistant", ToolCalls = [new ToolCall { Id = "c1", Function = new FunctionCall { Name = "read", Arguments = """{"filePath":"AGENTS.md"}""" } }] },
+            new() { Role = "tool", Content = "# AGENTS.md\nContent here." }
+        };
+        var result = OpenAIAdapter.GenerateToolResultResponse(messages, "# AGENTS.md\nContent here.");
+        result.ShouldContain("AGENTS.md");
+        result.ShouldContain("What would you like to change?");
+    }
+
+    [Fact]
+    public void GenerateToolResultResponse_WriteTool_ReturnsDoneMessage()
+    {
+        var messages = new List<ChatMessage>
+        {
+            new() { Role = "user", Content = "update AGENTS.md" },
+            new() { Role = "assistant", ToolCalls = [new ToolCall { Id = "c1", Function = new FunctionCall { Name = "write", Arguments = """{"filePath":"AGENTS.md"}""" } }] },
+            new() { Role = "tool", Content = "Written 100 bytes" }
+        };
+        var result = OpenAIAdapter.GenerateToolResultResponse(messages, "Written 100 bytes");
+        result.ShouldContain("Done");
+        result.ShouldContain("AGENTS.md");
+        result.ShouldContain("updated");
+    }
+
+    [Fact]
+    public void GenerateToolResultResponse_BashTool_ReturnsOutputCodeBlock()
+    {
+        var messages = new List<ChatMessage>
+        {
+            new() { Role = "user", Content = "git status" },
+            new() { Role = "assistant", ToolCalls = [new ToolCall { Id = "c1", Function = new FunctionCall { Name = "bash", Arguments = """{"command":"git status"}""" } }] },
+            new() { Role = "tool", Content = "On branch main\nnothing to commit" }
+        };
+        var result = OpenAIAdapter.GenerateToolResultResponse(messages, "On branch main\nnothing to commit");
+        result.ShouldContain("Command output:");
+        result.ShouldContain("On branch main");
+    }
+
+    [Fact]
+    public void GenerateToolResultResponse_EmptyContent_ReturnsSuccess()
+    {
+        var messages = new List<ChatMessage>
+        {
+            new() { Role = "user", Content = "do something" },
+            new() { Role = "assistant", ToolCalls = [new ToolCall { Id = "c1", Function = new FunctionCall { Name = "bash", Arguments = """{"command":"echo"}""" } }] },
+            new() { Role = "tool", Content = "" }
+        };
+        var result = OpenAIAdapter.GenerateToolResultResponse(messages, "");
+        result.ShouldContain("successfully");
+    }
+
+    #endregion
+
     #region Helpers
 
     private static async Task<string> CaptureUpstreamBody(int? seed = null, object? stop = null)

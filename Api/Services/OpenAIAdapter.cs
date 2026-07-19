@@ -54,6 +54,7 @@ public class OpenAIAdapter
         if (lastMsg?.Role == "tool" && request.Tools?.Count > 0)
         {
             var toolContent = lastMsg.Content ?? "";
+            var toolResultText = GenerateToolResultResponse(request.Messages, toolContent);
             var toolResponse = new ChatCompletionResponse
             {
                 Model = request.Model,
@@ -62,21 +63,21 @@ public class OpenAIAdapter
                     new ChatCompletionChoice
                     {
                         Index = 0,
-                        Message = new ChatMessage { Role = "assistant", Content = toolContent },
+                        Message = new ChatMessage { Role = "assistant", Content = toolResultText },
                         FinishReason = "stop"
                     }
                 ],
                 Usage = new Usage
                 {
                     PromptTokens = request.Messages.Sum(m => (m.Content?.Length ?? 0) / 4),
-                    CompletionTokens = toolContent.Length / 4,
-                    TotalTokens = (request.Messages.Sum(m => (m.Content?.Length ?? 0)) + toolContent.Length) / 4
+                    CompletionTokens = toolResultText.Length / 4,
+                    TotalTokens = (request.Messages.Sum(m => (m.Content?.Length ?? 0)) + toolResultText.Length) / 4
                 },
                 RouteInfo = new RouteInfo
                 {
                     Category = "tool_result",
                     EngineHandled = true,
-                    Description = "returned tool result as content"
+                    Description = "tool result processed"
                 }
             };
             AddRateLimitHeaders(toolResponse, rateKey);
@@ -353,6 +354,7 @@ public class OpenAIAdapter
         if (lastMsgStream?.Role == "tool" && request.Tools?.Count > 0)
         {
             var toolContent = lastMsgStream.Content ?? "";
+            var toolResultText = GenerateToolResultResponse(request.Messages, toolContent);
             var toolChunkId = $"chatcmpl-{Guid.NewGuid().ToString("N")[..12]}";
             var toolCreated = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             await onChunk(new ChatCompletionChunk
@@ -363,7 +365,7 @@ public class OpenAIAdapter
             await onChunk(new ChatCompletionChunk
             {
                 Id = toolChunkId, Created = toolCreated, Model = request.Model,
-                Choices = [new ChunkChoice { Index = 0, Delta = new Delta { Content = toolContent } }]
+                Choices = [new ChunkChoice { Index = 0, Delta = new Delta { Content = toolResultText } }]
             });
             await onChunk(new ChatCompletionChunk
             {
@@ -372,8 +374,8 @@ public class OpenAIAdapter
                 Usage = new Usage
                 {
                     PromptTokens = request.Messages.Sum(m => m.Content?.Length ?? 0) / 4,
-                    CompletionTokens = toolContent.Length / 4,
-                    TotalTokens = (request.Messages.Sum(m => m.Content?.Length ?? 0) + toolContent.Length) / 4
+                    CompletionTokens = toolResultText.Length / 4,
+                    TotalTokens = (request.Messages.Sum(m => m.Content?.Length ?? 0) + toolResultText.Length) / 4
                 }
             });
             await onDone();
@@ -885,5 +887,72 @@ public class OpenAIAdapter
                 Arguments = JsonSerializer.Serialize(args)
             }
         };
+    }
+
+    internal static string GenerateToolResultResponse(List<ChatMessage> messages, string toolContent)
+    {
+        if (string.IsNullOrWhiteSpace(toolContent))
+            return "Tool executed successfully.";
+
+        var trimmed = toolContent.Trim();
+
+        var assistantMsg = messages.LastOrDefault(m => m.Role == "assistant" && m.ToolCalls?.Count > 0);
+        var toolCallName = assistantMsg?.ToolCalls?.FirstOrDefault()?.Function?.Name ?? "";
+
+        if (toolCallName.Equals("read", StringComparison.OrdinalIgnoreCase))
+        {
+            var fileName = ExtractFileNameFromToolCall(assistantMsg);
+            var userIntent = ExtractUserIntent(messages);
+
+            if (IsUpdateIntent(userIntent))
+                return $"Here's the current **{fileName}**:\n\n```\n{trimmed}\n```\n\nWhat would you like to change?";
+
+            return $"Here's **{fileName}**:\n\n```\n{trimmed}\n```";
+        }
+
+        if (toolCallName.Equals("write", StringComparison.OrdinalIgnoreCase))
+        {
+            var fileName = ExtractFileNameFromToolCall(assistantMsg);
+            return $"Done. **{fileName}** has been updated.";
+        }
+
+        if (toolCallName.Equals("bash", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"Command output:\n\n```\n{trimmed}\n```";
+        }
+
+        return trimmed;
+    }
+
+    private static string ExtractFileNameFromToolCall(ChatMessage? assistantMsg)
+    {
+        if (assistantMsg?.ToolCalls == null || assistantMsg.ToolCalls.Count == 0)
+            return "file";
+
+        try
+        {
+            var args = assistantMsg.ToolCalls[0].Function.Arguments;
+            if (string.IsNullOrEmpty(args)) return "file";
+            using var doc = JsonDocument.Parse(args);
+            if (doc.RootElement.TryGetProperty("filePath", out var fp))
+                return Path.GetFileName(fp.GetString());
+            if (doc.RootElement.TryGetProperty("path", out var p))
+                return p.GetString() ?? "file";
+        }
+        catch { }
+        return "file";
+    }
+
+    private static string ExtractUserIntent(List<ChatMessage> messages)
+    {
+        var userMsg = messages.LastOrDefault(m => m.Role == "user");
+        return userMsg?.Content ?? "";
+    }
+
+    private static bool IsUpdateIntent(string userIntent)
+    {
+        return Regex.IsMatch(userIntent,
+            @"\b(update|improve|edit|modify|change|fix|rewrite|adjust|append|add|enhance|revise|work\s+on)\b",
+            RegexOptions.IgnoreCase);
     }
 }

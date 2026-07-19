@@ -163,10 +163,9 @@ public class UpstreamLLMClient
 
         if (!hasSystemMessage)
         {
-            messages.Insert(0, new ChatMessage
-            {
-                Role = "system",
-                Content = "You are a helpful coding assistant with access to file and shell tools. " +
+            var defaultSystem = request.Tools?.Count > 0
+                ? "You are a helpful coding assistant. Use the provided tools when the user asks for file operations or shell commands."
+                : "You are a helpful coding assistant with access to file and shell tools. " +
                     "When the user asks you to read, open, show, update, edit, improve, or work on a file, " +
                     "respond with a tool marker in this exact format: {tool:file_ops:read:FILENAME} to read a file, " +
                     "{tool:file_ops:write:FILENAME:CONTENT} to write a file, " +
@@ -174,7 +173,12 @@ public class UpstreamLLMClient
                     "{tool:file_ops:search:PATH:QUERY} to search in files, " +
                     "{tool:shell_command:COMMAND:ARGS} to run a shell command. " +
                     "Use the file_ops tool for file operations and shell_command for running commands. " +
-                    "Always use tool markers when the user asks you to perform file or shell operations."
+                    "Always use tool markers when the user asks you to perform file or shell operations.";
+
+            messages.Insert(0, new ChatMessage
+            {
+                Role = "system",
+                Content = defaultSystem
             });
         }
 
