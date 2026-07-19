@@ -119,7 +119,7 @@ Output only the steps, nothing else.";
                 if (!Enum.TryParse<TaskType>(typeStr, true, out var taskType))
                     taskType = TaskType.Reasoning;
 
-                plan.Tasks.Add(new ExecutionTask
+                plan.Tasks!.Add(new ExecutionTask
                 {
                     SequenceOrder = order++,
                     Type = taskType,
