@@ -277,6 +277,205 @@ public class OpenAIAdapterSpecTests
 
     #endregion
 
+    #region MapToOpenAIToolCall
+
+    [Fact]
+    public void MapToOpenAIToolCall_FileOpsRead_ReturnsReadTool()
+    {
+        var tools = new List<ToolDefinition>
+        {
+            new() { Function = new FunctionDefinition { Name = "read", Description = "Read file" } }
+        };
+        var result = OpenAIAdapter.MapToOpenAIToolCall("file_ops", new[] { "read", "AGENTS.md" }, tools);
+        result.ShouldNotBeNull();
+        result.Value.Name.ShouldBe("read");
+        result.Value.Arguments.ShouldContain("AGENTS.md");
+    }
+
+    [Fact]
+    public void MapToOpenAIToolCall_FileOpsWrite_ReturnsWriteTool()
+    {
+        var tools = new List<ToolDefinition>
+        {
+            new() { Function = new FunctionDefinition { Name = "write", Description = "Write file" } }
+        };
+        var result = OpenAIAdapter.MapToOpenAIToolCall("file_ops", new[] { "write", "test.md", "hello" }, tools);
+        result.ShouldNotBeNull();
+        result.Value.Name.ShouldBe("write");
+        result.Value.Arguments.ShouldContain("test.md");
+        result.Value.Arguments.ShouldContain("hello");
+    }
+
+    [Fact]
+    public void MapToOpenAIToolCall_ShellCommand_ReturnsBashTool()
+    {
+        var tools = new List<ToolDefinition>
+        {
+            new() { Function = new FunctionDefinition { Name = "bash", Description = "Run command" } }
+        };
+        var result = OpenAIAdapter.MapToOpenAIToolCall("shell_command", new[] { "ls", "-la" }, tools);
+        result.ShouldNotBeNull();
+        result.Value.Name.ShouldBe("bash");
+        result.Value.Arguments.ShouldContain("ls");
+    }
+
+    [Fact]
+    public void MapToOpenAIToolCall_NoMatchingTool_ReturnsNull()
+    {
+        var tools = new List<ToolDefinition>
+        {
+            new() { Function = new FunctionDefinition { Name = "read", Description = "Read file" } }
+        };
+        var result = OpenAIAdapter.MapToOpenAIToolCall("file_ops", new[] { "search", ".", "pattern" }, tools);
+        result.ShouldBeNull();
+    }
+
+    [Fact]
+    public void MapToOpenAIToolCall_EmptyTools_ReturnsNull()
+    {
+        var result = OpenAIAdapter.MapToOpenAIToolCall("file_ops", new[] { "read", "test.md" }, []);
+        result.ShouldBeNull();
+    }
+
+    [Fact]
+    public void MapToOpenAIToolCall_FileOpsSearch_MapsToGrep()
+    {
+        var tools = new List<ToolDefinition>
+        {
+            new() { Function = new FunctionDefinition { Name = "grep", Description = "Search" } }
+        };
+        var result = OpenAIAdapter.MapToOpenAIToolCall("file_ops", new[] { "search", ".", "TODO" }, tools);
+        result.ShouldNotBeNull();
+        result.Value.Name.ShouldBe("grep");
+        result.Value.Arguments.ShouldContain("TODO");
+    }
+
+    [Fact]
+    public void MapToOpenAIToolCall_FileOpsList_MapsToGlob()
+    {
+        var tools = new List<ToolDefinition>
+        {
+            new() { Function = new FunctionDefinition { Name = "glob", Description = "Glob files" } }
+        };
+        var result = OpenAIAdapter.MapToOpenAIToolCall("file_ops", new[] { "list", "." }, tools);
+        result.ShouldNotBeNull();
+        result.Value.Name.ShouldBe("glob");
+    }
+
+    #endregion
+
+    #region TryDetectFileToolCall
+
+    [Fact]
+    public void TryDetectFileToolCall_ReadAgmd_ReturnsReadTool()
+    {
+        var tools = new List<ToolDefinition>
+        {
+            new() { Function = new FunctionDefinition { Name = "read", Description = "Read file" } }
+        };
+        var result = OpenAIAdapter.TryDetectFileToolCall("Can you read AGENTS.md?", tools);
+        result.ShouldNotBeNull();
+        result.Function.Name.ShouldBe("read");
+        result.Function.Arguments.ShouldContain("AGENTS.md");
+    }
+
+    [Fact]
+    public void TryDetectFileToolCall_UpdateAgmd_ReturnsReadTool()
+    {
+        var tools = new List<ToolDefinition>
+        {
+            new() { Function = new FunctionDefinition { Name = "read", Description = "Read file" } }
+        };
+        var result = OpenAIAdapter.TryDetectFileToolCall("Can you update AGENTS.md file?", tools);
+        result.ShouldNotBeNull();
+        result.Function.Name.ShouldBe("read");
+        result.Function.Arguments.ShouldContain("AGENTS.md");
+    }
+
+    [Fact]
+    public void TryDetectFileToolCall_EditCsFile_ReturnsReadTool()
+    {
+        var tools = new List<ToolDefinition>
+        {
+            new() { Function = new FunctionDefinition { Name = "read", Description = "Read file" } }
+        };
+        var result = OpenAIAdapter.TryDetectFileToolCall("edit Program.cs", tools);
+        result.ShouldNotBeNull();
+        result.Function.Name.ShouldBe("read");
+        result.Function.Arguments.ShouldContain("Program.cs");
+    }
+
+    [Fact]
+    public void TryDetectFileToolCall_CreateNewFile_ReturnsWriteTool()
+    {
+        var tools = new List<ToolDefinition>
+        {
+            new() { Function = new FunctionDefinition { Name = "write", Description = "Write file" } }
+        };
+        var result = OpenAIAdapter.TryDetectFileToolCall("create a new test.py", tools);
+        result.ShouldNotBeNull();
+        result.Function.Name.ShouldBe("write");
+        result.Function.Arguments.ShouldContain("test.py");
+    }
+
+    [Fact]
+    public void TryDetectFileToolCall_SearchForInDir_ReturnsGrepTool()
+    {
+        var tools = new List<ToolDefinition>
+        {
+            new() { Function = new FunctionDefinition { Name = "grep", Description = "Search" } }
+        };
+        var result = OpenAIAdapter.TryDetectFileToolCall("search for TODO in src", tools);
+        result.ShouldNotBeNull();
+        result.Function.Name.ShouldBe("grep");
+        result.Function.Arguments.ShouldContain("TODO");
+    }
+
+    [Fact]
+    public void TryDetectFileToolCall_ListFiles_ReturnsGlobTool()
+    {
+        var tools = new List<ToolDefinition>
+        {
+            new() { Function = new FunctionDefinition { Name = "glob", Description = "Glob" } }
+        };
+        var result = OpenAIAdapter.TryDetectFileToolCall("list all files", tools);
+        result.ShouldNotBeNull();
+        result.Function.Name.ShouldBe("glob");
+    }
+
+    [Fact]
+    public void TryDetectFileToolCall_GitStatus_ReturnsBashTool()
+    {
+        var tools = new List<ToolDefinition>
+        {
+            new() { Function = new FunctionDefinition { Name = "bash", Description = "Bash" } }
+        };
+        var result = OpenAIAdapter.TryDetectFileToolCall("git status", tools);
+        result.ShouldNotBeNull();
+        result.Function.Name.ShouldBe("bash");
+        result.Function.Arguments.ShouldContain("git status");
+    }
+
+    [Fact]
+    public void TryDetectFileToolCall_NoMatchingTool_ReturnsNull()
+    {
+        var tools = new List<ToolDefinition>
+        {
+            new() { Function = new FunctionDefinition { Name = "read", Description = "Read file" } }
+        };
+        var result = OpenAIAdapter.TryDetectFileToolCall("what is the meaning of life?", tools);
+        result.ShouldBeNull();
+    }
+
+    [Fact]
+    public void TryDetectFileToolCall_EmptyTools_ReturnsNull()
+    {
+        var result = OpenAIAdapter.TryDetectFileToolCall("read AGENTS.md", []);
+        result.ShouldBeNull();
+    }
+
+    #endregion
+
     #region Helpers
 
     private static async Task<string> CaptureUpstreamBody(int? seed = null, object? stop = null)

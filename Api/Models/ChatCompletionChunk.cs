@@ -26,4 +26,16 @@ public class Delta
 {
     public string? Role { get; set; }
     public string? Content { get; set; }
+
+    [JsonPropertyName("tool_calls")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<StreamingToolCall>? ToolCalls { get; set; }
+}
+
+public class StreamingToolCall
+{
+    public int Index { get; set; }
+    public string? Id { get; set; }
+    public string Type { get; set; } = "function";
+    public FunctionCall Function { get; set; } = new();
 }

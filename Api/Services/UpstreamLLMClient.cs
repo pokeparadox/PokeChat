@@ -186,6 +186,9 @@ public class UpstreamLLMClient
             ["stream"] = stream
         };
 
+        if (request.Tools?.Count > 0)
+            body["tools"] = request.Tools;
+
         var effectiveMaxTokens = request.MaxTokens ?? request.MaxCompletionTokens;
         if (effectiveMaxTokens != null)
             body["max_tokens"] = effectiveMaxTokens;

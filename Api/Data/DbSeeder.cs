@@ -393,7 +393,7 @@ public static class DbSeeder
             (@"what('s|\s+is)\s+in\s+(my|the|a|an|this|our|some)?\s*(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))", "Statement", "Let me check {$3}. {tool:file_ops:read:{$3}}"),
             (@"write\s+(to\s+)?(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))\s+(with\s+)?(.+)", "Statement", "Writing to {$2}. {tool:file_ops:write:{$2}:{$5}}"),
             (@"(create|make|new)\s+(a\s+)?(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))", "Statement", "Creating {$3}. {tool:file_ops:write:{$3}:}"),
-            (@"(update|improve|edit|modify|change|review|check|look\s+at|examine|fix|rewrite|work\s+on)\s+(my|the|a|an|this|our|some)?\s*(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))", "Statement", "Let me read {$4} first. {tool:file_ops:read:{$4}}"),
+            (@"(update|improve|edit|modify|change|review|check|look\s+at|examine|fix|rewrite|work\s+on)\s+(my|the|a|an|this|our|some)?\s*(.+\.(md|txt|json|cs|csproj|slnx|xml|yaml|yml|py|js|ts))", "Statement", "Let me read {$3} first. {tool:file_ops:read:{$3}}"),
             (@"list\s+(all\s+)?(files|the\s+files)", "Statement", "Listing files. {tool:file_ops:list:.}"),
             (@"what\s+files\s+(are\s+)?(there|in\s+this)", "Statement", "Listing files. {tool:file_ops:list:.}"),
             (@"project\s+(structure|files|layout)", "Statement", "Showing project structure. {tool:shell_command:find:.:.-maxdepth:3:-type:f}"),

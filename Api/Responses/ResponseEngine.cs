@@ -1428,6 +1428,8 @@ public class ResponseEngine
 
     private static readonly Regex ToolMarkerRegex = new(@"\{tool:(\w+)(?::([^}]+))?\}", RegexOptions.Compiled);
 
+    internal (string ToolName, string[] Args)? PendingToolMarker { get; set; }
+
     private string SubstituteVariables(string response)
     {
         var file = _context.GetContext(ContextKeys.CurrentFile);
@@ -1456,6 +1458,8 @@ public class ResponseEngine
             var toolName = match.Groups[1].Value;
             var argsRaw = match.Groups[2].Success ? match.Groups[2].Value : "";
             var args = string.IsNullOrEmpty(argsRaw) ? Array.Empty<string>() : argsRaw.Split(':');
+
+            PendingToolMarker = (toolName, args);
 
             var result = _toolRegistry.TryExecute(toolName, args);
             if (result == null || !result.Success)

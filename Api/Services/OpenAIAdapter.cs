@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using PokeChat.Api.Models;
 using PokeChat.Core;
+using PokeChat.Tools;
 
 namespace PokeChat.Api.Services;
 
@@ -49,6 +50,39 @@ public class OpenAIAdapter
             return RateLimitedResponse(request, _tokenOptions.NlpCost, rateKey);
         }
 
+        var lastMsg = request.Messages.LastOrDefault();
+        if (lastMsg?.Role == "tool" && request.Tools?.Count > 0)
+        {
+            var toolContent = lastMsg.Content ?? "";
+            var toolResponse = new ChatCompletionResponse
+            {
+                Model = request.Model,
+                Choices =
+                [
+                    new ChatCompletionChoice
+                    {
+                        Index = 0,
+                        Message = new ChatMessage { Role = "assistant", Content = toolContent },
+                        FinishReason = "stop"
+                    }
+                ],
+                Usage = new Usage
+                {
+                    PromptTokens = request.Messages.Sum(m => (m.Content?.Length ?? 0) / 4),
+                    CompletionTokens = toolContent.Length / 4,
+                    TotalTokens = (request.Messages.Sum(m => (m.Content?.Length ?? 0)) + toolContent.Length) / 4
+                },
+                RouteInfo = new RouteInfo
+                {
+                    Category = "tool_result",
+                    EngineHandled = true,
+                    Description = "returned tool result as content"
+                }
+            };
+            AddRateLimitHeaders(toolResponse, rateKey);
+            return toolResponse;
+        }
+
         if (_sessionManager.IsTurnQuotaExceeded(sessionId))
         {
             return new ChatCompletionResponse
@@ -73,7 +107,100 @@ public class OpenAIAdapter
             };
         }
 
+        if (request.Tools?.Count > 0)
+        {
+            var direct = TryDetectFileToolCall(input, request.Tools);
+            if (direct != null)
+            {
+                var directResponse = new ChatCompletionResponse
+                {
+                    Model = request.Model,
+                    Choices =
+                    [
+                        new ChatCompletionChoice
+                        {
+                            Index = 0,
+                            Message = new ChatMessage
+                            {
+                                Role = "assistant",
+                                Content = null,
+                                ToolCalls = [direct]
+                            },
+                            FinishReason = "tool_calls"
+                        }
+                    ],
+                    Usage = new Usage
+                    {
+                        PromptTokens = request.Messages.Sum(m => (m.Content?.Length ?? 0) / 4),
+                        CompletionTokens = 0
+                    },
+                    RouteInfo = new RouteInfo
+                    {
+                        Category = "tool_call",
+                        EngineHandled = true,
+                        Description = $"direct tool call: {direct.Function.Name}"
+                    }
+                };
+                AddRateLimitHeaders(directResponse, rateKey);
+                return directResponse;
+            }
+        }
+
         var rawResponseText = await engine.ProcessInputAsync(input);
+
+        var pendingTool = engine.LastPendingToolMarker;
+        if (pendingTool != null && request.Tools?.Count > 0)
+        {
+            var mapped = MapToOpenAIToolCall(pendingTool.Value.ToolName, pendingTool.Value.Args, request.Tools);
+            if (mapped != null)
+            {
+                var callId = $"call_{Guid.NewGuid().ToString("N")[..24]}";
+                engine.ClearPendingToolMarker();
+                var toolResponse = new ChatCompletionResponse
+                {
+                    Model = request.Model,
+                    Choices =
+                    [
+                        new ChatCompletionChoice
+                        {
+                            Index = 0,
+                            Message = new ChatMessage
+                            {
+                                Role = "assistant",
+                                Content = null,
+                                ToolCalls =
+                                [
+                                    new ToolCall
+                                    {
+                                        Id = callId,
+                                        Type = "function",
+                                        Function = new FunctionCall
+                                        {
+                                            Name = mapped.Value.Name,
+                                            Arguments = mapped.Value.Arguments
+                                        }
+                                    }
+                                ]
+                            },
+                            FinishReason = "tool_calls"
+                        }
+                    ],
+                    Usage = new Usage
+                    {
+                        PromptTokens = request.Messages.Sum(m => (m.Content?.Length ?? 0) / 4),
+                        CompletionTokens = 0
+                    },
+                    RouteInfo = new RouteInfo
+                    {
+                        Category = "tool_call",
+                        EngineHandled = true,
+                        Description = $"tool call: {mapped.Value.Name}"
+                    }
+                };
+                AddRateLimitHeaders(toolResponse, rateKey);
+                return toolResponse;
+            }
+        }
 
         var engineHandled = !engine.LastResponseIsDeadEnd;
         var routeInfo = new RouteInfo
@@ -107,8 +234,21 @@ public class OpenAIAdapter
                     {
                         if (upstreamResult.Choices.Count > 0)
                         {
-                            var content = upstreamResult.Choices[0].Message.Content ?? "";
-                            upstreamResult.Choices[0].Message.Content = engine.ProcessToolMarkers(content);
+                            var msg = upstreamResult.Choices[0].Message;
+                            if (msg.ToolCalls?.Count > 0)
+                            {
+                                if (request.Tools?.Count > 0)
+                                {
+                                    msg.ToolCalls = [.. msg.ToolCalls.Where(tc =>
+                                        request.Tools.Any(t =>
+                                            string.Equals(t.Function?.Name, tc.Function?.Name, StringComparison.OrdinalIgnoreCase)))];
+                                }
+                            }
+                            else
+                            {
+                                var content = msg.Content ?? "";
+                                msg.Content = engine.ProcessToolMarkers(content);
+                            }
                         }
 
                         upstreamResult.RouteInfo = new RouteInfo
@@ -209,6 +349,37 @@ public class OpenAIAdapter
             return;
         }
 
+        var lastMsgStream = request.Messages.LastOrDefault();
+        if (lastMsgStream?.Role == "tool" && request.Tools?.Count > 0)
+        {
+            var toolContent = lastMsgStream.Content ?? "";
+            var toolChunkId = $"chatcmpl-{Guid.NewGuid().ToString("N")[..12]}";
+            var toolCreated = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            await onChunk(new ChatCompletionChunk
+            {
+                Id = toolChunkId, Created = toolCreated, Model = request.Model,
+                Choices = [new ChunkChoice { Index = 0, Delta = new Delta { Role = "assistant" } }]
+            });
+            await onChunk(new ChatCompletionChunk
+            {
+                Id = toolChunkId, Created = toolCreated, Model = request.Model,
+                Choices = [new ChunkChoice { Index = 0, Delta = new Delta { Content = toolContent } }]
+            });
+            await onChunk(new ChatCompletionChunk
+            {
+                Id = toolChunkId, Created = toolCreated, Model = request.Model,
+                Choices = [new ChunkChoice { Index = 0, Delta = new Delta(), FinishReason = "stop" }],
+                Usage = new Usage
+                {
+                    PromptTokens = request.Messages.Sum(m => m.Content?.Length ?? 0) / 4,
+                    CompletionTokens = toolContent.Length / 4,
+                    TotalTokens = (request.Messages.Sum(m => m.Content?.Length ?? 0) + toolContent.Length) / 4
+                }
+            });
+            await onDone();
+            return;
+        }
+
         if (_sessionManager.IsTurnQuotaExceeded(sessionId))
         {
             var errChunkId = $"chatcmpl-{Guid.NewGuid().ToString("N")[..12]}";
@@ -265,6 +436,37 @@ public class OpenAIAdapter
 
         engine.OnStatusUpdate = statusCallback;
 
+        if (request.Tools?.Count > 0)
+        {
+            var direct = TryDetectFileToolCall(input, request.Tools);
+            if (direct != null)
+            {
+                engine.OnStatusUpdate = null;
+                var callId = direct.Id;
+                await onChunk(new ChatCompletionChunk
+                {
+                    Id = chunkId, Created = created, Model = request.Model,
+                    Choices = [new ChunkChoice { Index = 0, Delta = new Delta
+                    {
+                        ToolCalls = [new StreamingToolCall { Index = 0, Id = callId, Type = "function",
+                            Function = new FunctionCall { Name = direct.Function.Name, Arguments = direct.Function.Arguments } }]
+                    }}]
+                });
+                await onChunk(new ChatCompletionChunk
+                {
+                    Id = chunkId, Created = created, Model = request.Model,
+                    Choices = [new ChunkChoice { Index = 0, Delta = new Delta(), FinishReason = "tool_calls" }],
+                    Usage = new Usage
+                    {
+                        PromptTokens = request.Messages.Sum(m => m.Content?.Length ?? 0) / 4,
+                        CompletionTokens = 0
+                    }
+                });
+                await onDone();
+                return;
+            }
+        }
+
         string responseText;
         bool engineHandled;
 
@@ -278,6 +480,40 @@ public class OpenAIAdapter
         }
 
         engineHandled = !engine.LastResponseIsDeadEnd;
+
+        var pendingTool = engine.LastPendingToolMarker;
+        if (pendingTool != null && request.Tools?.Count > 0)
+        {
+            var mapped = MapToOpenAIToolCall(pendingTool.Value.ToolName, pendingTool.Value.Args, request.Tools);
+            if (mapped != null)
+            {
+                engine.ClearPendingToolMarker();
+                var callId = $"call_{Guid.NewGuid().ToString("N")[..24]}";
+                var toolCallObj = new { id = callId, type = "function", function = new { name = mapped.Value.Name, arguments = mapped.Value.Arguments } };
+
+                await onChunk(new ChatCompletionChunk
+                {
+                    Id = chunkId, Created = created, Model = request.Model,
+                    Choices = [new ChunkChoice { Index = 0, Delta = new Delta
+                    {
+                        ToolCalls = [new StreamingToolCall { Index = 0, Id = callId, Type = "function",
+                            Function = new FunctionCall { Name = mapped.Value.Name, Arguments = mapped.Value.Arguments } }]
+                    }}]
+                });
+                await onChunk(new ChatCompletionChunk
+                {
+                    Id = chunkId, Created = created, Model = request.Model,
+                    Choices = [new ChunkChoice { Index = 0, Delta = new Delta(), FinishReason = "tool_calls" }],
+                    Usage = new Usage
+                    {
+                        PromptTokens = request.Messages.Sum(m => m.Content?.Length ?? 0) / 4,
+                        CompletionTokens = 0
+                    }
+                });
+                await onDone();
+                return;
+            }
+        }
 
         if (!engineHandled && _upstream != null)
         {
@@ -531,5 +767,123 @@ public class OpenAIAdapter
     {
         if (!string.IsNullOrWhiteSpace(workingDirectory))
             engine.SetContext(ContextKeys.ClientWorkingDirectory, workingDirectory);
+    }
+
+    internal static (string Name, string Arguments)? MapToOpenAIToolCall(string toolName, string[] args, List<ToolDefinition> availableTools)
+    {
+        var toolNames = availableTools
+            .Where(t => t.Function?.Name != null)
+            .Select(t => t.Function!.Name!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return toolName.ToLowerInvariant() switch
+        {
+            "file_ops" when args.Length >= 2 && args[0] == "read" && toolNames.Contains("read") =>
+                ("read", JsonSerializer.Serialize(new { filePath = args[1] })),
+            "file_ops" when args.Length >= 3 && args[0] == "write" && toolNames.Contains("write") =>
+                ("write", JsonSerializer.Serialize(new { filePath = args[1], content = string.Join(':', args.Skip(2)) })),
+            "file_ops" when args.Length >= 2 && args[0] == "list" && toolNames.Contains("glob") =>
+                ("glob", JsonSerializer.Serialize(new { pattern = "*", path = args[1] })),
+            "file_ops" when args.Length >= 3 && args[0] == "search" && toolNames.Contains("grep") =>
+                ("grep", JsonSerializer.Serialize(new { pattern = args[2], path = args[1] })),
+            "shell_command" when args.Length >= 1 && toolNames.Contains("bash") =>
+                ("bash", JsonSerializer.Serialize(new { command = string.Join(':', args) })),
+            _ => null
+        };
+    }
+
+    private static readonly Regex FileReadPattern = new(
+        @"(?:read|open|show|view|display|cat|less|update|improve|edit|modify|change|review|check|fix|rewrite|work\s+on|examine|inspect|look\s+at)\s+(?:me\s+)?(?:(?:my|the|a|an|this|our|some)\s+)?(?<file>[\w./\\-]+\.\w+)",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex FileWritePattern = new(
+        @"(?:write|create|make|save|append)\s+(?:a\s+)?(?:new\s+)?(?<file>[\w./\\-]+\.\w+)",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex GrepPattern = new(
+        @"(?:search|find|grep)\s+(?:for\s+)?(?<query>.+?)\s+(?:in|inside|through)\s+(?<path>[\w./\\-]+)",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex GlobPattern = new(
+        @"(?:list|show|ls)\s+(?:all\s+)?(?:the\s+)?(?:files|file|directory|dir|folder)",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex BashPattern = new(
+        @"^(?:run|execute|shell)\s+(?:command\s+)?(?<cmd>.+)$",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex GitPattern = new(
+        @"^(?:git\s+)?(?<cmd>status|log|diff|branch|checkout\s+\S+|push|pull|fetch|stash|commit\s+.+|add\s+.+)",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    internal static ToolCall? TryDetectFileToolCall(string input, List<ToolDefinition> tools)
+    {
+        if (string.IsNullOrWhiteSpace(input) || tools.Count == 0)
+            return null;
+
+        var toolNames = tools
+            .Where(t => t.Function?.Name != null)
+            .Select(t => t.Function!.Name!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var trimmed = input.Trim();
+
+        var readMatch = FileReadPattern.Match(trimmed);
+        if (readMatch.Success)
+        {
+            var filePath = readMatch.Groups["file"].Value;
+            if (toolNames.Contains("read"))
+                return MakeToolCall("read", new { filePath });
+        }
+
+        var writeMatch = FileWritePattern.Match(trimmed);
+        if (writeMatch.Success)
+        {
+            var filePath = writeMatch.Groups["file"].Value;
+            if (toolNames.Contains("write"))
+                return MakeToolCall("write", new { filePath, content = "" });
+        }
+
+        var grepMatch = GrepPattern.Match(trimmed);
+        if (grepMatch.Success)
+        {
+            var query = grepMatch.Groups["query"].Value;
+            var path = grepMatch.Groups["path"].Value;
+            if (toolNames.Contains("grep"))
+                return MakeToolCall("grep", new { pattern = query, path });
+        }
+
+        if (GlobPattern.IsMatch(trimmed) && toolNames.Contains("glob"))
+            return MakeToolCall("glob", new { pattern = "**/*", path = "." });
+
+        var bashMatch = BashPattern.Match(trimmed);
+        if (bashMatch.Success && toolNames.Contains("bash"))
+        {
+            var cmd = bashMatch.Groups["cmd"].Value;
+            return MakeToolCall("bash", new { command = cmd });
+        }
+
+        var gitMatch = GitPattern.Match(trimmed);
+        if (gitMatch.Success && toolNames.Contains("bash"))
+        {
+            var cmd = $"git {gitMatch.Groups["cmd"].Value}";
+            return MakeToolCall("bash", new { command = cmd });
+        }
+
+        return null;
+    }
+
+    private static ToolCall MakeToolCall(string name, object args)
+    {
+        return new ToolCall
+        {
+            Id = $"call_{Guid.NewGuid().ToString("N")[..24]}",
+            Type = "function",
+            Function = new FunctionCall
+            {
+                Name = name,
+                Arguments = JsonSerializer.Serialize(args)
+            }
+        };
     }
 }

@@ -1005,6 +1005,10 @@ public class ChatEngine : IDisposable
 
     internal string ProcessToolMarkers(string response) => _responseEngine.ProcessToolMarkers(response);
 
+    internal (string ToolName, string[] Args)? LastPendingToolMarker => _responseEngine.PendingToolMarker;
+
+    internal void ClearPendingToolMarker() => _responseEngine.PendingToolMarker = null;
+
     internal void DetectFileMentions(string input)
     {
         var matches = FileMentionPattern.Matches(input);
