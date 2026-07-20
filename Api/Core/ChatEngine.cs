@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using PokeChat.Api.Services;
 using PokeChat.Data;
+using PokeChat.Data.Entities;
 using PokeChat.Knowledge;
 using PokeChat.LLM;
 using PokeChat.Math;
@@ -49,6 +50,7 @@ public class ChatEngine : IDisposable
     private string? _lastInterviewQuestion;
     private string? _pendingFollowUp;
     private Data.Entities.TaskList? _pendingTrainedTask;
+    private bool _inTrainingMode;
     private int _followUpCount;
     private readonly ML.IntentClassifier _intentClassifier;
     private readonly RouterService _router = new();
@@ -2500,6 +2502,9 @@ public class ChatEngine : IDisposable
             case RouteHandler.TrainTask:
                 return await HandleTrainTaskCommandAsync(route.Argument);
 
+            case RouteHandler.TrainStart:
+                return HandleTrainStartCommand(route.Argument);
+
             default:
                 return GetLLMResponse("default_response");
         }
@@ -2670,6 +2675,122 @@ public class ChatEngine : IDisposable
         return $"I've broken this down into {plan.Tasks.Count} steps:\n\n{taskList}\n\nGoal: {plan.GoalDescription}\nSay **yes** to execute, or tell me to adjust.";
     }
 
+    private string HandleTrainStartCommand(string? argument)
+    {
+        if (string.IsNullOrWhiteSpace(argument))
+            return "Usage: ~trainstart <goal description>\nExample: ~trainstart update AGENTS.md with architecture section";
+
+        _inTrainingMode = true;
+        _pendingTrainedTask = new Data.Entities.TaskList
+        {
+            GoalDescription = argument.Trim(),
+            IsTemplate = false,
+            IsTrained = true,
+            SuccessRating = 0.0,
+            Version = 1,
+            CreatedAt = DateTime.UtcNow,
+            LastUsedAt = DateTime.UtcNow,
+            Tasks = new List<Data.Entities.ExecutionTask>()
+        };
+
+        return $"**Training mode** for: {argument.Trim()}\n\nDescribe each step. I'll auto-detect tool calls.\n"
+            + "Examples:\n"
+            + "  `read ./AGENTS.md` → adds a read tool call\n"
+            + "  `Explore project structure` → adds a reasoning step\n"
+            + "  `bash dotnet build` → adds a bash command\n"
+            + "  `write ./AGENTS.md` → adds a write tool call\n"
+            + "  `suggest next step` → asks AI for help\n\n"
+            + "**list** = show steps, **undo** = remove last, **done** = save, **cancel** = discard.";
+    }
+
+    private static Data.Entities.ExecutionTask ParseStepInput(string input, int order)
+    {
+        var trimmed = input.Trim();
+        var lower = trimmed.ToLowerInvariant();
+
+        // Tool call patterns: "read <file>", "write <file>", "bash <cmd>", "grep <pattern>", "glob <pattern>"
+        if (lower.StartsWith("read "))
+        {
+            var arg = trimmed[5..].Trim();
+            if (arg.Length > 0 && arg[0] == '"' && arg[^1] == '"') arg = arg[1..^1];
+            if (arg.Length > 0 && arg[0] == '\'' && arg[^1] == '\'') arg = arg[1..^1];
+            return new Data.Entities.ExecutionTask
+            {
+                SequenceOrder = order,
+                Type = Data.Entities.TaskType.ToolCall,
+                Payload = JsonSerializer.Serialize(new { toolName = "read", args = new[] { arg } }),
+                Status = "Pending"
+            };
+        }
+        if (lower.StartsWith("write "))
+        {
+            var arg = trimmed[6..].Trim();
+            if (arg.Length > 0 && arg[0] == '"' && arg[^1] == '"') arg = arg[1..^1];
+            if (arg.Length > 0 && arg[0] == '\'' && arg[^1] == '\'') arg = arg[1..^1];
+            return new Data.Entities.ExecutionTask
+            {
+                SequenceOrder = order,
+                Type = Data.Entities.TaskType.ToolCall,
+                Payload = JsonSerializer.Serialize(new { toolName = "write", args = new[] { arg, "<content>" } }),
+                Status = "Pending"
+            };
+        }
+        if (lower.StartsWith("bash "))
+        {
+            var cmd = trimmed[5..].Trim();
+            return new Data.Entities.ExecutionTask
+            {
+                SequenceOrder = order,
+                Type = Data.Entities.TaskType.ToolCall,
+                Payload = JsonSerializer.Serialize(new { toolName = "bash", args = new[] { cmd } }),
+                Status = "Pending"
+            };
+        }
+        if (lower.StartsWith("grep ") || lower.StartsWith("search "))
+        {
+            var query = lower.StartsWith("grep ") ? trimmed[5..].Trim() : trimmed[7..].Trim();
+            return new Data.Entities.ExecutionTask
+            {
+                SequenceOrder = order,
+                Type = Data.Entities.TaskType.ToolCall,
+                Payload = JsonSerializer.Serialize(new { toolName = "grep", args = new[] { query } }),
+                Status = "Pending"
+            };
+        }
+        if (lower.StartsWith("glob ") || lower.StartsWith("ls ") || lower.StartsWith("find "))
+        {
+            var pattern = trimmed.Contains(' ') ? trimmed[(trimmed.IndexOf(' ') + 1)..].Trim() : "**/*";
+            return new Data.Entities.ExecutionTask
+            {
+                SequenceOrder = order,
+                Type = Data.Entities.TaskType.ToolCall,
+                Payload = JsonSerializer.Serialize(new { toolName = "glob", args = new[] { pattern } }),
+                Status = "Pending"
+            };
+        }
+
+        // Default: reasoning step
+        return new Data.Entities.ExecutionTask
+        {
+            SequenceOrder = order,
+            Type = Data.Entities.TaskType.Reasoning,
+            Payload = trimmed,
+            Status = "Pending"
+        };
+    }
+
+    private string FormatTaskList(string goal, List<Data.Entities.ExecutionTask> tasks)
+    {
+        if (tasks.Count == 0)
+            return $"**Training mode** for: {goal}\n\nNo steps yet. Describe the next step.";
+
+        var taskList = string.Join("\n", tasks
+            .OrderBy(t => t.SequenceOrder)
+            .Select(t => $"  {t.SequenceOrder}. [{t.Type}] {t.Payload ?? "(empty)"}"));
+
+        return $"**Training mode** for: {goal}\n\nTasks:\n{taskList}\n\nDescribe next step, **list** = show, **undo** = remove last, **done** = save, **cancel** = discard.";
+    }
+
     private async Task<string?> HandleTrainTaskCommandAsync(string? argument)
     {
         if (_plannerService == null)
@@ -2685,13 +2806,13 @@ public class ChatEngine : IDisposable
             _pendingTrainedTask = plan;
 
             if (plan.Tasks.Count == 0)
-                return $"**Trained task list** for: {plan.GoalDescription}\n\nNo tasks generated. The LLM didn't produce a decomposition.\n\nSay **yes** to save as-is, or tell me what to change.";
+                return $"**Trained task list** for: {plan.GoalDescription}\n\nNo tasks generated. The LLM didn't produce a decomposition.\n\n**yes** = save as-is, describe changes = retry decomposition, **no** = cancel.";
 
             var taskList = string.Join("\n", plan.Tasks
                 .OrderBy(t => t.SequenceOrder)
                 .Select(t => $"  {t.SequenceOrder}. [{t.Type}] {t.Payload ?? "(empty)"}"));
 
-            return $"**Trained task list** for: {plan.GoalDescription}\n\nTasks:\n{taskList}\n\nSay **yes** to save, or tell me what to change.";
+            return $"**Trained task list** for: {plan.GoalDescription}\n\nTasks:\n{taskList}\n\n**yes** = save this list, describe changes = modify list, **no** = cancel.";
         }
         catch (Exception ex)
         {
@@ -2706,14 +2827,121 @@ public class ChatEngine : IDisposable
 
         var lower = input.Trim().ToLowerInvariant();
 
-        if (lower is "yes" or "y" or "save")
+        // Training mode: block other commands, only allow training commands
+        if (_inTrainingMode)
         {
+            // Allow training commands
+            var trainingCommands = new[] { "list", "ls", "show", "undo", "remove", "delete", "replace", "done", "finish", "save", "cancel", "quit", "suggest", "help" };
+            if (!trainingCommands.Any(c => lower.StartsWith(c)) && !(input.Length > 1 && input[0] == '~' && input.Contains("train")))
+            {
+                // Not a training command — check if it's a suggest or help request
+                if (lower.StartsWith("suggest"))
+                {
+                    var lastStep = _pendingTrainedTask.Tasks.LastOrDefault()?.Payload ?? "none";
+                    var goal = _pendingTrainedTask.GoalDescription;
+                    var steps = string.Join(", ", _pendingTrainedTask.Tasks.Select(t => t.Payload));
+                    var prompt = $"Goal: {goal}\nCurrent steps: [{steps}]\nLast step: {lastStep}\n\nSuggest the NEXT concrete step to achieve the goal. Return ONLY the step description (1 line), no JSON.";
+                    var response = await Task.Run(() => _llmOrchestrator?.GenerateResponse(prompt));
+                    if (!string.IsNullOrWhiteSpace(response))
+                    {
+                        var nextOrder = _pendingTrainedTask.Tasks.Count > 0
+                            ? _pendingTrainedTask.Tasks.Max(t => t.SequenceOrder) + 1
+                            : 1;
+                        var step = ParseStepInput(response.Trim(), nextOrder);
+                        _pendingTrainedTask.Tasks.Add(step);
+                        return $"**AI Suggested:** {response.Trim()}\n\n{FormatTaskList(_pendingTrainedTask.GoalDescription, _pendingTrainedTask.Tasks)}";
+                    }
+                    return "No suggestion available. Describe the next step manually.";
+                }
+                if (lower is "help" or "?")
+                {
+                    return FormatTaskList(_pendingTrainedTask.GoalDescription, _pendingTrainedTask.Tasks)
+                        + "\n\n**Commands:** list, undo, remove N, replace N <desc>, suggest, done, cancel";
+                }
+                // Treat any other input as a step description
+                var order = _pendingTrainedTask.Tasks.Count > 0
+                    ? _pendingTrainedTask.Tasks.Max(t => t.SequenceOrder) + 1
+                    : 1;
+                var newStep = ParseStepInput(input, order);
+                _pendingTrainedTask.Tasks.Add(newStep);
+                return FormatTaskList(_pendingTrainedTask.GoalDescription, _pendingTrainedTask.Tasks);
+            }
+            // Allow training-specific ~ commands
+            if (input.Length > 1 && input[0] == '~')
+            {
+                if (input.Contains("train"))
+                {
+                    // Allow re-entry to training
+                    return null;
+                }
+                return $"You're in training mode. Use list, undo, done, or cancel.";
+            }
+        }
+
+        // Non-training mode: let ~ commands pass through
+        if (input.Length > 1 && input[0] == '~')
+            return null;
+
+        // Interactive session management commands
+        if (lower is "list" or "ls" or "show")
+        {
+            return FormatTaskList(_pendingTrainedTask.GoalDescription, _pendingTrainedTask.Tasks);
+        }
+
+        if (lower is "undo" or "remove last")
+        {
+            if (_pendingTrainedTask.Tasks.Count == 0)
+                return "No steps to undo.";
+
+            var last = _pendingTrainedTask.Tasks.OrderByDescending(t => t.SequenceOrder).First();
+            _pendingTrainedTask.Tasks.Remove(last);
+            return FormatTaskList(_pendingTrainedTask.GoalDescription, _pendingTrainedTask.Tasks);
+        }
+
+        if (lower.StartsWith("remove ") || lower.StartsWith("delete "))
+        {
+            var numStr = lower.Contains(' ')
+                ? lower[(lower.IndexOf(' ') + 1)..].Trim()
+                : "";
+            if (int.TryParse(numStr, out var removeIdx) && _pendingTrainedTask.Tasks.Any(t => t.SequenceOrder == removeIdx))
+            {
+                var toRemove = _pendingTrainedTask.Tasks.First(t => t.SequenceOrder == removeIdx);
+                _pendingTrainedTask.Tasks.Remove(toRemove);
+                return FormatTaskList(_pendingTrainedTask.GoalDescription, _pendingTrainedTask.Tasks);
+            }
+            return $"Invalid step number. Use **list** to see current steps.";
+        }
+
+        if (lower.StartsWith("replace "))
+        {
+            var parts = lower[(("replace ".Length)..)].Trim().Split(' ', 2);
+            if (parts.Length == 2 && int.TryParse(parts[0], out var replaceIdx))
+            {
+                var existing = _pendingTrainedTask.Tasks.FirstOrDefault(t => t.SequenceOrder == replaceIdx);
+                if (existing != null)
+                {
+                    _pendingTrainedTask.Tasks.Remove(existing);
+                    var newStep = ParseStepInput(parts[1], replaceIdx);
+                    _pendingTrainedTask.Tasks.Add(newStep);
+                    _pendingTrainedTask.Tasks = _pendingTrainedTask.Tasks
+                        .OrderBy(t => t.SequenceOrder).ToList();
+                    return FormatTaskList(_pendingTrainedTask.GoalDescription, _pendingTrainedTask.Tasks);
+                }
+            }
+            return "Usage: replace <step_number> <new description>\nExample: replace 1 read ./AGENTS.md";
+        }
+
+        if (lower is "done" or "finish" or "save")
+        {
+            if (_pendingTrainedTask.Tasks.Count == 0)
+                return "No steps to save. Add some steps first, or **cancel** to discard.";
+
             try
             {
                 await _plannerService!.SaveTrainedTaskAsync(_pendingTrainedTask);
                 var goal = _pendingTrainedTask.GoalDescription;
                 _pendingTrainedTask = null;
-                return $"Saved! Use ~plan \"{goal}\" to use it, or ~plans to see all trained tasks.";
+                return $"Saved {_pendingTrainedTask?.Tasks.Count ?? 0} steps! Use ~plan \"{goal}\" to execute, or ~plans to see all trained tasks.";
             }
             catch (Exception ex)
             {
@@ -2721,40 +2949,21 @@ public class ChatEngine : IDisposable
             }
         }
 
-        if (lower is "no" or "cancel")
+        if (lower is "cancel" or "quit")
         {
             _pendingTrainedTask = null;
             return "Training cancelled.";
         }
 
-        // Treat as edit instruction — send to LLM to modify the task list
-        if (_llmOrchestrator != null && _llmOrchestrator.IsAvailable)
+        // Check if this is an interactive training session (no existing tasks from LLM) — add step directly
         {
-            var currentTasks = string.Join("\n", _pendingTrainedTask.Tasks
-                .OrderBy(t => t.SequenceOrder)
-                .Select(t => $"{t.SequenceOrder}. [{t.Type}] {t.Payload}"));
-
-            var prompt = $"Current task list for '{_pendingTrainedTask.GoalDescription}':\n{currentTasks}\n\nUser says: {input}\n\nOutput the modified task list as JSON lines. Each line: {{\"type\":\"ToolCall\",\"toolName\":\"...\",\"args\":[...]}} or {{\"type\":\"Reasoning\",\"payload\":\"...\"}}";
-
-            var response = await Task.Run(() => _llmOrchestrator.GenerateResponse(prompt));
-            if (!string.IsNullOrWhiteSpace(response))
-            {
-                    var trainer = new Api.Core.Planning.TaskTrainer(_llmOrchestrator);
-                var newTasks = trainer.ParseDecomposition(response);
-                if (newTasks.Count > 0)
-                {
-                    _pendingTrainedTask.Tasks = newTasks;
-
-                    var taskList = string.Join("\n", newTasks
-                        .OrderBy(t => t.SequenceOrder)
-                        .Select(t => $"  {t.SequenceOrder}. [{t.Type}] {t.Payload ?? "(empty)"}"));
-
-                    return $"**Updated task list** for: {_pendingTrainedTask.GoalDescription}\n\nTasks:\n{taskList}\n\nSay **yes** to save, or tell me what to change.";
-                }
-            }
+            var nextOrder = _pendingTrainedTask.Tasks.Count > 0
+                ? _pendingTrainedTask.Tasks.Max(t => t.SequenceOrder) + 1
+                : 1;
+            var step = ParseStepInput(input, nextOrder);
+            _pendingTrainedTask.Tasks.Add(step);
+            return FormatTaskList(_pendingTrainedTask.GoalDescription, _pendingTrainedTask.Tasks);
         }
-
-        return "I couldn't modify the task list. Say **yes** to save as-is, **no** to cancel, or describe what to change.";
     }
 
     private async Task<string?> HandleProjectStepAsync(string input)
@@ -3305,7 +3514,8 @@ public class ChatEngine : IDisposable
 
     internal static string GetHelpText()
     {
-        return "Here are the commands I understand:\n\n"
+        return "```help\n"
+            + "Here are the commands I understand:\n\n"
             + "~maths <expression> — Evaluate a maths expression (e.g. ~maths 2 + 2)\n"
             + "~remind <me to> <task> [at/in <time>] — Set a reminder\n"
             + "~story — Tell me a story\n"
@@ -3324,10 +3534,22 @@ public class ChatEngine : IDisposable
             + "~weather [city] — Tell me the weather (e.g. ~weather London)\n"
             + "~cleanup — Clean up old, unused knowledge\n"
             + "~rate <+/-> — Rate my last response (+1 or -1), or just say thanks!\n"
-            + "~plan <goal> — Create a plan for a goal\n"
+            + "~plan <goal> — Execute a saved plan\n"
             + "~plans — List saved plans\n"
-            + "~traintask <goal> — Use LLM to decompose a goal into a reusable task list\n"
-            + "~help — Show this help message";
+            + "\n"
+            + "**Task Training**\n"
+            + "~traintask <goal> — LLM decomposes a goal into a reusable task list\n"
+            + "~trainstart <goal> — Build a task list step-by-step without LLM\n"
+            + "  During training, type steps one at a time:\n"
+            + "    `read ./file.txt` → adds a read tool call\n"
+            + "    `bash dotnet build` → adds a bash command\n"
+            + "    `grep pattern` → adds a search step\n"
+            + "    `write ./file.txt` → adds a write step\n"
+            + "    Any other text → adds a reasoning step\n"
+            + "  Training commands: list, undo, remove N, replace N <desc>, suggest, done, cancel\n"
+            + "\n"
+            + "~help — Show this help message\n"
+            + "```";
     }
 
     private string? TryEarlyLlmRouting(string input)

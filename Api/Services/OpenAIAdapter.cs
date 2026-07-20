@@ -108,7 +108,7 @@ public class OpenAIAdapter
             };
         }
 
-        if (request.Tools?.Count > 0)
+        if (request.Tools?.Count > 0 && !(input.Length > 1 && input[0] == '~'))
         {
             var direct = TryDetectFileToolCall(input, request.Tools);
             if (direct != null)
@@ -438,7 +438,7 @@ public class OpenAIAdapter
 
         engine.OnStatusUpdate = statusCallback;
 
-        if (request.Tools?.Count > 0)
+        if (request.Tools?.Count > 0 && !(input.Length > 1 && input[0] == '~'))
         {
             var direct = TryDetectFileToolCall(input, request.Tools);
             if (direct != null)

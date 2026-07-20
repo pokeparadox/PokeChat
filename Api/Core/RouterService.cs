@@ -26,7 +26,8 @@ public enum RouteHandler
     Plan,
     Plans,
     RunPlan,
-    TrainTask
+    TrainTask,
+    TrainStart
 }
 
 public class RouteResult
@@ -66,7 +67,8 @@ public class RouterService
         ["project"] = RouteHandler.Project,
         ["plan"] = RouteHandler.Plan,
         ["plans"] = RouteHandler.Plans,
-        ["traintask"] = RouteHandler.TrainTask
+        ["traintask"] = RouteHandler.TrainTask,
+        ["trainstart"] = RouteHandler.TrainStart
     };
 
     private static readonly Dictionary<string, RouteHandler> IntentHandlerMap = new(StringComparer.OrdinalIgnoreCase)
@@ -152,9 +154,6 @@ public class RouterService
     {
         var afterTilde = input[1..];
 
-        if (LooksLikePath(afterTilde))
-            return null;
-
         var spaceIdx = input.IndexOf(' ', StringComparison.Ordinal);
         string cmd;
         string? arg;
@@ -169,6 +168,9 @@ public class RouterService
             cmd = input[1..];
             arg = null;
         }
+
+        if (LooksLikePath(cmd))
+            return null;
 
         if (BotCommandMap.TryGetValue(cmd, out var handler))
         {

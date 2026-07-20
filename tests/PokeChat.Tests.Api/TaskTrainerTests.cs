@@ -113,14 +113,14 @@ And some more text
     }
 
     [Fact]
-    public async Task DecomposeGoalAsync_ReturnsEmptyTasks_WhenNoLlm()
+    public async Task DecomposeGoalAsync_ReturnsHeuristicPlan_WhenNoLlm()
     {
         var trainer = new TaskTrainer(null);
         var plan = await trainer.DecomposeGoalAsync("test goal");
         plan.ShouldNotBeNull();
         plan.GoalDescription.ShouldBe("test goal");
         plan.IsTrained.ShouldBeTrue();
-        plan.Tasks.ShouldBeEmpty();
+        plan.Tasks.ShouldNotBeEmpty();
     }
 
     [Fact]
