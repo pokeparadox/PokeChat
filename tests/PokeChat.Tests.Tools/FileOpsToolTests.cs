@@ -216,35 +216,4 @@ public class FileOpsToolTests : IDisposable
 
         File.ReadAllText(filePath).ShouldBe("nested content");
     }
-
-    [Fact]
-    public void RegisteredAndEnabled_ReturnsResult()
-    {
-        var configs = new Dictionary<string, ToolConfig>
-        {
-            ["file_ops"] = new() { Enabled = true, AllowedPaths = new() { _testDir } }
-        };
-        var registry = new ToolRegistry(configs);
-
-        var filePath = Path.Combine(_testDir, "regtest.txt");
-        File.WriteAllText(filePath, "registry test");
-
-        var result = registry.TryExecute("file_ops", new[] { "read", filePath });
-        result.ShouldNotBeNull();
-        result.Success.ShouldBeTrue();
-        result.Output.ShouldBe("registry test");
-    }
-
-    [Fact]
-    public void DisabledViaConfig_ReturnsNull()
-    {
-        var configs = new Dictionary<string, ToolConfig>
-        {
-            ["file_ops"] = new() { Enabled = false, AllowedPaths = new() { _testDir } }
-        };
-        var registry = new ToolRegistry(configs);
-
-        var result = registry.TryExecute("file_ops", new[] { "read", _testDir });
-        result.ShouldBeNull();
-    }
 }

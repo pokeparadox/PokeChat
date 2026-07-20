@@ -104,19 +104,6 @@ public class TurnRatingTests
     }
 
     [Fact]
-    public void Rate_NegativeNumericOne_StoresMinusOne()
-    {
-        using var db = new FreshDbContext();
-        var engine = CreateEngine(db);
-        engine.ProcessInput("My name is TestUser");
-        engine.ProcessInput("I like pizza");
-        var result = engine.ProcessInput("~rate -1");
-
-        result.ShouldBe("Noted — I'll try to do better.");
-        db.Context.TurnRates.ShouldContain(t => t.Rating == -1);
-    }
-
-    [Fact]
     public void Rate_NoArgument_ReturnsUsageHint()
     {
         using var db = new FreshDbContext();

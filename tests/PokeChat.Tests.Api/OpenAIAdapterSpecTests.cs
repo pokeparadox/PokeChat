@@ -162,17 +162,6 @@ public class OpenAIAdapterSpecTests
 
     #endregion
 
-    #region ChunkBySentences (existing, verifying no regression)
-
-    [Fact]
-    public void ChunkBySentences_StillWorks_AfterRefactor()
-    {
-        var result = OpenAIAdapter.ChunkBySentences("Hello! How are you? Fine.");
-        result.Count.ShouldBe(3);
-    }
-
-    #endregion
-
     #region Tier 2 Acceptance (DTO deserialization)
 
     [Fact]

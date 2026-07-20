@@ -11,6 +11,7 @@ namespace PokeChat.Data.Entities
         public double SuccessRating { get; set; }
         public int Version { get; set; }
         public bool IsTemplate { get; set; }
+        public bool IsTrained { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? LastUsedAt { get; set; }
         public List<ExecutionTask> Tasks { get; set; } = new();

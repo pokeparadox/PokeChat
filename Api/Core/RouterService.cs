@@ -24,7 +24,9 @@ public enum RouteHandler
     Rate,
     Project,
     Plan,
-    Plans
+    Plans,
+    RunPlan,
+    TrainTask
 }
 
 public class RouteResult
@@ -63,7 +65,8 @@ public class RouterService
         ["rate"] = RouteHandler.Rate,
         ["project"] = RouteHandler.Project,
         ["plan"] = RouteHandler.Plan,
-        ["plans"] = RouteHandler.Plans
+        ["plans"] = RouteHandler.Plans,
+        ["traintask"] = RouteHandler.TrainTask
     };
 
     private static readonly Dictionary<string, RouteHandler> IntentHandlerMap = new(StringComparer.OrdinalIgnoreCase)
@@ -81,14 +84,15 @@ public class RouterService
         ["stats_query"] = RouteHandler.Stats,
         ["weather_query"] = RouteHandler.Weather,
         ["plan_query"] = RouteHandler.Plans,
+        ["train_task"] = RouteHandler.TrainTask,
         ["farewell"] = RouteHandler.None,
     };
 
     private static readonly HashSet<string> HandlerIntentCategories = new(StringComparer.OrdinalIgnoreCase)
     {
-        "math_query", "story_request", "poetry_request", "joke_request",
-        "riddle_start", "game_start", "hangman_start", "reset_request",
-        "compliment_request", "about_me_query", "stats_query", "weather_query", "plan_query"
+            "math_query", "story_request", "poetry_request", "joke_request",
+            "riddle_start", "game_start", "hangman_start", "reset_request",
+            "compliment_request", "about_me_query", "stats_query", "weather_query", "plan_query", "train_task"
     };
 
     private const float ConfidenceThreshold = 0.85f;

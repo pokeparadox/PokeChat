@@ -48,6 +48,7 @@ public class ChatEngine : IDisposable
     private bool _interviewModeActive;
     private string? _lastInterviewQuestion;
     private string? _pendingFollowUp;
+    private Data.Entities.TaskList? _pendingTrainedTask;
     private int _followUpCount;
     private readonly ML.IntentClassifier _intentClassifier;
     private readonly RouterService _router = new();
@@ -466,6 +467,10 @@ public class ChatEngine : IDisposable
         var toolPermResult = TryHandleToolPermission(input);
         if (toolPermResult != null)
             return toolPermResult;
+
+        var trainedTaskResult = await HandleTrainedTaskConfirmation(input);
+        if (trainedTaskResult != null)
+            return trainedTaskResult;
 
         var routeResult = _router.Route(input, _intentClassifier);
         if (routeResult.Handler != RouteHandler.None)
@@ -2492,6 +2497,9 @@ public class ChatEngine : IDisposable
             case RouteHandler.Plans:
                 return await HandlePlansCommandAsync();
 
+            case RouteHandler.TrainTask:
+                return await HandleTrainTaskCommandAsync(route.Argument);
+
             default:
                 return GetLLMResponse("default_response");
         }
@@ -2660,6 +2668,93 @@ public class ChatEngine : IDisposable
             .Select(t => $"  {t.SequenceOrder}. [{t.Type}] {t.Payload ?? "(empty)"}"));
 
         return $"I've broken this down into {plan.Tasks.Count} steps:\n\n{taskList}\n\nGoal: {plan.GoalDescription}\nSay **yes** to execute, or tell me to adjust.";
+    }
+
+    private async Task<string?> HandleTrainTaskCommandAsync(string? argument)
+    {
+        if (_plannerService == null)
+            return "Task training is not available.";
+
+        if (string.IsNullOrWhiteSpace(argument))
+            return "Usage: ~traintask <goal description>\nExample: ~traintask update AGENTS.md with a section on the architecture";
+
+        Status("Training from LLM...");
+        try
+        {
+            var plan = await _plannerService.TrainFromLLMAsync(argument.Trim());
+            _pendingTrainedTask = plan;
+
+            if (plan.Tasks.Count == 0)
+                return $"**Trained task list** for: {plan.GoalDescription}\n\nNo tasks generated. The LLM didn't produce a decomposition.\n\nSay **yes** to save as-is, or tell me what to change.";
+
+            var taskList = string.Join("\n", plan.Tasks
+                .OrderBy(t => t.SequenceOrder)
+                .Select(t => $"  {t.SequenceOrder}. [{t.Type}] {t.Payload ?? "(empty)"}"));
+
+            return $"**Trained task list** for: {plan.GoalDescription}\n\nTasks:\n{taskList}\n\nSay **yes** to save, or tell me what to change.";
+        }
+        catch (Exception ex)
+        {
+            return $"Training failed: {ex.Message}";
+        }
+    }
+
+    private async Task<string?> HandleTrainedTaskConfirmation(string input)
+    {
+        if (_pendingTrainedTask == null)
+            return null;
+
+        var lower = input.Trim().ToLowerInvariant();
+
+        if (lower is "yes" or "y" or "save")
+        {
+            try
+            {
+                await _plannerService!.SaveTrainedTaskAsync(_pendingTrainedTask);
+                var goal = _pendingTrainedTask.GoalDescription;
+                _pendingTrainedTask = null;
+                return $"Saved! Use ~plan \"{goal}\" to use it, or ~plans to see all trained tasks.";
+            }
+            catch (Exception ex)
+            {
+                return $"Save failed: {ex.Message}";
+            }
+        }
+
+        if (lower is "no" or "cancel")
+        {
+            _pendingTrainedTask = null;
+            return "Training cancelled.";
+        }
+
+        // Treat as edit instruction — send to LLM to modify the task list
+        if (_llmOrchestrator != null && _llmOrchestrator.IsAvailable)
+        {
+            var currentTasks = string.Join("\n", _pendingTrainedTask.Tasks
+                .OrderBy(t => t.SequenceOrder)
+                .Select(t => $"{t.SequenceOrder}. [{t.Type}] {t.Payload}"));
+
+            var prompt = $"Current task list for '{_pendingTrainedTask.GoalDescription}':\n{currentTasks}\n\nUser says: {input}\n\nOutput the modified task list as JSON lines. Each line: {{\"type\":\"ToolCall\",\"toolName\":\"...\",\"args\":[...]}} or {{\"type\":\"Reasoning\",\"payload\":\"...\"}}";
+
+            var response = await Task.Run(() => _llmOrchestrator.GenerateResponse(prompt));
+            if (!string.IsNullOrWhiteSpace(response))
+            {
+                    var trainer = new Api.Core.Planning.TaskTrainer(_llmOrchestrator);
+                var newTasks = trainer.ParseDecomposition(response);
+                if (newTasks.Count > 0)
+                {
+                    _pendingTrainedTask.Tasks = newTasks;
+
+                    var taskList = string.Join("\n", newTasks
+                        .OrderBy(t => t.SequenceOrder)
+                        .Select(t => $"  {t.SequenceOrder}. [{t.Type}] {t.Payload ?? "(empty)"}"));
+
+                    return $"**Updated task list** for: {_pendingTrainedTask.GoalDescription}\n\nTasks:\n{taskList}\n\nSay **yes** to save, or tell me what to change.";
+                }
+            }
+        }
+
+        return "I couldn't modify the task list. Say **yes** to save as-is, **no** to cancel, or describe what to change.";
     }
 
     private async Task<string?> HandleProjectStepAsync(string input)
@@ -3231,6 +3326,7 @@ public class ChatEngine : IDisposable
             + "~rate <+/-> — Rate my last response (+1 or -1), or just say thanks!\n"
             + "~plan <goal> — Create a plan for a goal\n"
             + "~plans — List saved plans\n"
+            + "~traintask <goal> — Use LLM to decompose a goal into a reusable task list\n"
             + "~help — Show this help message";
     }
 

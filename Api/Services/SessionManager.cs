@@ -64,58 +64,22 @@ public sealed class SessionManager : IDisposable
     {
         EvictExpired();
 
-        var entry = _cache.GetOrAdd(sessionId, id =>
+        if (_cache.TryGetValue(sessionId, out var existing))
         {
-            using var ctx = _factoryDb.CreateDbContext();
+            existing.LastAccessed = DateTime.UtcNow;
+            SyncUserId(existing.Engine, sessionId);
+            return existing.Engine;
+        }
 
-            var dbSession = ctx.ConversationSessions.FirstOrDefault(s => s.SessionGuid == id);
-
-            if (dbSession == null)
-            {
-                dbSession = new ConversationSession
-                {
-                    SessionGuid = id,
-                    StartedAt = DateTime.UtcNow.ToString("o"),
-                    LastActiveAt = DateTime.UtcNow.ToString("o"),
-                    TurnCount = 0
-                };
-                ctx.ConversationSessions.Add(dbSession);
-                ctx.SaveChanges();
-            }
-
-            var resolvedPersona = persona ?? dbSession.Persona ?? (_openCodeDetected ? "coding" : "chat");
-            if (_openCodeDetected && resolvedPersona == "chat" && dbSession.Persona == null)
-                resolvedPersona = "coding";
-            var engine = _factory.Create(id, resolvedPersona);
-
-            if (dbSession.UserId.HasValue)
-            {
-                var user = ctx.Users.Find(dbSession.UserId.Value);
-                if (user != null)
-                {
-                    engine.RestoreUser(user.Id, user.Name);
-                }
-            }
-
-            if (engine.CurrentUserId == null && messages != null)
-            {
-                TryRestoreUserFromMessages(engine, messages);
-            }
-
-            if (engine.CurrentUserId == null)
-            {
-                engine.EstablishDefaultUser(userName ?? "Guest");
-            }
-
-            if (dbSession.Persona == null)
-            {
-                dbSession.Persona = resolvedPersona;
-                dbSession.BotName = engine.BotName;
-                ctx.SaveChanges();
-            }
-
-            return new CacheEntry(engine);
-        });
+        var entry = BuildSession(sessionId, userName, messages, persona);
+        var added = _cache.GetOrAdd(sessionId, _ => entry);
+        if (added != entry)
+        {
+            entry.Engine.Dispose();
+            added.LastAccessed = DateTime.UtcNow;
+            SyncUserId(added.Engine, sessionId);
+            return added.Engine;
+        }
 
         entry.LastAccessed = DateTime.UtcNow;
 
@@ -125,6 +89,65 @@ public sealed class SessionManager : IDisposable
             EvictLru(entry.Engine.CurrentUserId);
 
         return entry.Engine;
+    }
+
+    private CacheEntry BuildSession(string sessionId, string? userName, List<ChatMessage>? messages, string? persona)
+    {
+        using var ctx = _factoryDb.CreateDbContext();
+
+        var dbSession = ctx.ConversationSessions.FirstOrDefault(s => s.SessionGuid == sessionId);
+
+        if (dbSession == null)
+        {
+            dbSession = new ConversationSession
+            {
+                SessionGuid = sessionId,
+                StartedAt = DateTime.UtcNow.ToString("o"),
+                LastActiveAt = DateTime.UtcNow.ToString("o"),
+                TurnCount = 0
+            };
+            ctx.ConversationSessions.Add(dbSession);
+            ctx.SaveChanges();
+        }
+
+        var resolvedPersona = persona ?? dbSession.Persona ?? (_openCodeDetected ? "coding" : "chat");
+        if (_openCodeDetected && resolvedPersona == "chat" && dbSession.Persona == null)
+            resolvedPersona = "coding";
+        var engine = _factory.Create(sessionId, resolvedPersona);
+
+        if (dbSession.UserId.HasValue)
+        {
+            var user = ctx.Users.Find(dbSession.UserId.Value);
+            if (user != null)
+            {
+                engine.RestoreUser(user.Id, user.Name);
+            }
+        }
+
+        if (engine.CurrentUserId == null && messages != null)
+        {
+            TryRestoreUserFromMessages(engine, messages);
+        }
+
+        if (engine.CurrentUserId == null)
+        {
+            engine.EstablishDefaultUser(userName ?? "Guest");
+        }
+
+        if (dbSession.Persona == null)
+        {
+            dbSession.Persona = resolvedPersona;
+            dbSession.BotName = engine.BotName;
+            try
+            {
+                ctx.SaveChanges();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+            }
+        }
+
+        return new CacheEntry(engine);
     }
 
     public ConversationSession? GetSessionMetadata(string sessionId)

@@ -16,12 +16,14 @@ namespace PokeChat.Api.Core.Planning
         private readonly IDbContextFactory<PokeChatDbContext> _contextFactory;
         private readonly ToolRegistry _toolRegistry;
         private readonly LLMOrchestrator? _llmOrchestrator;
+        private readonly ITaskTrainer? _taskTrainer;
 
-        public PlannerService(IDbContextFactory<PokeChatDbContext> contextFactory, ToolRegistry toolRegistry, LLMOrchestrator? llmOrchestrator = null)
+        public PlannerService(IDbContextFactory<PokeChatDbContext> contextFactory, ToolRegistry toolRegistry, LLMOrchestrator? llmOrchestrator = null, ITaskTrainer? taskTrainer = null)
         {
             _contextFactory = contextFactory;
             _toolRegistry = toolRegistry;
             _llmOrchestrator = llmOrchestrator;
+            _taskTrainer = taskTrainer;
         }
 
         public async Task<TaskList?> FindRelevantPlanAsync(string goal, string contextTags)
@@ -281,6 +283,22 @@ Output only the steps, nothing else.";
                 .Include(tl => tl.Tasks)
                 .OrderByDescending(tl => tl.CreatedAt)
                 .ToListAsync();
+        }
+
+        public async Task<TaskList> TrainFromLLMAsync(string goal)
+        {
+            if (_taskTrainer == null)
+                throw new InvalidOperationException("Task trainer is not available.");
+
+            return await _taskTrainer.DecomposeGoalAsync(goal);
+        }
+
+        public async Task SaveTrainedTaskAsync(TaskList plan)
+        {
+            using var context = _contextFactory.CreateDbContext();
+            plan.IsTrained = true;
+            context.TaskLists.Add(plan);
+            await context.SaveChangesAsync();
         }
 
         public string ExtractContextTags(string goal)

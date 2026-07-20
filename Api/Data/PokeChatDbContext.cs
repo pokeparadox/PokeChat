@@ -451,6 +451,7 @@ public sealed class PokeChatDbContext : DbContext
             entity.Property(e => e.SuccessRating).HasDefaultValue(0.0);
             entity.Property(e => e.Version).HasDefaultValue(1);
             entity.Property(e => e.IsTemplate).HasDefaultValue(true);
+            entity.Property(e => e.IsTrained).HasDefaultValue(false);
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.LastUsedAt);
         });

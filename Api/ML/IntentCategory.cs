@@ -28,6 +28,7 @@ public static class IntentCategory
         "about_me_query",
         "stats_query",
         "plan_query",
+        "train_task",
         "yes_no_affirmation",
         "question_about_bot",
         "complex_question",

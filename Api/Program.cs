@@ -9,6 +9,7 @@ using PokeChat.Api.Services;
 using PokeChat.Core;
 using PokeChat.Data;
 using PokeChat.Enrichment;
+using PokeChat.LLM;
 using PokeChat.Math;
 using PokeChat.Mcp;
 using PokeChat.Tools;
@@ -89,12 +90,17 @@ builder.Services.AddHttpClient<WeatherApiClient>();
 
 builder.Services.AddSingleton<OpenAIAdapter>();
 builder.Services.AddSingleton<TitleGenerator>();
+builder.Services.AddSingleton<LLMOrchestrator>();
 
 // Register PlannerService with ToolRegistry dependency
+builder.Services.AddSingleton<ITaskTrainer>(sp =>
+    new TaskTrainer(sp.GetService<LLMOrchestrator>()));
 builder.Services.AddSingleton<IPlannerService>(sp =>
     new PlannerService(
         sp.GetRequiredService<IDbContextFactory<PokeChatDbContext>>(),
-        enrichmentTools));
+        enrichmentTools,
+        sp.GetService<LLMOrchestrator>(),
+        sp.GetRequiredService<ITaskTrainer>()));
 
 builder.Services.AddRateLimiter(options =>
 {
